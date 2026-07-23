@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ADC Outbound · Home Alliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============ design tokens (matched to Job Efficiency Board) ============ */
+:root{
+  --bg:#F6F7F5; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.07), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#F3F5F2; --glass:rgba(255,255,255,.75);
+  --ink:#101614; --ink-2:#5B6862; --ink-3:#94A099; --line:#E4E8E2; --line-2:#EEF1EC;
+  --accent:#0E9F6E; --accent-hi:#10B981; --accent-deep:#047857; --accent-soft:#E4F5EE; --on-accent:#FFFFFF;
+  --amber:#B45309; --amber-soft:#FCF0DC;
+  --red:#C0392B; --red-soft:#FAE5E1;
+  --blue:#2563EB; --blue-soft:#E5EDFB;
+  --lux:#7C3AED; --lux-soft:#F1EAFD;
+  --shadow:0 1px 2px rgba(16,24,20,.04),0 6px 20px rgba(16,24,20,.05);
+  --shadow-lg:0 12px 40px rgba(16,24,20,.16);
+  --focus:0 0 0 3px rgba(16,185,129,.25);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --disp:'Space Grotesk',var(--sans);
+  --r:16px; --r-sm:10px; --r-xs:8px;
+  /* aliases so shared component code reads naturally */
+  --brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--accent); --green-soft:var(--accent-soft); --radius:var(--r); --radius-sm:var(--r-sm);
+}
+[data-theme="dark"]{
+  --bg:#0B0F0D; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.08), transparent 60%);
+  --panel:#141A17; --panel-2:#1B2320; --glass:rgba(20,26,23,.8);
+  --ink:#E8EEEA; --ink-2:#9DABA2; --ink-3:#69766E; --line:#26302B; --line-2:#1F2823;
+  --accent:#10B981; --accent-hi:#34D399; --accent-deep:#059669; --accent-soft:#132B21; --on-accent:#06130D;
+  --amber:#E9A23B; --amber-soft:#2E230F;
+  --red:#E0705F; --red-soft:#361D18;
+  --blue:#7CA9F5; --blue-soft:#16233A;
+  --lux:#B79CF7; --lux-soft:#241B38;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 22px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.55);
+  --focus:0 0 0 3px rgba(52,211,153,.3);
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
+body{background:var(--bg);background-image:var(--bg-grad);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xs);padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s,background .3s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:var(--focus)}
+input::placeholder{color:var(--ink-3)}
+::selection{background:var(--accent-soft)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+a{color:var(--accent)}
+.hidden{display:none!important}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
+
+/* ============ header ============ */
+header{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:62px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);transition:.3s}
+.brand .dot.live{background:var(--accent-hi);box-shadow:0 0 10px var(--accent-hi)}
+.brand small{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.5px;color:var(--ink-3)}
+nav{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:12.5px;letter-spacing:.2px;padding:7px 15px;border-radius:99px;white-space:nowrap;transition:.18s}
+nav button:hover{color:var(--ink)}
+nav button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
+.hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.admin-on #adminBtn{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+#themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+.eyebrow{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.sub{color:var(--ink-2);font-size:13.5px;margin-bottom:20px;max-width:860px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+
+/* ============ panels / buttons ============ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(16,185,129,.3);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,.4)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.5;cursor:default;transform:none;filter:none;box-shadow:none}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.ghost:hover{border-color:var(--ink-3);background:var(--panel-2);box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#E05545,#B03A2B);color:#fff;box-shadow:0 2px 10px rgba(192,57,43,.3)}
+.btn.sm{padding:5px 12px;font-size:12px}
+.sort-pill{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;transition:.15s}
+.sort-pill:hover{border-color:var(--ink-3);color:var(--ink)}
+.sort-pill.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+/* ============ KPI cards ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px}
+.kpi.a .v{color:var(--accent)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
+
+/* ============ tables / badges ============ */
+.twrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);text-align:left;padding:11px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--panel-2)}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 9px;border-radius:99px;line-height:1.5}
+.badge.booking{background:var(--accent-soft);color:var(--accent)}
+.badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
+.badge.sold{background:var(--accent-soft);color:var(--accent)}
+.badge.cancelled{background:var(--red-soft);color:var(--red)}
+.badge.ran_not_sold{background:var(--amber-soft);color:var(--amber)}
+.badge.pending{background:var(--line-2);color:var(--ink-2)}
+.jobref{font-family:var(--mono);letter-spacing:.14em}
+.count-note{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+
+/* ============ report entry ============ */
+.entry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.numwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+.numwrap label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2);margin-bottom:7px}
+.numwrap input{width:100%;border:0;background:transparent;font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ink);padding:0}
+.numwrap input:focus{box-shadow:none}
+.numwrap.derived{background:var(--accent-soft);border-color:var(--accent)}
+.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--accent)}
+.numwrap.derived.cross{background:var(--blue-soft);border-color:var(--blue)}
+.numwrap.derived.cross .val{color:var(--blue)}
+.bookblock{border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px;margin-top:12px;background:var(--panel-2)}
+.bookblock.cross{background:var(--blue-soft);border-color:var(--blue)}
+.bookblock h4{font-family:var(--disp);font-size:14px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.bookblock .hint{font-size:12px;color:var(--ink-2);margin-bottom:10px}
+.refrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.refrow .idx{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:20px;text-align:center;flex:0 0 auto}
+.refrow input{flex:1;letter-spacing:.28em;font-family:var(--mono);text-align:center}
+.refrow .state{width:150px;font-size:11.5px}
+.refrow .state.ok{color:var(--accent);font-weight:700}
+.refrow .state.warn{color:var(--red)}
+.refrow input.bad{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+
+/* ============ meeting leaderboard ============ */
+.meet-sort{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.meet-sort .lbl{font-size:12px;color:var(--ink-2);margin-right:2px}
+.meet-avg{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.meet-list{display:flex;flex-direction:column;gap:8px}
+.lb-row{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;text-align:left;color:var(--ink);
+  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
+.lb-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.lb-rank{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:center}
+.lb-avatar{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;background:var(--accent-soft);color:var(--accent)}
+.lb-row:nth-child(2) .lb-avatar{background:var(--blue-soft);color:var(--blue)}
+.lb-row:nth-child(3) .lb-avatar{background:var(--amber-soft);color:var(--amber)}
+.lb-row:nth-child(4) .lb-avatar{background:var(--red-soft);color:var(--red)}
+.lb-main{min-width:0}
+.lb-name{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.1px}
+.mix-bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:var(--line-2);margin-top:7px;max-width:430px}
+.mix-bar .seg{position:absolute;top:0;bottom:0}
+.mix-bar .p1{background:var(--accent-hi)} .mix-bar .p2{background:var(--blue)} .mix-bar .p3{background:var(--red)}
+.mix-bar .avg-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;z-index:2}
+.mix-legend{font-size:11px;color:var(--ink-3);margin-top:4px;font-family:var(--mono)}
+.lb-stat{text-align:right}
+.lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
+.lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
+.tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
+.lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
+.lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
+@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 26px}.lb-row .lb-stat.conv{display:none}.mix-bar{max-width:none}}
+@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 64px 26px}.lb-rank,.lb-row .lb-stat.bk{display:none}}
+
+/* ============ report modal ============ */
+.rep-backdrop{position:fixed;inset:0;background:rgba(8,12,10,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:80;display:none;align-items:center;justify-content:center;padding:26px}
+.rep-backdrop.show{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rep{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow-lg);width:min(1000px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:repIn .24s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes repIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rep-top{display:flex;align-items:center;gap:18px;padding:24px 28px 20px;border-bottom:1px solid var(--line)}
+.rep-avatar{width:58px;height:58px;border-radius:16px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;flex-shrink:0}
+.rep-title{min-width:0}
+.rep-title .nm{font-family:var(--disp);font-weight:700;font-size:28px;letter-spacing:-.4px;line-height:1.1}
+.rep-title .dt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.rep-nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rep-nav .btn.ghost{padding:8px 14px;font-size:15px;line-height:1}
+.rep-close{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:16px;line-height:1;transition:.15s}
+.rep-close:hover{color:var(--ink);border-color:var(--ink-3)}
+.rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;padding:20px 28px 6px}
+.rep-kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;text-align:center}
+.rep-kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.rep-kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px}
+.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}
+.rep-body{overflow:auto;padding:16px 28px 26px}
+.rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
+.bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.hintrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+@media(max-width:760px){.rep-kpis{grid-template-columns:repeat(2,1fr)}.rep-title .nm{font-size:22px}}
+
+/* ============ scorecard ============ */
+.sc-group{margin-top:26px}
+.sc-group>.lab{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--ink);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:10px}
+.sc-group>.lab::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-deep));flex:0 0 auto}
+.sc-group>.lab .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+.sc-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.tip{position:relative;color:var(--ink-3);cursor:help;font-size:11px;border:1px solid var(--line);border-radius:50%;width:15px;height:15px;display:inline-grid;place-items:center;line-height:1}
+.tip:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);font-size:11px;font-weight:500;padding:7px 9px;border-radius:8px;width:190px;z-index:5;box-shadow:var(--shadow-lg)}
+
+/* ============ admin summary ============ */
+.summary3{display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+.sumline{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line-2);color:var(--ink-2)}
+.sumline b{color:var(--ink);font-weight:600}
+.amt-input{width:96px;padding:6px 8px;font-size:13px}
+.st-select{padding:6px 8px;font-size:12.5px}
+
+/* ============ toast / gate ============ */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:14px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px) scale(.97);transition:.25s cubic-bezier(.2,.9,.3,1.2);pointer-events:none;z-index:99;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--red);color:#fff}
+.center-wrap{min-height:70vh;display:grid;place-items:center;padding:24px}
+.gate{max-width:460px;width:100%;text-align:center}
+.gate .lockbig{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:28px}
+.gate h2{font-size:23px}.gate p{color:var(--ink-2);font-size:14px;margin:8px 0 20px}
+.pin-in{letter-spacing:.5em;text-align:center;font-family:var(--mono);font-size:22px;width:100%}
+.codebox{background:#0B0F0D;color:#cfe0d6;border-radius:12px;padding:14px;font-family:var(--mono);font-size:12px;text-align:left;white-space:pre-wrap;overflow:auto;max-height:260px}
+.empty{text-align:center;color:var(--ink-3);padding:40px 20px;font-size:14px}
+@media(max-width:720px){.summary3{grid-template-columns:1fr}header{gap:12px;padding:0 14px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot" id="connDot"></span><span>ADC OUTBOUND</span></div>
+  <nav id="nav"></nav>
+  <div class="hdr-right">
+    <span id="whoami"></span>
+    <button class="hdr-btn" id="adminBtn">Admin</button>
+    <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
+  </div>
+</header>
+
+<main id="app"></main>
+<div class="rep-backdrop" id="repRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   ADC Outbound Performance Board — matched to Job Efficiency Board design
+   ========================================================================= */
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',adminSession:'adc_admin_session',theme:'adc_theme'};
+let sb=null;
+let STATE={agents:[],reports:[],bookings:[],view:'report',isAdmin:false,
+  scPeriod:'last7',scAgent:'all',meetPeriod:'thisweek',meetSort:'bookings',_bkFilter:'open',loaded:false};
+
+const SCHEMA_SQL=`-- Run in Supabase > SQL Editor. Full file also shipped as schema.sql
+create table if not exists agents(
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique, active boolean not null default true,
+  target_bookings int not null default 5, target_crossbookings int not null default 3,
+  sort_order int not null default 0, created_at timestamptz not null default now());
+create table if not exists daily_reports(
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references agents(id) on delete cascade,
+  report_date date not null,
+  total_calls int not null default 0, reached_contacts int not null default 0,
+  no_answer int not null default 0, not_interested int not null default 0,
+  follow_up_needed int not null default 0,
+  booked_appointments int not null default 0, cross_bookings int not null default 0, note text,
+  submitted_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+  unique(agent_id,report_date));
+-- migrations for already-deployed databases:
+alter table daily_reports add column if not exists booked_appointments int not null default 0;
+alter table daily_reports add column if not exists cross_bookings int not null default 0;
+create table if not exists bookings(
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references agents(id) on delete cascade,
+  report_date date not null,
+  kind text not null check(kind in('booking','crossbooking')),
+  job_ref text not null, sale_amount numeric(12,2),
+  status text not null default 'pending' check(status in('pending','ran_not_sold','sold','cancelled')),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists app_settings(
+  key text primary key, value text, updated_at timestamptz not null default now());
+alter table agents enable row level security;
+alter table daily_reports enable row level security;
+alter table bookings enable row level security;
+alter table app_settings enable row level security;
+drop policy if exists anon_all on agents;
+create policy anon_all on agents for all using(true) with check(true);
+drop policy if exists anon_all on daily_reports;
+create policy anon_all on daily_reports for all using(true) with check(true);
+drop policy if exists anon_all on bookings;
+create policy anon_all on bookings for all using(true) with check(true);
+drop policy if exists anon_all on app_settings;
+create policy anon_all on app_settings for all using(true) with check(true);
+-- admin PIN (4271) stored as sha256 hash:
+insert into app_settings(key,value) values('admin_pin','0b94cd5e95afb17f118c0ed090fa2621bae55c692e2f7b13948c7d805985974e')
+ on conflict(key) do nothing;
+insert into agents(name,sort_order) values
+ ('Shiena',1),('Levi',2),('Reagan',3),('Jane',4),('Felicia',5),('Toni',6)
+ on conflict(name) do nothing;`;
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const pct=(n,d)=>d>0?(100*n/d).toFixed(1)+'%':'—';
+const round1=n=>isFinite(n)?Math.round(n*10)/10:0;
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className='toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2600);}
+function colorFor(name){let h=0;for(const c of(name||''))h=(h*31+c.charCodeAt(0))>>>0;return`hsl(${h%360} 52% 46%)`;}
+function initials(name){return(name||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+
+/* ---------- dates ---------- */
+const iso=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);};
+const today=()=>iso(new Date());
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
+function periodRange(key){
+  const now=new Date();now.setHours(0,0,0,0);
+  if(key==='yesterday'){const y=addDays(now,-1);return[iso(y),iso(y),'Yesterday'];}
+  if(key==='thisweek')return[iso(startOfWeek(now)),iso(now),'This week'];
+  if(key==='lastweek'){const s=addDays(startOfWeek(now),-7);return[iso(s),iso(addDays(s,6)),'Last week'];}
+  if(key==='thismonth')return[iso(new Date(now.getFullYear(),now.getMonth(),1)),iso(now),'This month'];
+  if(key==='lastmonth'){const s=new Date(now.getFullYear(),now.getMonth()-1,1);return[iso(s),iso(new Date(now.getFullYear(),now.getMonth(),0)),'Last month'];}
+  if(key==='last7')return[iso(addDays(now,-6)),iso(now),'Last 7 days'];
+  if(key==='last30')return[iso(addDays(now,-29)),iso(now),'Last 30 days'];
+  return[iso(addDays(now,-6)),iso(now),'Last 7 days'];
+}
+const inRange=(d,a,b)=>d>=a&&d<=b;
+
+/* ---------- theme ---------- */
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';localStorage.setItem(LS.theme,t);}
+
+/* ---------- connection ---------- */
+function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
+function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
+function setConn(ok){$('#connDot').className='dot'+(ok?' live':'');}
+async function connect(){
+  const c=loadConf();if(!c||!c.url||!c.key){renderSetup();return false;}
+  try{sb=window.supabase.createClient(c.url,c.key);const{error}=await sb.from('agents').select('id').limit(1);if(error)throw error;setConn(true);return true;}
+  catch(e){setConn(false);renderSetup(e.message||'Could not reach Supabase.');return false;}
+}
+async function getSetting(k){const{data}=await sb.from('app_settings').select('value').eq('key',k).maybeSingle();return data?data.value:null;}
+async function setSetting(k,v){return sb.from('app_settings').upsert({key:k,value:v,updated_at:new Date().toISOString()},{onConflict:'key'});}
+
+/* ---------- data ---------- */
+async function loadAll(){
+  const[ag,rp,bk]=await Promise.all([
+    sb.from('agents').select('*').order('sort_order'),
+    sb.from('daily_reports').select('*'),
+    sb.from('bookings').select('*')]);
+  if(ag.error||rp.error||bk.error)toast('Load failed — is the schema installed?',true);
+  STATE.agents=ag.data||[];STATE.reports=rp.data||[];STATE.bookings=bk.data||[];STATE.loaded=true;
+}
+
+/* ---------- metric engine ---------- */
+function compute(a,b,agentId){
+  const rs=STATE.reports.filter(r=>inRange(r.report_date,a,b)&&(agentId==='all'||r.agent_id===agentId));
+  const bs=STATE.bookings.filter(x=>inRange(x.report_date,a,b)&&(agentId==='all'||x.agent_id===agentId));
+  const sum=k=>rs.reduce((t,r)=>t+(+r[k]||0),0);
+  const totalCalls=sum('total_calls'),reached=sum('reached_contacts');
+  const noAnswer=sum('no_answer'),notInt=sum('not_interested'),followUp=sum('follow_up_needed');
+  // booking counts: prefer the stored aggregate on each report (set by live submit AND historical import);
+  // fall back to counting booking rows for that report when the aggregate is 0 (older rows).
+  const rowCount=(aid,d,kind)=>bs.filter(x=>x.agent_id===aid&&x.report_date===d&&x.kind===kind).length;
+  let booked=0,cross=0;
+  rs.forEach(r=>{
+    booked += (+r.booked_appointments||0) || rowCount(r.agent_id,r.report_date,'booking');
+    cross  += (+r.cross_bookings||0)      || rowCount(r.agent_id,r.report_date,'crossbooking');
+  });
+  const scheduled=booked+cross;
+  const sold=bs.filter(x=>x.status==='sold'),soldN=sold.length;
+  const runs=bs.filter(x=>x.status==='sold'||x.status==='ran_not_sold').length;
+  const cancelled=bs.filter(x=>x.status==='cancelled').length;
+  const revenue=sold.reduce((t,x)=>t+(+x.sale_amount||0),0);
+  const revenueCross=sold.filter(x=>x.kind==='crossbooking').reduce((t,x)=>t+(+x.sale_amount||0),0);
+  const leads=booked+cross;
+  return{agentsN:new Set(rs.map(r=>r.agent_id)).size,totalCalls,reached,noAnswer,notInt,followUp,
+    booked,cross,scheduled,soldN,runs,cancelled,revenue,revenueCross,leads,
+    reachRate:reached/(totalCalls||1),contactToBooking:booked/(reached||1),callToBooking:booked/(totalCalls||1),
+    adl:revenue/(leads||1),avt:revenue/(soldN||1),revPerCall:revenue/(totalCalls||1),cancelPct:cancelled/(scheduled||1)};
+}
+
+/* ---------- shell ---------- */
+function tabs(){const t=[{id:'report',label:'Report'},{id:'meeting',label:'Meeting'},{id:'scorecard',label:'Scorecard'}];if(STATE.isAdmin)t.push({id:'admin',label:'Admin'});return t;}
+function renderNav(){
+  const nav=$('#nav');nav.innerHTML='';
+  tabs().forEach(t=>{const b=el('button',STATE.view===t.id?'on':'',t.label);b.onclick=()=>go(t.id);nav.appendChild(b);});
+  const me=localStorage.getItem(LS.agent);$('#whoami').textContent=me?('Agent · '+me):'';
+}
+function go(view){STATE.view=view;renderNav();render();window.scrollTo({top:0,behavior:'smooth'});}
+function render(){
+  const app=$('#app');app.innerHTML='';
+  if(!STATE.loaded){app.appendChild(el('div','empty','Loading…'));return;}
+  if(STATE.view==='report')return renderReport(app);
+  if(STATE.view==='meeting')return renderMeeting(app);
+  if(STATE.view==='scorecard')return renderScorecard(app);
+  if(STATE.view==='admin')return STATE.isAdmin?renderAdmin(app):go('scorecard');
+}
+function head(app,eyebrow,title,sub,rightEl){
+  const h=el('div','section-head');
+  h.appendChild(el('div','',`<div class="eyebrow">${esc(eyebrow)}</div><h2>${esc(title)}</h2>`));
+  if(rightEl)h.appendChild(rightEl);app.appendChild(h);
+  if(sub)app.appendChild(el('div','sub',esc(sub)));
+}
+
+/* =========================================================================
+   Admin header button (PIN)
+   ========================================================================= */
+async function adminButtonClick(){
+  if(STATE.isAdmin){STATE.isAdmin=false;sessionStorage.removeItem(LS.adminSession);document.body.classList.remove('admin-on');$('#adminBtn').textContent='Admin';if(STATE.view==='admin')go('scorecard');else renderNav();toast('Admin locked');return;}
+  // Touch ID / fingerprint first when enrolled on this device, else fall back to PIN
+  if(await unlockWithPasskey()){unlockAdmin();return;}
+  let stored=null;try{stored=await getSetting('admin_pin');}catch(e){}
+  if(!stored){
+    const p1=prompt('No admin PIN yet. Set one (4–6 digits):');if(p1==null)return;
+    if(!/^\d{4,6}$/.test(p1)){toast('PIN must be 4–6 digits',true);return;}
+    const p2=prompt('Confirm PIN:');if(p2!==p1){toast('PINs did not match',true);return;}
+    await setSetting('admin_pin',await sha256(p1));unlockAdmin();toast('Admin PIN set');return;
+  }
+  const pin=prompt('Enter admin PIN:');if(pin==null)return;
+  if(await sha256(pin)===stored)unlockAdmin();else toast('Wrong PIN',true);
+}
+function unlockAdmin(){STATE.isAdmin=true;sessionStorage.setItem(LS.adminSession,'1');document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';go('admin');}
+
+/* =========================================================================
+   VIEW: Report
+   ========================================================================= */
+function renderReport(app){
+  const me=localStorage.getItem(LS.agent);
+  if(!me)return renderChooseAgent(app);
+  const agent=STATE.agents.find(a=>a.name===me);
+  if(!agent){localStorage.removeItem(LS.agent);return renderChooseAgent(app);}
+
+  const sw=el('button','btn ghost sm','Not you?');sw.onclick=()=>{localStorage.removeItem(LS.agent);render();renderNav();};
+  head(app,'Daily report',`Hi ${agent.name} — log today's numbers`,'Bookings and cross-bookings each need a 5-digit job reference before you can submit.',sw);
+
+  const q=compute(...periodRange('last30').slice(0,2),agent.id);
+  const kp=el('div','kpis');
+  kp.innerHTML=`${kpiCard(q.totalCalls,'Calls · 30d')}${kpiCard(q.booked,'Bookings · 30d','a')}${kpiCard(q.cross,'Cross · 30d','blue')}${kpiCard(pct(q.booked,q.reached),'Contact→bk')}`;
+  app.appendChild(kp);
+
+  const form=el('div','panel');app.appendChild(form);
+  form.appendChild(el('div','bar tight',`<div class="fld"><label>Report date</label><input type="date" id="rp_date" max="${today()}" value="${today()}"></div>`));
+
+  const fields=[['total_calls','Total Calls'],['reached_contacts','Reached Contacts'],['no_answer','No Answer'],['not_interested','Not Interested'],['follow_up_needed','Follow-Up Needed']];
+  const grid=el('div','entry-grid');grid.style.marginTop='14px';
+  fields.forEach(([k,lab])=>{const w=el('div','numwrap');w.innerHTML=`<label>${lab}</label><input inputmode="numeric" data-k="${k}" value="0">`;grid.appendChild(w);});
+  const dB=el('div','numwrap derived');dB.innerHTML=`<label>Booked Appointments</label><div class="val" id="cnt_booking">0</div>`;
+  const dC=el('div','numwrap derived cross');dC.innerHTML=`<label>Cross-Bookings</label><div class="val" id="cnt_cross">0</div>`;
+  grid.appendChild(dB);grid.appendChild(dC);form.appendChild(grid);
+
+  const bWrap=el('div','bookblock');bWrap.innerHTML=`<h4>🎯 Bookings <span class="badge booking">job ref required</span></h4>
+    <div class="hint">Add one row per booked appointment. Reference = 5 digits.</div><div id="rows_booking"></div>
+    <button class="btn ghost sm" id="add_booking">+ Add booking</button>`;
+  form.appendChild(bWrap);
+  const cWrap=el('div','bookblock cross');cWrap.innerHTML=`<h4>🔁 Cross-Bookings <span class="badge crossbooking">job ref required</span></h4>
+    <div class="hint">A booking passed to another department. Reference = 5 digits.</div><div id="rows_cross"></div>
+    <button class="btn ghost sm" id="add_cross">+ Add cross-booking</button>`;
+  form.appendChild(cWrap);
+
+  form.appendChild(el('div','',`<div class="fld" style="margin-top:14px"><label>Note (optional)</label><textarea id="rp_note" rows="2" placeholder="Anything worth flagging for the meeting…"></textarea></div>`));
+  const foot=el('div','');foot.style.cssText='display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap';
+  const submit=el('button','btn','Submit report');submit.id='rp_submit';
+  const status=el('span','count-note','');status.id='rp_status';
+  foot.appendChild(submit);foot.appendChild(status);form.appendChild(foot);
+
+  function makeRow(kind,ref){
+    const row=el('div','refrow'),list=kind==='booking'?'#rows_booking':'#rows_cross';
+    row.innerHTML=`<span class="idx"></span><input maxlength="5" inputmode="numeric" placeholder="00000" value="${esc(ref||'')}"><span class="state warn"></span><button class="btn ghost sm">✕</button>`;
+    const input=row.querySelector('input');
+    input.addEventListener('input',()=>{input.value=input.value.replace(/\D/g,'').slice(0,5);validate();});
+    row.querySelector('button').onclick=()=>{row.remove();reindex();validate();};
+    $(list,form).appendChild(row);reindex();validate();input.focus();
+  }
+  function reindex(){
+    ['#rows_booking','#rows_cross'].forEach(sel=>[...form.querySelectorAll(sel+' .refrow')].forEach((r,i)=>r.querySelector('.idx').textContent=i+1));
+    $('#cnt_booking',form).textContent=form.querySelectorAll('#rows_booking .refrow').length;
+    $('#cnt_cross',form).textContent=form.querySelectorAll('#rows_cross .refrow').length;
+  }
+  function validate(){
+    let ok=true,bad=0;
+    form.querySelectorAll('.refrow').forEach(r=>{const inp=r.querySelector('input'),st=r.querySelector('.state'),v=inp.value;
+      if(/^\d{5}$/.test(v)){inp.classList.remove('bad');st.className='state ok';st.textContent='✓';}
+      else{inp.classList.add('bad');st.className='state warn';st.textContent=v.length?'needs 5 digits':'enter 5-digit ref';ok=false;bad++;}});
+    const refs=[...form.querySelectorAll('.refrow input')].map(i=>i.value).filter(v=>/^\d{5}$/.test(v));
+    const dups=refs.filter((v,i)=>refs.indexOf(v)!==i);if(dups.length)ok=false;
+    submit.disabled=!ok;
+    status.textContent=ok?'Ready to submit.':(dups.length?'Duplicate job reference — each must be unique.':(bad+' booking'+(bad>1?'s':'')+' need a valid 5-digit reference.'));
+    status.style.color=ok?'var(--accent)':'var(--red)';return ok;
+  }
+  $('#add_booking',form).onclick=()=>makeRow('booking');
+  $('#add_cross',form).onclick=()=>makeRow('cross');
+
+  function loadForDate(){
+    const d=$('#rp_date',form).value;
+    const r=STATE.reports.find(x=>x.agent_id===agent.id&&x.report_date===d);
+    fields.forEach(([k])=>{form.querySelector(`[data-k="${k}"]`).value=r?(r[k]??0):0;});
+    $('#rp_note',form).value=r?(r.note||''):'';
+    form.querySelector('#rows_booking').innerHTML='';form.querySelector('#rows_cross').innerHTML='';
+    STATE.bookings.filter(x=>x.agent_id===agent.id&&x.report_date===d).forEach(x=>makeRow(x.kind==='crossbooking'?'cross':'booking',x.job_ref));
+    reindex();validate();
+    status.textContent=r?'Editing a report already saved for this date.':'New report.';status.style.color='var(--ink-2)';
+  }
+  $('#rp_date',form).onchange=loadForDate;loadForDate();
+
+  submit.onclick=async()=>{
+    if(!validate())return;submit.disabled=true;submit.textContent='Saving…';
+    const d=$('#rp_date',form).value;
+    const nBook=form.querySelectorAll('#rows_booking .refrow').length, nCross=form.querySelectorAll('#rows_cross .refrow').length;
+    const payload={agent_id:agent.id,report_date:d,note:$('#rp_note',form).value||null,booked_appointments:nBook,cross_bookings:nCross,submitted_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    fields.forEach(([k])=>payload[k]=+form.querySelector(`[data-k="${k}"]`).value||0);
+    try{
+      const{error:e1}=await sb.from('daily_reports').upsert(payload,{onConflict:'agent_id,report_date'});if(e1)throw e1;
+      await sb.from('bookings').delete().eq('agent_id',agent.id).eq('report_date',d);
+      const rows=[];
+      form.querySelectorAll('#rows_booking .refrow input').forEach(i=>rows.push({agent_id:agent.id,report_date:d,kind:'booking',job_ref:i.value}));
+      form.querySelectorAll('#rows_cross .refrow input').forEach(i=>rows.push({agent_id:agent.id,report_date:d,kind:'crossbooking',job_ref:i.value}));
+      if(rows.length){const{error:e2}=await sb.from('bookings').insert(rows);if(e2)throw e2;}
+      await loadAll();toast('Report saved for '+d);submit.textContent='Submit report';submit.disabled=false;loadForDate();
+    }catch(err){toast('Save failed: '+(err.message||err),true);submit.textContent='Submit report';submit.disabled=false;}
+  };
+}
+function kpiCard(v,l,cls){return`<div class="kpi ${cls||''}"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`;}
+function renderChooseAgent(app){
+  const wrap=el('div','center-wrap'),g=el('div','gate');
+  g.innerHTML=`<div class="lockbig">👋</div><h2>Who's reporting?</h2><p>Pick your name once — this device will remember it.</p>`;
+  const sel=el('select');sel.style.cssText='width:100%;margin-bottom:14px';
+  sel.innerHTML='<option value="">Select your name…</option>'+STATE.agents.filter(a=>a.active).map(a=>`<option>${esc(a.name)}</option>`).join('');
+  const b=el('button','btn','Continue');b.style.width='100%';
+  b.onclick=()=>{if(!sel.value){toast('Pick your name',true);return;}localStorage.setItem(LS.agent,sel.value);render();renderNav();};
+  g.appendChild(sel);g.appendChild(b);wrap.appendChild(g);app.appendChild(wrap);
+}
+
+/* =========================================================================
+   VIEW: Meeting (leaderboard + report modal)
+   ========================================================================= */
+function renderMeeting(app){
+  app.innerHTML='';
+  head(app,'Meeting','Team leaderboard','Ranked over the selected period. Click a row to open the agent report.');
+  const controls=el('div','bar');
+  const periods=[['yesterday','Yesterday'],['thisweek','This week'],['lastweek','Last week'],['thismonth','This month'],['lastmonth','Last month'],['last30','Last 30d']];
+  const psel=el('div','',`<div class="fld"><label>Period</label></div>`);
+  const seg=el('div','');seg.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  periods.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.meetPeriod===k?' on':''),l);b.onclick=()=>{STATE.meetPeriod=k;renderMeeting(app);};seg.appendChild(b);});
+  psel.appendChild(seg);controls.appendChild(psel);app.appendChild(controls);
+
+  const[a,b,label]=periodRange(STATE.meetPeriod);
+  const team=compute(a,b,'all');
+  const kp=el('div','kpis');
+  kp.innerHTML=`${kpiCard(team.totalCalls,'Total calls')}${kpiCard(team.reached,'Reached')}${kpiCard(team.booked,'Bookings','a')}${kpiCard(team.cross,'Cross-books','blue')}${kpiCard(pct(team.booked,team.reached),'Contact→bk')}${STATE.isAdmin?kpiCard(money(team.revenue),'Revenue','a'):kpiCard(team.followUp,'Follow-ups')}`;
+  app.appendChild(kp);
+
+  const sorts=[['bookings','Bookings'],['calls','Calls'],['reach','Reach %'],['conv','Conversion']];
+  const sortbar=el('div','meet-sort');
+  sortbar.appendChild(el('span','lbl','Sort by'));
+  sorts.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.meetSort===k?' on':''),l);b.onclick=()=>{STATE.meetSort=k;renderMeeting(app);};sortbar.appendChild(b);});
+  sortbar.appendChild(el('span','meet-avg',`${label} · team reach ${pct(team.reached,team.totalCalls)}`));
+  app.appendChild(sortbar);
+
+  const active=STATE.agents.filter(a=>a.active);
+  const rows=active.map(ag=>({ag,m:compute(a,b,ag.id)}));
+  const key={bookings:x=>x.m.booked,calls:x=>x.m.totalCalls,reach:x=>x.m.reachRate,conv:x=>x.m.contactToBooking}[STATE.meetSort];
+  rows.sort((x,y)=>key(y)-key(x));
+  const teamReachShare=team.reached/(team.totalCalls||1);
+
+  const list=el('div','meet-list');
+  if(!rows.length)list.appendChild(el('div','empty','No active agents. Add them in Admin.'));
+  rows.forEach((r,i)=>{
+    const m=r.m,tot=m.totalCalls||1;
+    const w1=100*m.reached/tot,w2=100*m.noAnswer/tot,w3=100*m.notInt/tot;
+    const conv=m.contactToBooking;
+    const convCls=conv>=.15?'tp-good':conv>=.08?'tp-mid':conv>0?'tp-bad':'tp-none';
+    const row=el('button','lb-row');
+    row.innerHTML=`
+      <span class="lb-rank">${i+1}</span>
+      <span class="lb-avatar">${initials(r.ag.name)}</span>
+      <span class="lb-main">
+        <span class="lb-name">${esc(r.ag.name)}</span>
+        <span class="mix-bar">
+          <span class="seg p1" style="left:0;width:${w1}%"></span>
+          <span class="seg p2" style="left:${w1}%;width:${w2}%"></span>
+          <span class="seg p3" style="left:${w1+w2}%;width:${w3}%"></span>
+          <span class="avg-tick" style="left:${Math.min(100,100*teamReachShare)}%"></span>
+        </span>
+        <span class="mix-legend">Reached ${m.reached} · No ans ${m.noAnswer} · Not int ${m.notInt}</span>
+      </span>
+      <span class="lb-stat calls"><span class="v">${m.totalCalls}</span><span class="l">Calls</span></span>
+      <span class="lb-stat bk"><span class="v" style="color:var(--accent)">${m.booked}</span><span class="l">Bookings</span></span>
+      <span class="lb-stat conv"><span class="v ${convCls}">${pct(m.booked,m.reached)}</span><span class="l">Contact→bk</span></span>
+      <span class="lb-go">→</span>`;
+    row.onclick=()=>openReport(rows,i,a,b,label);
+    list.appendChild(row);
+  });
+  app.appendChild(list);
+}
+function openReport(rows,idx,a,b,label){
+  const root=$('#repRoot');
+  function draw(i){
+    const r=rows[i],m=r.m,ag=r.ag;
+    const target=(ag.target_bookings*(STATE.meetPeriod==='last30'?4:1))||1;
+    const prog=Math.min(100,100*m.booked/target);
+    const recent=STATE.bookings.filter(x=>x.agent_id===ag.id&&inRange(x.report_date,a,b)).sort((x,y)=>y.report_date.localeCompare(x.report_date));
+    root.innerHTML=`<div class="rep">
+      <div class="rep-top">
+        <div class="rep-avatar" style="background:${colorFor(ag.name)}">${initials(ag.name)}</div>
+        <div class="rep-title"><div class="nm">${esc(ag.name)}</div><div class="dt">${label} · ${a} → ${b}</div></div>
+        <div class="rep-nav">
+          <button class="btn ghost" id="rp_prev">‹</button>
+          <button class="btn ghost" id="rp_next">›</button>
+          <button class="rep-close" id="rp_close">×</button>
+        </div>
+      </div>
+      <div class="rep-kpis">
+        <div class="rep-kpi"><div class="v">${m.totalCalls}</div><div class="l">Total calls</div></div>
+        <div class="rep-kpi"><div class="v">${m.reached}</div><div class="l">Reached (${pct(m.reached,m.totalCalls)})</div></div>
+        <div class="rep-kpi hi"><div class="v">${m.booked}</div><div class="l">Bookings</div></div>
+        <div class="rep-kpi blue"><div class="v">${m.cross}</div><div class="l">Cross-books</div></div>
+        <div class="rep-kpi"><div class="v">${pct(m.booked,m.reached)}</div><div class="l">Contact→bk</div></div>
+        <div class="rep-kpi hi"><div class="v">${m.soldN}</div><div class="l">Sold jobs</div></div>
+        <div class="rep-kpi hi"><div class="v">${money(m.revenue)}</div><div class="l">Revenue</div></div>
+        <div class="rep-kpi"><div class="v">${money(m.avt)}</div><div class="l">AVT</div></div>
+      </div>
+      <div class="rep-body">
+        <div class="hintrow"><span>Bookings vs target (${target})</span><span>${m.booked}/${target}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${prog}%"></div></div>
+        <h3>Bookings in period</h3>
+        ${recent.length?`<div class="twrap"><table><thead><tr><th>Date</th><th>Type</th><th>Job ref</th><th>Status</th><th>Amount</th></tr></thead><tbody>
+          ${recent.map(x=>`<tr><td>${x.report_date}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td>
+            <td class="jobref">${esc(x.job_ref)}</td><td><span class="badge ${x.status}">${x.status.replace('_',' ')}</span></td>
+            <td>${x.sale_amount!=null?money(x.sale_amount):'—'}</td></tr>`).join('')}
+        </tbody></table></div>`:'<div class="empty">No bookings in this period.</div>'}
+      </div>
+    </div>`;
+    root.classList.add('show');
+    $('#rp_close',root).onclick=close;
+    $('#rp_prev',root).onclick=()=>draw((i-1+rows.length)%rows.length);
+    $('#rp_next',root).onclick=()=>draw((i+1)%rows.length);
+  }
+  function close(){root.classList.remove('show');root.innerHTML='';document.removeEventListener('keydown',onKey);}
+  function onKey(e){if(e.key==='Escape')close();if(e.key==='ArrowLeft')$('#rp_prev',root)?.click();if(e.key==='ArrowRight')$('#rp_next',root)?.click();}
+  root.onclick=e=>{if(e.target===root)close();};
+  document.addEventListener('keydown',onKey);
+  draw(idx);
+}
+
+/* =========================================================================
+   VIEW: Scorecard
+   ========================================================================= */
+function renderScorecard(app){
+  app.innerHTML='';
+  head(app,'Performance','Scorecard','Filter by period and agent. Revenue metrics fill in once bookings are marked sold in Admin.');
+  const controls=el('div','bar');
+  const periods=[['yesterday','Yesterday'],['thisweek','This week'],['lastweek','Last week'],['thismonth','This month'],['lastmonth','Last month'],['last30','Last 30d']];
+  const seg=el('div','');seg.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  periods.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.scPeriod===k?' on':''),l);b.onclick=()=>{STATE.scPeriod=k;renderScorecard(app);};seg.appendChild(b);});
+  const pf=el('div','fld');pf.innerHTML='<label>Period</label>';pf.appendChild(seg);controls.appendChild(pf);
+  const af=el('div','fld');af.innerHTML='<label>Agent</label>';
+  const asel=el('select');asel.innerHTML='<option value="all">All agents</option>'+STATE.agents.map(a=>`<option value="${a.id}" ${STATE.scAgent===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  asel.onchange=()=>{STATE.scAgent=asel.value;renderScorecard(app);};af.appendChild(asel);controls.appendChild(af);
+  app.appendChild(controls);
+
+  const[a,b,label]=periodRange(STATE.scPeriod),m=compute(a,b,STATE.scAgent);
+  app.appendChild(el('div','count-note',`${label}: ${a} → ${b}`));
+
+  app.appendChild(scGroup('Activity',[
+    mt('Number of Agents',m.agentsN),mt('Total Calls',m.totalCalls),mt('Reached Contacts',m.reached,pct(m.reached,m.totalCalls)+' reach rate'),
+    mt('No Answer',m.noAnswer),mt('Not Interested',m.notInt),mt('Follow-Up Needed',m.followUp)]));
+  app.appendChild(scGroup('Lead conversion',[
+    mt('Contact→booking',pct(m.booked,m.reached),null,'a','Booked appointments ÷ reached contacts'),
+    mt('Call→booking',pct(m.booked,m.totalCalls),null,'a','Booked appointments ÷ total calls'),
+    mt('Booked Appointments',m.booked,null,'a'),mt('Cross-Bookings',m.cross,null,'blue')]));
+  app.appendChild(scGroup('Sales',[
+    mt('Sold jobs',m.soldN,null,'a'),mt('Revenue',money(m.revenue),null,'a'),mt('Revenue — cross-books',money(m.revenueCross),null,'a'),
+    mt('ADL',money(m.adl),null,null,'Revenue ÷ leads (bookings + cross-bookings)'),
+    mt('AVT',money(m.avt),null,null,'Revenue ÷ sold jobs (avg value per ticket)'),
+    mt('Revenue per call',m.totalCalls?('$'+round1(m.revPerCall)):'—',null,null,'Revenue ÷ total calls')]));
+  app.appendChild(scGroup('Operations',[
+    mt('Runs',m.runs,null,null,'Jobs that went out (sold + ran, not sold)'),mt('Sold jobs',m.soldN,null,'a'),mt('Cross-Bookings',m.cross,null,'blue'),
+    mt('Cancellations',m.cancelled,null,'c'),mt('Cancellation %',pct(m.cancelled,m.scheduled),null,'c','Cancelled ÷ jobs scheduled'),
+    mt('Jobs Scheduled',m.scheduled,null,null,'All appointments booked (bookings + cross)')]));
+
+  if(!STATE.isAdmin)app.appendChild(el('div','panel',`<div style="font-size:13px;color:var(--ink-2)">💡 Sale amounts, sold/cancelled status and Runs are set in <b>Admin</b> (unlock with PIN, top-right). Until then, revenue-based metrics read $0.</div>`));
+}
+function scGroup(lab,items){const g=el('div','sc-group');g.innerHTML=`<div class="lab">${esc(lab)}</div>`;const grid=el('div','kpis');grid.style.marginBottom='0';items.forEach(i=>grid.appendChild(i));g.appendChild(grid);return g;}
+function mt(lab,val,sub,cls,tip){
+  const m=el('div','kpi '+(cls||''));
+  m.innerHTML=`<div class="v">${val}</div><div class="l">${esc(lab)}${tip?`<span class="tip" data-tip="${esc(tip)}">?</span>`:''}</div>${sub?`<div class="count-note" style="margin-top:4px">${esc(sub)}</div>`:''}`;
+  return m;
+}
+
+/* =========================================================================
+   VIEW: Admin
+   ========================================================================= */
+function renderAdmin(app){
+  app.innerHTML='';
+  head(app,'Consolidated view','Admin','Sale amounts, job status, agents and connection settings.');
+  const s3=el('div','summary3');
+  [['yesterday','Yesterday'],['lastweek','Last week'],['lastmonth','Last month']].forEach(([k,l])=>{
+    const[a,b]=periodRange(k),m=compute(a,b,'all'),c=el('div','panel');c.style.margin='0';
+    c.innerHTML=`<div class="eyebrow">${esc(l)}</div><div style="font-family:var(--disp);font-size:34px;font-weight:700;letter-spacing:-1px">${m.totalCalls}<span style="font-size:14px;color:var(--ink-3);font-weight:600"> calls</span></div>
+      <div class="sumline"><span>Reached</span><b>${m.reached}</b></div>
+      <div class="sumline"><span>Bookings</span><b>${m.booked}</b></div>
+      <div class="sumline"><span>Cross-books</span><b>${m.cross}</b></div>
+      <div class="sumline"><span>Sold jobs</span><b>${m.soldN}</b></div>
+      <div class="sumline"><span>Revenue</span><b>${money(m.revenue)}</b></div>
+      <div class="sumline"><span>Cancellations</span><b>${m.cancelled}</b></div>`;
+    s3.appendChild(c);
+  });
+  app.appendChild(s3);
+  app.appendChild(renderAdminEntries(app));
+
+  const hd=el('div','section-head');hd.style.marginTop='22px';
+  hd.appendChild(el('div','',`<h2 style="font-size:19px">Bookings — sale amount & status</h2>`));
+  const filt=el('div','');filt.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  [['open','Needs review'],['all','All'],['sold','Sold'],['cancelled','Cancelled']].forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE._bkFilter===k?' on':''),l);b.onclick=()=>{STATE._bkFilter=k;renderAdmin(app);};filt.appendChild(b);});
+  hd.appendChild(filt);app.appendChild(hd);
+
+  let list=[...STATE.bookings].sort((x,y)=>y.report_date.localeCompare(x.report_date));
+  if(STATE._bkFilter==='open')list=list.filter(x=>x.status==='pending');
+  else if(STATE._bkFilter==='sold')list=list.filter(x=>x.status==='sold');
+  else if(STATE._bkFilter==='cancelled')list=list.filter(x=>x.status==='cancelled');
+  const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  const wrap=el('div','twrap');wrap.style.marginBottom='16px';
+  if(!list.length)wrap.appendChild(el('div','empty','Nothing here.'));
+  else{
+    const t=el('table');t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Type</th><th>Job ref</th><th>Status</th><th>Sale amount</th><th></th></tr></thead>`;
+    const tb=el('tbody');
+    list.slice(0,400).forEach(x=>{
+      const tr=el('tr');
+      tr.innerHTML=`<td>${x.report_date}</td><td>${esc(nameOf(x.agent_id))}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td><td class="jobref">${esc(x.job_ref)}</td>`;
+      const tdS=el('td'),sel=el('select','st-select');
+      ['pending','sold','ran_not_sold','cancelled'].forEach(s=>{const o=el('option',null,s.replace('_',' '));o.value=s;if(x.status===s)o.selected=true;sel.appendChild(o);});
+      sel.onchange=async()=>{await updateBooking(x.id,{status:sel.value,updated_at:new Date().toISOString()});toast('Status updated');};
+      tdS.appendChild(sel);tr.appendChild(tdS);
+      const tdA=el('td'),amt=el('input','amt-input');amt.type='number';amt.step='1';amt.placeholder='0';amt.value=x.sale_amount??'';
+      amt.onchange=async()=>{const v=amt.value===''?null:+amt.value;const patch={sale_amount:v,updated_at:new Date().toISOString()};if(v!=null&&x.status==='pending')patch.status='sold';await updateBooking(x.id,patch);toast('Amount saved');renderAdmin(app);};
+      tdA.appendChild(amt);tr.appendChild(tdA);
+      const tdD=el('td'),del=el('button','rm','✕');del.title='Delete this booking';
+      del.onclick=async()=>{if(!confirm('Delete booking '+x.job_ref+'? This also updates the booking count for that day.'))return;await deleteBooking(x);renderAdmin(app);toast('Booking deleted');};
+      tdD.appendChild(del);tr.appendChild(tdD);tb.appendChild(tr);
+    });
+    t.appendChild(tb);wrap.appendChild(t);
+  }
+  app.appendChild(wrap);
+  app.appendChild(renderAdminAgents(app));
+  app.appendChild(renderAdminSettings());
+}
+async function updateBooking(id,patch){const{error}=await sb.from('bookings').update(patch).eq('id',id);if(error){toast('Update failed: '+error.message,true);return;}Object.assign(STATE.bookings.find(x=>x.id===id),patch);}
+async function deleteBooking(x){
+  const{error}=await sb.from('bookings').delete().eq('id',x.id);
+  if(error){toast('Delete failed: '+error.message,true);return;}
+  const remaining=STATE.bookings.filter(b=>b.id!==x.id&&b.agent_id===x.agent_id&&b.report_date===x.report_date);
+  const nb=remaining.filter(b=>b.kind==='booking').length,nc=remaining.filter(b=>b.kind==='crossbooking').length;
+  await sb.from('daily_reports').update({booked_appointments:nb,cross_bookings:nc,updated_at:new Date().toISOString()}).eq('agent_id',x.agent_id).eq('report_date',x.report_date);
+  await loadAll();
+}
+async function deleteReport(r){
+  await sb.from('bookings').delete().eq('agent_id',r.agent_id).eq('report_date',r.report_date);
+  const{error}=await sb.from('daily_reports').delete().eq('id',r.id);
+  if(error){toast('Delete failed: '+error.message,true);return;}
+  await loadAll();
+}
+
+/* ---- Admin: edit/delete CSR daily entries ---- */
+function renderAdminEntries(app){
+  const box=el('div','panel');box.style.marginTop='22px';
+  const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Daily entries — edit / delete</h2><div class="sub" style="margin-bottom:14px">Fix or remove a report a CSR logged by mistake. Deleting a day also removes that day's bookings.</div>`;
+  const bar=el('div','bar');
+  const f=el('div','fld');f.innerHTML='<label>Agent</label>';
+  const asel=el('select');asel.innerHTML='<option value="all">All agents</option>'+STATE.agents.map(a=>`<option value="${a.id}" ${STATE._entAgent===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  asel.onchange=()=>{STATE._entAgent=asel.value;renderAdmin(app);};f.appendChild(asel);bar.appendChild(f);box.appendChild(bar);
+  let list=[...STATE.reports].sort((x,y)=>y.report_date.localeCompare(x.report_date));
+  if(STATE._entAgent&&STATE._entAgent!=='all')list=list.filter(r=>r.agent_id===STATE._entAgent);
+  const wrap=el('div','twrap');
+  if(!list.length)wrap.appendChild(el('div','empty','No entries yet.'));
+  else{
+    const t=el('table');
+    t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Calls</th><th>Reached</th><th>No ans</th><th>Not int</th><th>Follow</th><th>Bk</th><th>Cross</th><th></th></tr></thead>`;
+    const tb=el('tbody');
+    list.slice(0,300).forEach(r=>{
+      const tr=el('tr');
+      tr.innerHTML=`<td>${r.report_date}</td><td>${esc(nameOf(r.agent_id))}</td>
+        <td class="num">${r.total_calls}</td><td class="num">${r.reached_contacts}</td><td class="num">${r.no_answer}</td>
+        <td class="num">${r.not_interested}</td><td class="num">${r.follow_up_needed}</td>
+        <td class="num">${r.booked_appointments||0}</td><td class="num">${r.cross_bookings||0}</td>`;
+      const tdX=el('td');tdX.style.whiteSpace='nowrap';
+      const edit=el('button','btn ghost sm','Edit');edit.onclick=()=>openEntryEdit(r,app);
+      const del=el('button','btn danger sm','Delete');del.style.marginLeft='6px';
+      del.onclick=async()=>{if(!confirm('Delete the report for '+r.report_date+' ('+nameOf(r.agent_id)+')? This removes the day and its bookings.'))return;await deleteReport(r);renderAdmin(app);toast('Entry deleted');};
+      tdX.appendChild(edit);tdX.appendChild(del);tr.appendChild(tdX);tb.appendChild(tr);
+    });
+    t.appendChild(tb);wrap.appendChild(t);
+  }
+  box.appendChild(wrap);return box;
+}
+function openEntryEdit(r,app){
+  const root=$('#repRoot');const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  const fields=[['total_calls','Total Calls'],['reached_contacts','Reached'],['no_answer','No Answer'],['not_interested','Not Interested'],['follow_up_needed','Follow-Up'],['booked_appointments','Booked'],['cross_bookings','Cross']];
+  const hasRows=STATE.bookings.some(b=>b.agent_id===r.agent_id&&b.report_date===r.report_date);
+  root.innerHTML=`<div class="rep" style="width:min(620px,100%)">
+    <div class="rep-top"><div class="rep-title"><div class="nm" style="font-size:22px">Edit entry</div><div class="dt">${esc(nameOf(r.agent_id))} · ${r.report_date}</div></div>
+      <div class="rep-nav"><button class="rep-close" id="ee_close">×</button></div></div>
+    <div class="rep-body">
+      <div class="entry-grid">${fields.map(([k,l])=>`<div class="numwrap"><label>${l}</label><input inputmode="numeric" data-k="${k}" value="${r[k]??0}"></div>`).join('')}</div>
+      ${hasRows?`<div class="count-note" style="margin-top:10px;color:var(--amber)">⚠ This day has booking rows with job refs. Editing Booked/Cross here overrides the counts; delete individual bookings above to keep them in sync.</div>`:''}
+      <div class="fld" style="margin-top:14px"><label>Note</label><textarea id="ee_note" rows="2">${esc(r.note||'')}</textarea></div>
+      <div class="ef-actions" style="margin-top:16px"><button class="btn" id="ee_save">Save changes</button><button class="btn ghost" id="ee_cancel">Cancel</button></div>
+    </div></div>`;
+  root.classList.add('show');
+  const close=()=>{root.classList.remove('show');root.innerHTML='';};
+  $('#ee_close',root).onclick=close;$('#ee_cancel',root).onclick=close;
+  root.onclick=e=>{if(e.target===root)close();};
+  $('#ee_save',root).onclick=async()=>{
+    const patch={note:$('#ee_note',root).value||null,updated_at:new Date().toISOString()};
+    root.querySelectorAll('[data-k]').forEach(i=>patch[i.dataset.k]=+i.value||0);
+    const{error}=await sb.from('daily_reports').update(patch).eq('id',r.id);
+    if(error){toast('Save failed: '+error.message,true);return;}
+    await loadAll();close();renderAdmin(app);toast('Entry updated');
+  };
+}
+
+/* ---- WebAuthn (Touch ID / fingerprint) — optional quick-unlock after PIN ---- */
+const b64u={enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec:s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0));}};
+async function getPasskeys(){try{const v=await getSetting('admin_passkeys');return v?JSON.parse(v):[];}catch(e){return[];}}
+function webauthnAvailable(){return !!(window.PublicKeyCredential&&navigator.credentials);}
+async function enrollPasskey(){
+  if(!webauthnAvailable()){toast('This device/browser has no passkey support',true);return;}
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:'ADC Outbound'},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'admin',displayName:'ADC Admin'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{userVerification:'required'},timeout:60000,attestation:'none'}});
+    const id=b64u.enc(cred.rawId);
+    const list=await getPasskeys();if(!list.includes(id))list.push(id);
+    await setSetting('admin_passkeys',JSON.stringify(list));
+    toast('Touch ID enabled on this device');
+  }catch(e){toast('Touch ID setup cancelled',true);}
+}
+async function unlockWithPasskey(){
+  const list=await getPasskeys();if(!list.length||!webauthnAvailable())return false;
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:list.map(id=>({type:'public-key',id:b64u.dec(id)})),
+      userVerification:'required',timeout:60000}});
+    return true;
+  }catch(e){return false;}
+}
+function renderAdminAgents(app){
+  const box=el('div','panel');
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Agents</h2><div class="sub" style="margin-bottom:14px">Add agents and set weekly targets.</div>`;
+  const wrap=el('div','twrap');const t=el('table');
+  t.innerHTML=`<thead><tr><th>Name</th><th>Active</th><th>Target bookings</th><th>Target cross</th><th></th></tr></thead>`;
+  const tb=el('tbody');
+  STATE.agents.forEach(a=>{
+    const tr=el('tr');tr.innerHTML=`<td><b>${esc(a.name)}</b></td>`;
+    const tdAct=el('td'),chk=el('input');chk.type='checkbox';chk.checked=a.active;chk.style.cssText='width:auto;padding:0';
+    chk.onchange=async()=>{await sb.from('agents').update({active:chk.checked}).eq('id',a.id);a.active=chk.checked;toast('Saved');};
+    tdAct.appendChild(chk);tr.appendChild(tdAct);
+    ['target_bookings','target_crossbookings'].forEach(k=>{const td=el('td'),inp=el('input','amt-input');inp.type='number';inp.value=a[k];inp.style.width='70px';
+      inp.onchange=async()=>{await sb.from('agents').update({[k]:+inp.value}).eq('id',a.id);a[k]=+inp.value;toast('Saved');};td.appendChild(inp);tr.appendChild(td);});
+    const tdX=el('td'),del=el('button','btn danger sm','Remove');
+    del.onclick=async()=>{if(!confirm('Remove '+a.name+'? Their reports & bookings are deleted.'))return;await sb.from('agents').delete().eq('id',a.id);await loadAll();renderAdmin(app);toast('Removed');};
+    tdX.appendChild(del);tr.appendChild(tdX);tb.appendChild(tr);
+  });
+  t.appendChild(tb);wrap.appendChild(t);box.appendChild(wrap);
+  const add=el('div','bar');add.style.marginTop='14px';
+  add.innerHTML=`<div class="fld"><label>New agent</label><input id="new_agent" placeholder="Name"></div>`;
+  const btn=el('button','btn','Add agent');
+  btn.onclick=async()=>{const n=$('#new_agent',box).value.trim();if(!n)return;const{error}=await sb.from('agents').insert({name:n,sort_order:STATE.agents.length+1});if(error){toast(error.message,true);return;}await loadAll();renderAdmin(app);toast('Agent added');};
+  add.appendChild(btn);box.appendChild(add);return box;
+}
+function renderAdminSettings(){
+  const box=el('div','panel');const c=loadConf()||{};
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Connection & security</h2><div class="sub" style="margin-bottom:14px">Supabase project this board reads and writes.</div>
+    <div class="sumline" style="border-top:0"><span>Supabase URL</span><b>${esc(c.url||'—')}</b></div>
+    <div class="sumline"><span>Admin PIN</span><b>set</b></div>`;
+  const btns=el('div','bar');btns.style.marginTop='14px';
+  const b1=el('button','btn ghost','Change admin PIN');b1.onclick=changePinFlow;
+  const bFP=el('button','btn','👆 Enable Touch ID on this device');
+  bFP.onclick=async()=>{await enrollPasskey();renderAdmin($('#app'));};
+  const b2=el('button','btn danger','Lock admin');b2.onclick=adminButtonClick;
+  const b3=el('button','btn ghost','Change Supabase keys');b3.onclick=()=>renderSetup();
+  btns.appendChild(b1);btns.appendChild(bFP);btns.appendChild(b2);btns.appendChild(b3);box.appendChild(btns);
+  getPasskeys().then(list=>{
+    const note=el('div','count-note');note.style.marginTop='10px';
+    note.textContent=list.length?`Touch ID is enabled (${list.length} device passkey${list.length>1?'s':''}). Unlock tries Touch ID first, then falls back to the PIN.`:(webauthnAvailable()?'Touch ID not set up yet. Enable it above for one-tap unlock; the PIN always works as a fallback.':'This browser has no fingerprint/passkey support; use the PIN.');
+    box.appendChild(note);
+    if(list.length){const clr=el('button','btn ghost sm','Remove Touch ID from this project');clr.style.marginTop='10px';
+      clr.onclick=async()=>{if(!confirm('Remove all Touch ID passkeys?'))return;await setSetting('admin_passkeys','[]');toast('Touch ID removed');renderAdmin($('#app'));};box.appendChild(clr);}
+  });
+  return box;
+}
+async function changePinFlow(){
+  const cur=prompt('Enter current admin PIN:');if(cur==null)return;
+  const stored=await getSetting('admin_pin');if(stored&&await sha256(cur)!==stored){toast('Wrong PIN',true);return;}
+  const p1=prompt('New PIN (4–6 digits):');if(p1==null)return;if(!/^\d{4,6}$/.test(p1)){toast('PIN must be 4–6 digits',true);return;}
+  const p2=prompt('Confirm new PIN:');if(p2!==p1){toast('PINs did not match',true);return;}
+  await setSetting('admin_pin',await sha256(p1));toast('PIN updated');
+}
+
+/* =========================================================================
+   Setup
+   ========================================================================= */
+function renderSetup(errMsg){
+  const app=$('#app');app.innerHTML='';const c=loadConf()||{};
+  const wrap=el('div','center-wrap'),g=el('div','gate');g.style.maxWidth='560px';
+  g.innerHTML=`<div class="lockbig">🔌</div><h2>Connect Supabase</h2>
+    <p>Paste your project URL and <b>anon public</b> key (Supabase → Project Settings → API). Stored on this device only.</p>
+    ${errMsg?`<div class="badge cancelled" style="display:block;padding:8px;margin-bottom:12px">${esc(errMsg)}</div>`:''}
+    <div style="text-align:left">
+      <div class="fld" style="margin-bottom:12px"><label>Project URL</label><input id="cf_url" placeholder="https://xxxx.supabase.co" value="${esc(c.url||'')}"></div>
+      <div class="fld" style="margin-bottom:16px"><label>Anon public key</label><input id="cf_key" placeholder="eyJhbGciOi…" value="${esc(c.key||'')}"></div></div>`;
+  const save=el('button','btn','Connect');save.style.width='100%';
+  save.onclick=async()=>{const url=$('#cf_url',g).value.trim().replace(/\/$/,''),key=$('#cf_key',g).value.trim();
+    if(!url||!key){toast('Both fields required',true);return;}saveConf({url,key});save.textContent='Connecting…';if(await connect())await boot();};
+  g.appendChild(save);
+  const det=el('details','');det.style.cssText='margin-top:18px;text-align:left';
+  det.innerHTML=`<summary style="cursor:pointer;font-size:13px;color:var(--ink-2)">Step 1 — run this SQL in Supabase first</summary><div class="codebox" style="margin-top:10px">${esc(SCHEMA_SQL)}</div>`;
+  g.appendChild(det);wrap.appendChild(g);app.appendChild(wrap);
+}
+
+/* =========================================================================
+   Boot
+   ========================================================================= */
+async function boot(){
+  if(sessionStorage.getItem(LS.adminSession)==='1'){STATE.isAdmin=true;document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';}
+  renderNav();await loadAll();render();
+}
+(function init(){
+  applyTheme(localStorage.getItem(LS.theme)||'light');
+  $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+  $('#adminBtn').onclick=adminButtonClick;
+  renderNav();
+  connect().then(ok=>{if(ok)boot();});
+})();
+</script>
+</body>
+</html>
