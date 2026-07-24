@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ADC Outbound · Home Alliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ============ design tokens (matched to Job Efficiency Board) ============ */
+:root{
+  --bg:#F6F7F5; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.07), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#F3F5F2; --glass:rgba(255,255,255,.75);
+  --ink:#101614; --ink-2:#5B6862; --ink-3:#94A099; --line:#E4E8E2; --line-2:#EEF1EC;
+  --accent:#0E9F6E; --accent-hi:#10B981; --accent-deep:#047857; --accent-soft:#E4F5EE; --on-accent:#FFFFFF;
+  --amber:#B45309; --amber-soft:#FCF0DC;
+  --red:#C0392B; --red-soft:#FAE5E1;
+  --blue:#2563EB; --blue-soft:#E5EDFB;
+  --lux:#7C3AED; --lux-soft:#F1EAFD;
+  --shadow:0 1px 2px rgba(16,24,20,.04),0 6px 20px rgba(16,24,20,.05);
+  --shadow-lg:0 12px 40px rgba(16,24,20,.16);
+  --focus:0 0 0 3px rgba(16,185,129,.25);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --disp:'Space Grotesk',var(--sans);
+  --r:16px; --r-sm:10px; --r-xs:8px;
+  /* aliases so shared component code reads naturally */
+  --brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--accent); --green-soft:var(--accent-soft); --radius:var(--r); --radius-sm:var(--r-sm);
+}
+[data-theme="dark"]{
+  --bg:#0B0F0D; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.08), transparent 60%);
+  --panel:#141A17; --panel-2:#1B2320; --glass:rgba(20,26,23,.8);
+  --ink:#E8EEEA; --ink-2:#9DABA2; --ink-3:#69766E; --line:#26302B; --line-2:#1F2823;
+  --accent:#10B981; --accent-hi:#34D399; --accent-deep:#059669; --accent-soft:#132B21; --on-accent:#06130D;
+  --amber:#E9A23B; --amber-soft:#2E230F;
+  --red:#E0705F; --red-soft:#361D18;
+  --blue:#7CA9F5; --blue-soft:#16233A;
+  --lux:#B79CF7; --lux-soft:#241B38;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 22px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.55);
+  --focus:0 0 0 3px rgba(52,211,153,.3);
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
+body{background:var(--bg);background-image:var(--bg-grad);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xs);padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s,background .3s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:var(--focus)}
+input::placeholder{color:var(--ink-3)}
+::selection{background:var(--accent-soft)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+a{color:var(--accent)}
+.hidden{display:none!important}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
+
+/* ============ header ============ */
+header{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:62px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);transition:.3s}
+.brand .dot.live{background:var(--accent-hi);box-shadow:0 0 10px var(--accent-hi)}
+.brand small{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.5px;color:var(--ink-3)}
+nav{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:12.5px;letter-spacing:.2px;padding:7px 15px;border-radius:99px;white-space:nowrap;transition:.18s}
+nav button:hover{color:var(--ink)}
+nav button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
+.hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.admin-on #adminBtn{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+#themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+.eyebrow{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.sub{color:var(--ink-2);font-size:13.5px;margin-bottom:20px;max-width:860px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+
+/* ============ panels / buttons ============ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(16,185,129,.3);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,.4)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.5;cursor:default;transform:none;filter:none;box-shadow:none}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.ghost:hover{border-color:var(--ink-3);background:var(--panel-2);box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#E05545,#B03A2B);color:#fff;box-shadow:0 2px 10px rgba(192,57,43,.3)}
+.btn.sm{padding:5px 12px;font-size:12px}
+.sort-pill{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;transition:.15s}
+.sort-pill:hover{border-color:var(--ink-3);color:var(--ink)}
+.sort-pill.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+/* ============ KPI cards ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px}
+.kpi.a .v{color:var(--accent)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
+
+/* ============ tables / badges ============ */
+.twrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);text-align:left;padding:11px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--panel-2)}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 9px;border-radius:99px;line-height:1.5}
+.badge.booking{background:var(--accent-soft);color:var(--accent)}
+.badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
+.badge.sold{background:var(--accent-soft);color:var(--accent)}
+.badge.cancelled{background:var(--red-soft);color:var(--red)}
+.badge.ran_not_sold{background:var(--amber-soft);color:var(--amber)}
+.badge.pending{background:var(--line-2);color:var(--ink-2)}
+.jobref{font-family:var(--mono);letter-spacing:.14em}
+.count-note{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+
+/* ============ report entry ============ */
+.entry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.numwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+.numwrap label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2);margin-bottom:7px}
+.numwrap input{width:100%;border:0;background:transparent;font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ink);padding:0}
+.numwrap input:focus{box-shadow:none}
+.numwrap.derived{background:var(--accent-soft);border-color:var(--accent)}
+.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--accent)}
+.numwrap.derived.cross{background:var(--blue-soft);border-color:var(--blue)}
+.numwrap.derived.cross .val{color:var(--blue)}
+.bookblock{border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px;margin-top:12px;background:var(--panel-2)}
+.bookblock.cross{background:var(--blue-soft);border-color:var(--blue)}
+.bookblock h4{font-family:var(--disp);font-size:14px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.bookblock .hint{font-size:12px;color:var(--ink-2);margin-bottom:10px}
+.refrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.refrow .idx{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:20px;text-align:center;flex:0 0 auto}
+.refrow input{flex:1;letter-spacing:.28em;font-family:var(--mono);text-align:center}
+.refrow .state{width:150px;font-size:11.5px}
+.refrow .state.ok{color:var(--accent);font-weight:700}
+.refrow .state.warn{color:var(--red)}
+.refrow input.bad{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+
+/* ============ meeting leaderboard ============ */
+.meet-sort{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.meet-sort .lbl{font-size:12px;color:var(--ink-2);margin-right:2px}
+.meet-avg{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.meet-list{display:flex;flex-direction:column;gap:8px}
+.lb-row{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;text-align:left;color:var(--ink);
+  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
+.lb-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.lb-rank{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:center}
+.lb-avatar{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;background:var(--accent-soft);color:var(--accent)}
+.lb-row:nth-child(2) .lb-avatar{background:var(--blue-soft);color:var(--blue)}
+.lb-row:nth-child(3) .lb-avatar{background:var(--amber-soft);color:var(--amber)}
+.lb-row:nth-child(4) .lb-avatar{background:var(--red-soft);color:var(--red)}
+.lb-main{min-width:0}
+.lb-name{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.1px}
+.mix-bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:var(--line-2);margin-top:7px;max-width:430px}
+.mix-bar .seg{position:absolute;top:0;bottom:0}
+.mix-bar .p1{background:var(--accent-hi)} .mix-bar .p2{background:var(--blue)} .mix-bar .p3{background:var(--red)}
+.mix-bar .avg-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;z-index:2}
+.mix-legend{font-size:11px;color:var(--ink-3);margin-top:4px;font-family:var(--mono)}
+.lb-stat{text-align:right}
+.lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
+.lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
+.tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
+.lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
+.lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
+@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 26px}.lb-row .lb-stat.conv{display:none}.mix-bar{max-width:none}}
+@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 64px 26px}.lb-rank,.lb-row .lb-stat.bk{display:none}}
+
+/* ============ report modal ============ */
+.rep-backdrop{position:fixed;inset:0;background:rgba(8,12,10,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:80;display:none;align-items:center;justify-content:center;padding:26px}
+.rep-backdrop.show{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rep{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow-lg);width:min(1000px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:repIn .24s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes repIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rep-top{display:flex;align-items:center;gap:18px;padding:24px 28px 20px;border-bottom:1px solid var(--line)}
+.rep-avatar{width:58px;height:58px;border-radius:16px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;flex-shrink:0}
+.rep-title{min-width:0}
+.rep-title .nm{font-family:var(--disp);font-weight:700;font-size:28px;letter-spacing:-.4px;line-height:1.1}
+.rep-title .dt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.rep-nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rep-nav .btn.ghost{padding:8px 14px;font-size:15px;line-height:1}
+.rep-close{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:16px;line-height:1;transition:.15s}
+.rep-close:hover{color:var(--ink);border-color:var(--ink-3)}
+.rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;padding:20px 28px 6px}
+.rep-kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;text-align:center}
+.rep-kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.rep-kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px}
+.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}
+.rep-body{overflow:auto;padding:16px 28px 26px}
+.rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
+.bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.hintrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+@media(max-width:760px){.rep-kpis{grid-template-columns:repeat(2,1fr)}.rep-title .nm{font-size:22px}}
+
+/* ============ scorecard ============ */
+.sc-group{margin-top:26px}
+.sc-group>.lab{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--ink);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:10px}
+.sc-group>.lab::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-deep));flex:0 0 auto}
+.sc-group>.lab .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+.sc-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.tip{position:relative;color:var(--ink-3);cursor:help;font-size:11px;border:1px solid var(--line);border-radius:50%;width:15px;height:15px;display:inline-grid;place-items:center;line-height:1}
+.tip:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);font-size:11px;font-weight:500;padding:7px 9px;border-radius:8px;width:190px;z-index:5;box-shadow:var(--shadow-lg)}
+
+/* ============ admin summary ============ */
+.summary3{display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+.sumline{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line-2);color:var(--ink-2)}
+.sumline b{color:var(--ink);font-weight:600}
+.amt-input{width:96px;padding:6px 8px;font-size:13px}
+.st-select{padding:6px 8px;font-size:12.5px}
+
+/* ============ toast / gate ============ */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:14px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px) scale(.97);transition:.25s cubic-bezier(.2,.9,.3,1.2);pointer-events:none;z-index:99;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--red);color:#fff}
+.center-wrap{min-height:70vh;display:grid;place-items:center;padding:24px}
+.gate{max-width:460px;width:100%;text-align:center}
+.gate .lockbig{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:28px}
+.gate h2{font-size:23px}.gate p{color:var(--ink-2);font-size:14px;margin:8px 0 20px}
+.pin-in{letter-spacing:.5em;text-align:center;font-family:var(--mono);font-size:22px;width:100%}
+.codebox{background:#0B0F0D;color:#cfe0d6;border-radius:12px;padding:14px;font-family:var(--mono);font-size:12px;text-align:left;white-space:pre-wrap;overflow:auto;max-height:260px}
+.empty{text-align:center;color:var(--ink-3);padding:40px 20px;font-size:14px}
+@media(max-width:720px){.summary3{grid-template-columns:1fr}header{gap:12px;padding:0 14px}}
+/* ============ workspace switcher ============ */
+#wsBtn{cursor:pointer;display:flex;align-items:center;gap:10px}
+.ws-caret{color:var(--ink-3);font-size:11px;transition:.15s}
+#wsBtn:hover .ws-caret{color:var(--ink)}
+.ws-menu{position:absolute;top:calc(100% + 10px);left:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;display:none;min-width:230px;z-index:60}
+.ws-menu.show{display:block;animation:fadeIn .15s ease}
+.ws-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink);font-weight:600;font-size:13.5px;padding:11px 14px;border-radius:9px;transition:.12s}
+.ws-menu button:hover{background:var(--panel-2)}
+.ws-menu button.on{background:var(--accent-soft);color:var(--accent)}
+
+/* ============ office sales workspace ============ */
+.tab{display:none}.tab.on{display:block;animation:fadeIn .22s ease}
+#salesRoot main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+#salesRoot h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+h3.pt{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin-bottom:12px}
+.bar.tight{margin-bottom:0}
+td.num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.loading{color:var(--ink-2);font-size:13px;padding:20px;text-align:center;font-family:var(--mono)}
+.badge.yes{background:var(--accent-soft);color:var(--accent)}
+.badge.gray{background:var(--line-2);color:var(--ink-2)}
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:980px){.dash-cols{grid-template-columns:1fr}}
+.bar-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.bar-row .lbl{width:130px;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .trk{flex:1;height:18px;background:var(--line-2);border-radius:6px;overflow:hidden}
+.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep));border-radius:6px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.bar-row .fill.alt{background:linear-gradient(90deg,#60A5FA,var(--blue))}
+.bar-row .val{font-family:var(--mono);font-size:11px;width:44px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ============ login gate + admin-only ============ */
+body.logged-out #wsBtn,body.logged-out #nav,body.logged-out #navSales,body.logged-out #whoami,body.logged-out #adminBtn,body.logged-out #logoutBtn{display:none!important}
+.admin-only{display:none}
+body.admin-on .admin-only{display:block}
+
+/* ============ SOP tab ============ */
+.sop-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0 18px}
+.sop-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.sop-ic{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;margin-bottom:12px}
+.sop-card h3{font-family:var(--disp);font-size:18px;font-weight:700;margin-bottom:4px}
+.sop-card p{font-size:14px;color:var(--ink-2);flex:1}
+.sop-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.sop-preview{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.sop-preview-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+#sopFrame{width:100%;height:70vh;border:0;background:#fff;display:block}
+@media(max-width:720px){.sop-cards{grid-template-columns:1fr}#sopFrame{height:60vh}}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="position:relative">
+    <button class="brand" id="wsBtn" style="background:none;border:none;padding:0;color:inherit">
+      <span class="dot" id="connDot"></span><span id="wsLabel">ADC OUTBOUND</span><span class="ws-caret">▾</span>
+    </button>
+    <div class="ws-menu" id="wsMenu">
+      <button data-ws="adc" class="on">ADC Outbound</button>
+      <button data-ws="sales">Office Sales</button>
+    </div>
+  </div>
+  <nav id="nav"></nav>
+  <nav id="navSales" style="display:none">
+    <button data-tab="sdash" class="on">Dashboard</button>
+    <button data-tab="sentry">Daily Metrics</button>
+    <button data-tab="slog">Sales Log</button>
+    <button data-tab="speople">Salespersons</button>
+    <button data-tab="ssop">SOP</button>
+  </nav>
+  <div class="hdr-right">
+    <span id="whoami"></span>
+    <button class="hdr-btn" id="adminBtn">Admin</button>
+    <button class="hdr-btn" id="logoutBtn" title="Log out / change Supabase keys">Log out</button>
+    <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<div id="salesRoot" style="display:none"><main>
+<!-- ================= SALES: DASHBOARD ================= -->
+<section class="tab on" id="tab-sdash">
+  <h2>Sales Dashboard</h2>
+  <div class="sub" id="sdashNote"></div>
+  <div class="bar">
+    <div class="fld"><label>Range</label>
+      <select id="sdashPreset">
+        <option value="today">Today</option>
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="custom">Custom</option>
+      </select></div>
+    <div class="fld"><label>From</label><input type="date" id="sdashFrom"></div>
+    <div class="fld"><label>To</label><input type="date" id="sdashTo"></div>
+    <div class="fld"><label>Salesperson</label><select id="sdashPerson"><option value="">All</option></select></div>
+  </div>
+  <div class="kpis" id="sdashKpis"></div>
+  <div class="dash-cols">
+    <div class="panel" style="grid-column:1/-1"><h3 class="pt">By Salesperson</h3><div class="twrap"><table id="tblSPerf"></table></div></div>
+    <div class="panel"><h3 class="pt">Sold $ by Day</h3><div id="sDayBars"></div></div>
+    <div class="panel"><h3 class="pt">Funnel</h3><div id="sFunnel"></div></div>
+  </div>
+</section>
+
+<!-- ================= SALES: DAILY METRICS ================= -->
+<section class="tab" id="tab-sentry">
+  <h2>Daily Metrics</h2>
+  <div class="sub">One row per salesperson per day. Sold # and Sold $ are pulled automatically from the Sales Log — log each sold job there. Reach rate, closing ratio, and ADL calculate themselves.</div>
+  <div class="panel">
+    <div class="bar">
+      <div class="fld"><label>Date</label><input type="date" id="sentryDate"></div>
+      <span class="count-note">Edits save automatically as you type (on blur).</span>
+    </div>
+    <div class="twrap"><table id="tblSEntry"></table></div>
+  </div>
+</section>
+
+<!-- ================= SALES: SALES LOG ================= -->
+<section class="tab" id="tab-slog">
+  <h2>Sales Log</h2>
+  <div class="sub">One row per sold job, with the CRM job reference, amount, and date of sale. These feed Sold #, Sold $, closing ratio, and ADL everywhere.</div>
+  <div class="panel">
+    <h3 class="pt">Log a sale</h3>
+    <div class="bar tight">
+      <div class="fld"><label>Date of sale</label><input type="date" id="slDate"></div>
+      <div class="fld"><label>Salesperson</label><select id="slPerson"></select></div>
+      <div class="fld"><label>CRM job reference</label><input type="text" id="slRef" placeholder="e.g. JOB-48213" style="width:150px"></div>
+      <div class="fld"><label>Sale amount $</label><input type="number" id="slAmount" min="0" step="0.01" style="width:110px"></div>
+      <div class="fld" style="flex:1;min-width:140px"><label>Notes</label><input type="text" id="slNotes" placeholder="Optional"></div>
+      <button class="btn" id="slAdd">Log sale</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="bar">
+      <div class="fld"><label>From</label><input type="date" id="slFrom"></div>
+      <div class="fld"><label>To</label><input type="date" id="slTo"></div>
+      <div class="fld"><label>Salesperson</label><select id="slFilterPerson"><option value="">All</option></select></div>
+      <div class="fld" style="flex:1;min-width:150px"><label>Search CRM ref</label><input type="text" id="slSearch"></div>
+      <button class="btn ghost" id="slExport">Export CSV</button>
+    </div>
+    <div class="count-note" id="slCount" style="margin-bottom:8px"></div>
+    <div class="twrap" style="max-height:56vh"><table id="tblSLog"></table></div>
+  </div>
+</section>
+
+<!-- ================= SALES: SALESPERSONS ================= -->
+<section class="tab" id="tab-speople">
+  <h2>Salespersons</h2>
+  <div class="sub">Manage who appears in Daily Metrics and the Sales Log. Renaming updates the name across all historical records.</div>
+  <div class="panel" id="spAdminNote" style="display:none"><div style="font-size:13px;color:var(--ink-2)">🔒 Adding salespersons and issuing Office Sales PINs is admin-only. Unlock <b>Admin</b> (top-right) to manage the roster.</div></div>
+  <div class="panel" id="spAddPanel">
+    <h3 class="pt">Add salesperson</h3>
+    <div class="bar tight">
+      <div class="fld" style="min-width:220px"><label>Name</label><input type="text" id="nspName" placeholder="e.g. David"></div>
+      <button class="btn" id="nspAdd">Add salesperson</button>
+    </div>
+    <div class="count-note" style="margin-top:8px">A unique 6-character Office Sales PIN is generated automatically and shown here — share it with the salesperson so they can open the Office Sales workspace.</div>
+  </div>
+  <div class="panel">
+    <div class="sub" style="margin-bottom:10px"><b>Deactivate</b> hides a salesperson from entry screens but keeps history. <b>Delete</b> removes them from the list — historical rows keep their name.</div>
+    <div class="twrap"><table id="tblSPeople"></table></div>
+  </div>
+</section>
+
+<!-- ================= SALES: SOP ================= -->
+<section class="tab" id="tab-ssop">
+  <div id="ssopBody"></div>
+</section>
+</main></div>
+<div class="rep-backdrop" id="repRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   ADC Outbound Performance Board — matched to Job Efficiency Board design
+   ========================================================================= */
+const SOP_AGENT_B64="PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9IlVURi04Ij4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiPgo8dGl0bGU+RGFpbHkgUmVwb3J0IOKAlCBPdXRib3VuZCBBZ2VudCBHdWlkZTwvdGl0bGU+CjxsaW5rIHJlbD0icHJlY29ubmVjdCIgaHJlZj0iaHR0cHM6Ly9mb250cy5nb29nbGVhcGlzLmNvbSI+CjxsaW5rIGhyZWY9Imh0dHBzOi8vZm9udHMuZ29vZ2xlYXBpcy5jb20vY3NzMj9mYW1pbHk9U3BhY2UrR3JvdGVzazp3Z2h0QDUwMDs2MDA7NzAwJmZhbWlseT1JbnRlcjp3Z2h0QDQwMDs1MDA7NjAwOzcwMCZmYW1pbHk9SmV0QnJhaW5zK01vbm86d2dodEA1MDA7NjAwJmRpc3BsYXk9c3dhcCIgcmVsPSJzdHlsZXNoZWV0Ij4KPHN0eWxlPgo6cm9vdHsKICAtLXBhcGVyOiNGNUY4RjY7IC0tY2FyZDojRkZGRkZGOyAtLWluazojMTIyMDE5OyAtLWluazI6IzU2Njg2MDsgLS1pbmszOiM4QTk4OEY7CiAgLS1saW5lOiNFM0U5RTQ7IC0tbGluZTI6I0VFRjJFRTsKICAtLWVtOiMwRTlGNkU7IC0tZW0taGk6IzEwQjk4MTsgLS1lbS1kZWVwOiMwNDc4NTc7IC0tc29mdDojRTRGNUVFOwogIC0tYmx1ZTojMjU2M0VCOyAtLWJsdWUtc29mdDojRTVFREZCOyAtLWFtYmVyOiNCNDUzMDk7IC0tYW1iZXItc29mdDojRkNGMERDOyAtLXJlZDojQzAzOTJCOyAtLXJlZC1zb2Z0OiNGQUU1RTE7CiAgLS1kaXNwOidTcGFjZSBHcm90ZXNrJyxzeXN0ZW0tdWksc2Fucy1zZXJpZjsgLS1zYW5zOidJbnRlcicsc3lzdGVtLXVpLHNhbnMtc2VyaWY7IC0tbW9ubzonSmV0QnJhaW5zIE1vbm8nLG1vbm9zcGFjZTsKfQoqe2JveC1zaXppbmc6Ym9yZGVyLWJveDttYXJnaW46MH0KYm9keXtiYWNrZ3JvdW5kOnZhcigtLXBhcGVyKTtjb2xvcjp2YXIoLS1pbmspO2ZvbnQtZmFtaWx5OnZhcigtLXNhbnMpO2xpbmUtaGVpZ2h0OjEuNjI7LXdlYmtpdC1mb250LXNtb290aGluZzphbnRpYWxpYXNlZH0KLmRvY3ttYXgtd2lkdGg6OTIwcHg7bWFyZ2luOjAgYXV0bztwYWRkaW5nOjAgMjJweCA4MHB4fQpoMSxoMixoM3tmb250LWZhbWlseTp2YXIoLS1kaXNwKTtsZXR0ZXItc3BhY2luZzotLjNweDtsaW5lLWhlaWdodDoxLjE1fQoubW9ub3tmb250LWZhbWlseTp2YXIoLS1tb25vKX0KCi8qIGNvdmVyICovCi5jb3ZlcntiYWNrZ3JvdW5kOmxpbmVhci1ncmFkaWVudCgxNTBkZWcsIzBCM0IyQywjMEU5RjZFIDEzMCUpO2NvbG9yOiNmZmY7Ym9yZGVyLXJhZGl1czoyNnB4O3BhZGRpbmc6NDZweCA0NHB4O21hcmdpbjoyNnB4IDAgMzBweDtwb3NpdGlvbjpyZWxhdGl2ZTtvdmVyZmxvdzpoaWRkZW59Ci5jb3Zlcjo6YWZ0ZXJ7Y29udGVudDoiIjtwb3NpdGlvbjphYnNvbHV0ZTtyaWdodDotOTBweDt0b3A6LTkwcHg7d2lkdGg6MzIwcHg7aGVpZ2h0OjMyMHB4O2JvcmRlci1yYWRpdXM6NTAlO2JhY2tncm91bmQ6cmdiYSgyNTUsMjU1LDI1NSwuMDgpfQouY292ZXIgLmtpY2tlcntmb250LWZhbWlseTp2YXIoLS1tb25vKTtmb250LXNpemU6MTJweDtsZXR0ZXItc3BhY2luZzozcHg7dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlO29wYWNpdHk6Ljg1O21hcmdpbi1ib3R0b206MTRweH0KLmNvdmVyIGgxe2ZvbnQtc2l6ZTo0MnB4O2ZvbnQtd2VpZ2h0OjcwMDttYXgtd2lkdGg6MTZjaH0KLmNvdmVyIHB7bWFyZ2luLXRvcDoxNHB4O2ZvbnQtc2l6ZToxNnB4O21heC13aWR0aDo1MmNoO29wYWNpdHk6Ljk1fQouY292ZXIgLnBpbGx7ZGlzcGxheTppbmxpbmUtZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjhweDtiYWNrZ3JvdW5kOnJnYmEoMjU1LDI1NSwyNTUsLjE1KTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMjU1LDI1NSwyNTUsLjI1KTtwYWRkaW5nOjdweCAxNHB4O2JvcmRlci1yYWRpdXM6OTlweDtmb250LXNpemU6MTNweDtmb250LXdlaWdodDo2MDA7bWFyZ2luLXRvcDoyMnB4fQoKLyogaW50cm8gc3RyaXAgKi8KLnRsZHJ7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoMywxZnIpO2dhcDoxNHB4O21hcmdpbi1ib3R0b206MzRweH0KLnRsZHIgLmJveHtiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxNnB4O3BhZGRpbmc6MTZweCAxOHB4fQoudGxkciAuYm94IC5ue2ZvbnQtZmFtaWx5OnZhcigtLWRpc3ApO2ZvbnQtd2VpZ2h0OjcwMDtmb250LXNpemU6MTVweDtjb2xvcjp2YXIoLS1lbS1kZWVwKX0KLnRsZHIgLmJveCAudHtmb250LXNpemU6MTMuNXB4O2NvbG9yOnZhcigtLWluazIpO21hcmdpbi10b3A6M3B4fQoKLnNlY3Rpb24tbGFiZWx7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7Zm9udC1zaXplOjEycHg7bGV0dGVyLXNwYWNpbmc6MnB4O3RleHQtdHJhbnNmb3JtOnVwcGVyY2FzZTtjb2xvcjp2YXIoLS1lbSk7bWFyZ2luOjM2cHggMCAxMnB4O2ZvbnQtd2VpZ2h0OjYwMH0KCi8qIHN0ZXBzICovCi5zdGVwe2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6NjBweCAxZnI7Z2FwOjIwcHg7bWFyZ2luOjI2cHggMDthbGlnbi1pdGVtczpzdGFydH0KLnN0ZXBudW17d2lkdGg6NTJweDtoZWlnaHQ6NTJweDtib3JkZXItcmFkaXVzOjE1cHg7YmFja2dyb3VuZDp2YXIoLS1zb2Z0KTtjb2xvcjp2YXIoLS1lbS1kZWVwKTtmb250LWZhbWlseTp2YXIoLS1kaXNwKTtmb250LXdlaWdodDo3MDA7Zm9udC1zaXplOjI0cHg7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtqdXN0aWZ5LWNvbnRlbnQ6Y2VudGVyO2JvcmRlcjoxcHggc29saWQgI0NERUJERH0KLnN0ZXAgaDJ7Zm9udC1zaXplOjIycHg7bWFyZ2luLWJvdHRvbTo2cHh9Ci5zdGVwIHB7Y29sb3I6dmFyKC0taW5rMik7Zm9udC1zaXplOjE1LjVweDttYXJnaW46NnB4IDB9Ci5zdGVwIC5ib2R5PnN0cm9uZ3tjb2xvcjp2YXIoLS1pbmspfQp1bC5jbGVhbntsaXN0LXN0eWxlOm5vbmU7cGFkZGluZzowO21hcmdpbjoxMHB4IDB9CnVsLmNsZWFuIGxpe3Bvc2l0aW9uOnJlbGF0aXZlO3BhZGRpbmctbGVmdDoyNnB4O21hcmdpbjo3cHggMDtmb250LXNpemU6MTVweDtjb2xvcjp2YXIoLS1pbmsyKX0KdWwuY2xlYW4gbGk6OmJlZm9yZXtjb250ZW50OiIiO3Bvc2l0aW9uOmFic29sdXRlO2xlZnQ6NHB4O3RvcDo5cHg7d2lkdGg6OHB4O2hlaWdodDo4cHg7Ym9yZGVyLXJhZGl1czozcHg7YmFja2dyb3VuZDp2YXIoLS1lbS1oaSl9CnVsLmNsZWFuIGxpIGJ7Y29sb3I6dmFyKC0taW5rKX0KCi5zaG90e21hcmdpbjoxNHB4IDAgNHB4O2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxOHB4O292ZXJmbG93OmhpZGRlbjtiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JveC1zaGFkb3c6MCAxcHggMnB4IHJnYmEoMTYsMjQsMjAsLjA0KSwwIDEwcHggMzBweCByZ2JhKDE2LDI0LDIwLC4wNSl9Ci5zaG90IHN2Z3tkaXNwbGF5OmJsb2NrO3dpZHRoOjEwMCU7aGVpZ2h0OmF1dG99Ci5jYXB7Zm9udC1zaXplOjEzcHg7Y29sb3I6dmFyKC0taW5rMyk7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7cGFkZGluZzo5cHggMTRweDtib3JkZXItdG9wOjFweCBkYXNoZWQgdmFyKC0tbGluZSk7YmFja2dyb3VuZDojRkJGREZCfQoKLmNhbGxvdXR7ZGlzcGxheTpmbGV4O2dhcDoxMnB4O2JvcmRlci1yYWRpdXM6MTRweDtwYWRkaW5nOjE0cHggMTZweDttYXJnaW46MTRweCAwO2ZvbnQtc2l6ZToxNC41cHh9Ci5jYWxsb3V0IC5pY3tmbGV4OjAgMCBhdXRvO2ZvbnQtc2l6ZToxOHB4O2xpbmUtaGVpZ2h0OjEuM30KLmNhbGxvdXQudGlwe2JhY2tncm91bmQ6dmFyKC0tc29mdCk7Ym9yZGVyOjFweCBzb2xpZCAjQ0RFQkREO2NvbG9yOiMxNDUwM2J9Ci5jYWxsb3V0Lndhcm57YmFja2dyb3VuZDp2YXIoLS1hbWJlci1zb2Z0KTtib3JkZXI6MXB4IHNvbGlkICNGMEQ5QTg7Y29sb3I6IzczNDQwMH0KLmNhbGxvdXQucnVsZXtiYWNrZ3JvdW5kOnZhcigtLWJsdWUtc29mdCk7Ym9yZGVyOjFweCBzb2xpZCAjQzlEQkY4O2NvbG9yOiMxNzNhN2F9Ci5jYWxsb3V0IGJ7Y29sb3I6aW5oZXJpdH0KCi5yZWZjYXJke2Rpc3BsYXk6ZmxleDtnYXA6MTZweDtmbGV4LXdyYXA6d3JhcDttYXJnaW46MTJweCAwfQoucmVmY2FyZCAucntmbGV4OjE7bWluLXdpZHRoOjIzMHB4O2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxNHB4O3BhZGRpbmc6MTRweCAxNnB4O2JhY2tncm91bmQ6dmFyKC0tY2FyZCl9Ci5yZWZjYXJkIC5yIC5oe2ZvbnQtZmFtaWx5OnZhcigtLWRpc3ApO2ZvbnQtd2VpZ2h0OjcwMDttYXJnaW4tYm90dG9tOjZweDtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2dhcDo4cHh9Ci5yZWZjYXJkIC5vayAuaHtjb2xvcjp2YXIoLS1lbS1kZWVwKX0gLnJlZmNhcmQgLm5vIC5oe2NvbG9yOnZhcigtLXJlZCl9Ci50YWd7ZGlzcGxheTppbmxpbmUtYmxvY2s7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7Zm9udC1zaXplOjE2cHg7Zm9udC13ZWlnaHQ6NjAwO2xldHRlci1zcGFjaW5nOi4yMmVtO3BhZGRpbmc6NXB4IDEycHg7Ym9yZGVyLXJhZGl1czo4cHh9Ci50YWcub2t7YmFja2dyb3VuZDp2YXIoLS1zb2Z0KTtjb2xvcjp2YXIoLS1lbS1kZWVwKX0gLnRhZy5ub3tiYWNrZ3JvdW5kOnZhcigtLXJlZC1zb2Z0KTtjb2xvcjp2YXIoLS1yZWQpO3RleHQtZGVjb3JhdGlvbjpsaW5lLXRocm91Z2h9CgouZmFxe2JvcmRlci10b3A6MXB4IHNvbGlkIHZhcigtLWxpbmUpO21hcmdpbi10b3A6MTBweH0KLmZhcSAucXtwYWRkaW5nOjE0cHggMDtib3JkZXItYm90dG9tOjFweCBzb2xpZCB2YXIoLS1saW5lKX0KLmZhcSAucSBie2ZvbnQtZmFtaWx5OnZhcigtLWRpc3ApO2ZvbnQtc2l6ZToxNS41cHh9Ci5mYXEgLnEgcHtjb2xvcjp2YXIoLS1pbmsyKTtmb250LXNpemU6MTQuNXB4O21hcmdpbi10b3A6NHB4fQoKLmZvb3RlcnttYXJnaW4tdG9wOjQwcHg7cGFkZGluZy10b3A6MThweDtib3JkZXItdG9wOjJweCBzb2xpZCB2YXIoLS1saW5lKTtmb250LXNpemU6MTNweDtjb2xvcjp2YXIoLS1pbmszKTtkaXNwbGF5OmZsZXg7anVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47ZmxleC13cmFwOndyYXA7Z2FwOjhweDtmb250LWZhbWlseTp2YXIoLS1tb25vKX0KCkBtZWRpYShtYXgtd2lkdGg6NjIwcHgpey50bGRye2dyaWQtdGVtcGxhdGUtY29sdW1uczoxZnJ9LmNvdmVyIGgxe2ZvbnQtc2l6ZTozMnB4fS5zdGVwe2dyaWQtdGVtcGxhdGUtY29sdW1uczo0NHB4IDFmcjtnYXA6MTRweH0uc3RlcG51bXt3aWR0aDo0MHB4O2hlaWdodDo0MHB4O2ZvbnQtc2l6ZToxOXB4O2JvcmRlci1yYWRpdXM6MTJweH19CkBtZWRpYSBwcmludHsKICBib2R5e2JhY2tncm91bmQ6I2ZmZn0KICAuZG9je21heC13aWR0aDoxMDAlO3BhZGRpbmc6MH0KICAuY292ZXJ7LXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6ZXhhY3Q7cHJpbnQtY29sb3ItYWRqdXN0OmV4YWN0fQogIC5zaG90LC5jYWxsb3V0LC5jb3ZlciwudGxkciAuYm94LC50YWcsLnN0ZXBudW17LXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6ZXhhY3Q7cHJpbnQtY29sb3ItYWRqdXN0OmV4YWN0fQogIC5zdGVwLC5zaG90LC5jYWxsb3V0e2JyZWFrLWluc2lkZTphdm9pZH0KICBoMnticmVhay1hZnRlcjphdm9pZH0KfQo8L3N0eWxlPgo8L2hlYWQ+Cjxib2R5Pgo8ZGl2IGNsYXNzPSJkb2MiPgoKICA8ZGl2IGNsYXNzPSJjb3ZlciI+CiAgICA8ZGl2IGNsYXNzPSJraWNrZXIiPkhvbWUgQWxsaWFuY2UgwrcgQURDIE91dGJvdW5kPC9kaXY+CiAgICA8aDE+WW91ciBEYWlseSBSZXBvcnQsIHN0ZXAgYnkgc3RlcDwvaDE+CiAgICA8cD5FdmVyeXRoaW5nIGEgZGVkaWNhdGVkIG91dGJvdW5kIGFnZW50IG5lZWRzIHRvIGxvZyBhIHBlcmZlY3QgZGFpbHkgcmVwb3J0IOKAlCBpbiBhYm91dCA1IG1pbnV0ZXMuIEZvbGxvdyB0aGUgcGljdHVyZXMuPC9wPgogICAgPHNwYW4gY2xhc3M9InBpbGwiPvCflZcgVGltZXMgYXJlIFBhY2lmaWMgKFBTVCkgwrcg8J+foiA9IHlvdSdyZSBjb25uZWN0ZWQ8L3NwYW4+CiAgPC9kaXY+CgogIDxkaXYgY2xhc3M9InRsZHIiPgogICAgPGRpdiBjbGFzcz0iYm94Ij48ZGl2IGNsYXNzPSJuIj4xIMK3IFBpY2sgeW91ciBuYW1lPC9kaXY+PGRpdiBjbGFzcz0idCI+T25jZSBwZXIgZGV2aWNlIOKAlCBpdCByZW1lbWJlcnMgeW91LjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0iYm94Ij48ZGl2IGNsYXNzPSJuIj4yIMK3IFR5cGUgeW91ciBudW1iZXJzPC9kaXY+PGRpdiBjbGFzcz0idCI+Q2FsbHMsIHJlYWNoZWQsIGJvb2tpbmdzLjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0iYm94Ij48ZGl2IGNsYXNzPSJuIj4zIMK3IFN1Ym1pdDwvZGl2PjxkaXYgY2xhc3M9InQiPlRoZSBidXR0b24gdHVybnMgb24gd2hlbiBldmVyeXRoaW5nJ3MgdmFsaWQuPC9kaXY+PC9kaXY+CiAgPC9kaXY+CgogIDxkaXYgY2xhc3M9InNlY3Rpb24tbGFiZWwiPkJlZm9yZSB5b3Ugc3RhcnQ8L2Rpdj4KICA8ZGl2IGNsYXNzPSJjYWxsb3V0IHJ1bGUiPjxzcGFuIGNsYXNzPSJpYyI+8J+UjDwvc3Bhbj48ZGl2PjxiPlRoZSBjb25uZWN0aW9uIGlzIHNldCB1cCBvbmNlLCBieSB5b3VyIG1hbmFnZXIuPC9iPiBJZiB5b3UgZXZlciBzZWUgYSBzY3JlZW4gYXNraW5nIGZvciBhIOKAnFByb2plY3QgVVJM4oCdIGFuZCDigJxhbm9uIGtleeKAnSwgZG9uJ3QgZmlsbCBpdCBpbiDigJQgdGhhdCdzIHRoZSBtYW5hZ2VyJ3Mgc2V0dXAuIFRlbGwgdGhlbSwgYW5kIHRoZXknbGwgY29ubmVjdCB0aGUgZGV2aWNlLiBOb3JtYWxseSB5b3UnbGwgZ28gc3RyYWlnaHQgdG8gdGhlIOKAnFdobydzIHJlcG9ydGluZz/igJ0gc2NyZWVuIGJlbG93LjwvZGl2PjwvZGl2PgogIDxkaXYgY2xhc3M9ImNhbGxvdXQgdGlwIj48c3BhbiBjbGFzcz0iaWMiPvCfjJc8L3NwYW4+PGRpdj5QcmVmZXIgYSBkYXJrZXIgc2NyZWVuPyBUYXAgdGhlIDxiPuKXkDwvYj4gYnV0dG9uIGluIHRoZSB0b3AtcmlnaHQgYW55IHRpbWUgdG8gc3dpdGNoIGJldHdlZW4gbGlnaHQgYW5kIGRhcmsuIFlvdXIgY2hvaWNlIGlzIHJlbWVtYmVyZWQuPC9kaXY+PC9kaXY+CgogIDwhLS0gU1RFUCAxIC0tPgogIDxkaXYgY2xhc3M9InNlY3Rpb24tbGFiZWwiPlRoZSBkYWlseSByb3V0aW5lPC9kaXY+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj4xPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPlBpY2sgeW91ciBuYW1lPC9oMj4KICAgICAgPHA+VGhlIGZpcnN0IHRpbWUgeW91IG9wZW4gdGhlIGJvYXJkIG9uIHlvdXIgZGV2aWNlLCBjaG9vc2UgeW91ciBuYW1lIGFuZCB0YXAgPGI+Q29udGludWU8L2I+LiBUaGUgZGV2aWNlIHJlbWVtYmVycyB5b3UsIHNvIHlvdSB3b24ndCBkbyB0aGlzIGFnYWluLjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNGNUY4RjYiLz4KICAgICAgICAgIDwhLS0gaGVhZGVyIC0tPgogICAgICAgICAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjcyMCIgaGVpZ2h0PSI0NiIgZmlsbD0iI2ZmZiIvPjxsaW5lIHgxPSIwIiB5MT0iNDYiIHgyPSI3MjAiIHkyPSI0NiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjIzIiByPSI1IiBmaWxsPSIjMTBCOTgxIi8+PHRleHQgeD0iNDAiIHk9IjI4IiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxMyIgZmlsbD0iIzEyMjAxOSI+QURDIE9VVEJPVU5EIOKWvjwvdGV4dD4KICAgICAgICAgIDxyZWN0IHg9IjY0OCIgeT0iMTMiIHdpZHRoPSIyNiIgaGVpZ2h0PSIyMCIgcng9IjEwIiBmaWxsPSIjRjNGNUYyIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI2NTUiIHk9IjI3IiBmb250LXNpemU9IjExIiBmaWxsPSIjNTY2ODYwIj7il5A8L3RleHQ+CiAgICAgICAgICA8IS0tIGNhcmQgLS0+CiAgICAgICAgICA8cmVjdCB4PSIyMTAiIHk9Ijc4IiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE5NiIgcng9IjE2IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz4KICAgICAgICAgIDxyZWN0IHg9IjMzNiIgeT0iOTYiIHdpZHRoPSI0OCIgaGVpZ2h0PSI0MiIgcng9IjEyIiBmaWxsPSIjRTRGNUVFIi8+PHRleHQgeD0iMzQ5IiB5PSIxMjYiIGZvbnQtc2l6ZT0iMjQiPvCfkYs8L3RleHQ+CiAgICAgICAgICA8dGV4dCB4PSIzNjAiIHk9IjE2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IlNwYWNlIEdyb3Rlc2siIGZvbnQtd2VpZ2h0PSI3MDAiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiMxMjIwMTkiPldobydzIHJlcG9ydGluZz88L3RleHQ+CiAgICAgICAgICA8dGV4dCB4PSIzNjAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzU2Njg2MCI+UGljayB5b3VyIG5hbWUgb25jZS48L3RleHQ+CiAgICAgICAgICA8cmVjdCB4PSIyMzQiIHk9IjE5NiIgd2lkdGg9IjI1MiIgaGVpZ2h0PSIzNCIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzBFOUY2RSIvPjx0ZXh0IHg9IjI0NiIgeT0iMjE3IiBmb250LXNpemU9IjEzIiBmaWxsPSIjMTIyMDE5Ij5TaGllbmE8L3RleHQ+PHRleHQgeD0iNDcwIiB5PSIyMTciIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM4QTk4OEYiPuKWvjwvdGV4dD4KICAgICAgICAgIDxyZWN0IHg9IjIzNCIgeT0iMjM4IiB3aWR0aD0iMjUyIiBoZWlnaHQ9IjM0IiByeD0iOCIgZmlsbD0iIzEwQjk4MSIvPjx0ZXh0IHg9IjM2MCIgeT0iMjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxMyIgZmlsbD0iI2ZmZiI+Q29udGludWU8L3RleHQ+CiAgICAgICAgICA8IS0tIHBpbnMgLS0+CiAgICAgICAgICA8Y2lyY2xlIGN4PSIyMzQiIGN5PSIxOTYiIHI9IjEzIiBmaWxsPSIjMDQ3ODU3Ii8+PHRleHQgeD0iMjM0IiB5PSIyMDEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPjE8L3RleHQ+CiAgICAgICAgICA8Y2lyY2xlIGN4PSIyMzQiIGN5PSIyNTUiIHI9IjEzIiBmaWxsPSIjMDQ3ODU3Ii8+PHRleHQgeD0iMjM0IiB5PSIyNjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPjI8L3RleHQ+CiAgICAgICAgPC9zdmc+CiAgICAgICAgPGRpdiBjbGFzcz0iY2FwIj7ikaAgQ2hvb3NlIHlvdXIgbmFtZSBmcm9tIHRoZSBsaXN0ICDihpIgIOKRoSBUYXAgQ29udGludWU8L2Rpdj4KICAgICAgPC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPCEtLSBTVEVQIDIgLS0+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj4yPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPkNoZWNrIHRoZSBkYXRlPC9oMj4KICAgICAgPHA+VGhlIHJlcG9ydCBvcGVucyBvbiA8Yj50b2RheTwvYj4gKFBhY2lmaWMgdGltZSkuIExvZ2dpbmcgZm9yIGEgZGF5IHlvdSBtaXNzZWQ/IEp1c3QgY2hhbmdlIHRoZSBkYXRlIGZpcnN0IOKAlCB0aGUgYm9hcmQgbG9hZHMgd2hhdGV2ZXIgd2FzIHNhdmVkIGZvciB0aGF0IGRheSBzbyB5b3UgY2FuIGVkaXQgaXQuPC9wPgogICAgICA8ZGl2IGNsYXNzPSJjYWxsb3V0IHRpcCI+PHNwYW4gY2xhc3M9ImljIj7wn5WXPC9zcGFuPjxkaXY+VGhlIHdob2xlIGJvYXJkIHJ1bnMgb24gPGI+UGFjaWZpYyB0aW1lIChQU1QpPC9iPi4g4oCcVG9kYXnigJ0gYWx3YXlzIG1lYW5zIHRvZGF5IGluIENhbGlmb3JuaWEsIG5vIG1hdHRlciB3aGVyZSB5b3UgYXJlLjwvZGl2PjwvZGl2PgogICAgPC9kaXY+CiAgPC9kaXY+CgogIDwhLS0gU1RFUCAzIC0tPgogIDxkaXYgY2xhc3M9InN0ZXAiPgogICAgPGRpdiBjbGFzcz0ic3RlcG51bSI+MzwvZGl2PgogICAgPGRpdiBjbGFzcz0iYm9keSI+CiAgICAgIDxoMj5UeXBlIHlvdXIgY2FsbCBudW1iZXJzPC9oMj4KICAgICAgPHA+RmlsbCBpbiB0aGUgZml2ZSBib3hlcyBmb3IgdGhlIGRheS4gVGhlIDxiPkJvb2tlZDwvYj4gYW5kIDxiPkNyb3NzPC9iPiBib3hlcyBmaWxsIGluIGJ5IHRoZW1zZWx2ZXMgYXMgeW91IGFkZCByZWZlcmVuY2VzIGluIHRoZSBuZXh0IHN0ZXAg4oCUIHlvdSBkb24ndCB0eXBlIHRob3NlLjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDMzMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIzMzAiIGZpbGw9IiNGNUY4RjYiLz4KICAgICAgICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI3MjAiIGhlaWdodD0iNDYiIGZpbGw9IiNmZmYiLz48bGluZSB4MT0iMCIgeTE9IjQ2IiB4Mj0iNzIwIiB5Mj0iNDYiIHN0cm9rZT0iI0UzRTlFNCIvPgogICAgICAgICAgPGNpcmNsZSBjeD0iMjYiIGN5PSIyMyIgcj0iNSIgZmlsbD0iIzEwQjk4MSIvPjx0ZXh0IHg9IjQwIiB5PSIyOCIgZm9udC1mYW1pbHk9IlNwYWNlIEdyb3Rlc2siIGZvbnQtd2VpZ2h0PSI3MDAiIGZvbnQtc2l6ZT0iMTMiIGZpbGw9IiMxMjIwMTkiPkFEQyBPVVRCT1VORCDilr48L3RleHQ+CiAgICAgICAgICA8IS0tIHBpbGwgbmF2IC0tPgogICAgICAgICAgPHJlY3QgeD0iMjUwIiB5PSIxMiIgd2lkdGg9IjIyMCIgaGVpZ2h0PSIyNCIgcng9IjEyIiBmaWxsPSIjRjNGNUYyIiBzdHJva2U9IiNFM0U5RTQiLz4KICAgICAgICAgIDxyZWN0IHg9IjI1NCIgeT0iMTUiIHdpZHRoPSI2NiIgaGVpZ2h0PSIxOCIgcng9IjkiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjI2NiIgeT0iMjciIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPlJlcG9ydDwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjMzMiIgeT0iMjciIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM1NjY4NjAiPk1lZXRpbmc8L3RleHQ+PHRleHQgeD0iNDA0IiB5PSIyNyIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzU2Njg2MCI+U2NvcmVjYXJkPC90ZXh0PgogICAgICAgICAgPHRleHQgeD0iMjAiIHk9Ijc0IiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxNyIgZmlsbD0iIzEyMjAxOSI+SGkgU2hpZW5hIOKAlCBsb2cgdG9kYXkncyBudW1iZXJzPC90ZXh0PgogICAgICAgICAgPCEtLSBkYXRlIC0tPgogICAgICAgICAgPHRleHQgeD0iMjAiIHk9IjEwMCIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzU2Njg2MCI+UkVQT1JUIERBVEU8L3RleHQ+CiAgICAgICAgICA8cmVjdCB4PSIyMCIgeT0iMTA2IiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjMwIiByeD0iNyIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iMzIiIHk9IjEyNiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzEyMjAxOSI+MjAyNi0wNy0yMzwvdGV4dD4KICAgICAgICAgIDwhLS0gbnVtYmVyIHRpbGVzIC0tPgogICAgICAgICAgPGc+CiAgICAgICAgICA8IS0tIGZpdmUgaW5wdXRzICsgMiBkZXJpdmVkIC0tPgogICAgICAgICAgPCEtLSByb3cgb2YgdGlsZXMgLS0+CiAgICAgICAgICA8ZyBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayI+CiAgICAgICAgICAgIDxyZWN0IHg9IjIwIiAgeT0iMTUwIiB3aWR0aD0iMTMwIiBoZWlnaHQ9IjY2IiByeD0iMTAiIGZpbGw9IiNGM0Y1RjIiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjMwIiB5PSIxNzAiIGZvbnQtc2l6ZT0iOSIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzU2Njg2MCI+VE9UQUwgQ0FMTFM8L3RleHQ+PHRleHQgeD0iMzAiIHk9IjIwMyIgZm9udC1zaXplPSIyNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzEyMjAxOSI+OTY8L3RleHQ+CiAgICAgICAgICAgIDxyZWN0IHg9IjE1OCIgeT0iMTUwIiB3aWR0aD0iMTMwIiBoZWlnaHQ9IjY2IiByeD0iMTAiIGZpbGw9IiNGM0Y1RjIiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjE2OCIgeT0iMTcwIiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlJFQUNIRUQ8L3RleHQ+PHRleHQgeD0iMTY4IiB5PSIyMDMiIGZvbnQtc2l6ZT0iMjYiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPjE1PC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSIyOTYiIHk9IjE1MCIgd2lkdGg9IjEzMCIgaGVpZ2h0PSI2NiIgcng9IjEwIiBmaWxsPSIjRjNGNUYyIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSIzMDYiIHk9IjE3MCIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNTY2ODYwIj5OTyBBTlNXRVI8L3RleHQ+PHRleHQgeD0iMzA2IiB5PSIyMDMiIGZvbnQtc2l6ZT0iMjYiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPjYwPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSI0MzQiIHk9IjE1MCIgd2lkdGg9IjEyNiIgaGVpZ2h0PSI2NiIgcng9IjEwIiBmaWxsPSIjRjNGNUYyIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI0NDQiIHk9IjE3MCIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNTY2ODYwIj5OT1QgSU5ULjwvdGV4dD48dGV4dCB4PSI0NDQiIHk9IjIwMyIgZm9udC1zaXplPSIyNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzEyMjAxOSI+MTQ8L3RleHQ+CiAgICAgICAgICAgIDxyZWN0IHg9IjU2OCIgeT0iMTUwIiB3aWR0aD0iMTMyIiBoZWlnaHQ9IjY2IiByeD0iMTAiIGZpbGw9IiNGM0Y1RjIiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjU3OCIgeT0iMTcwIiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPkZPTExPVy1VUDwvdGV4dD48dGV4dCB4PSI1NzgiIHk9IjIwMyIgZm9udC1zaXplPSIyNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzEyMjAxOSI+MzwvdGV4dD4KICAgICAgICAgICAgPCEtLSBkZXJpdmVkIC0tPgogICAgICAgICAgICA8cmVjdCB4PSIyMCIgIHk9IjIyNiIgd2lkdGg9IjI3MCIgaGVpZ2h0PSI2MCIgcng9IjEwIiBmaWxsPSIjRTRGNUVFIiBzdHJva2U9IiMwRTlGNkUiLz48dGV4dCB4PSIzMCIgeT0iMjQ1IiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMwNDc4NTciPkJPT0tFRCAoQVVUTyk8L3RleHQ+PHRleHQgeD0iMzAiIHk9IjI3NiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzBFOUY2RSI+MjwvdGV4dD4KICAgICAgICAgICAgPHJlY3QgeD0iMjk4IiB5PSIyMjYiIHdpZHRoPSIyNjIiIGhlaWdodD0iNjAiIHJ4PSIxMCIgZmlsbD0iI0U1RURGQiIgc3Ryb2tlPSIjMjU2M0VCIi8+PHRleHQgeD0iMzA4IiB5PSIyNDUiIGZvbnQtc2l6ZT0iOSIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzI1NjNFQiI+Q1JPU1MgKEFVVE8pPC90ZXh0Pjx0ZXh0IHg9IjMwOCIgeT0iMjc2IiBmb250LXNpemU9IjI0IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMjU2M0VCIj4xPC90ZXh0PgogICAgICAgICAgPC9nPgogICAgICAgICAgPC9nPgogICAgICAgICAgPGNpcmNsZSBjeD0iMTUwIiBjeT0iMTgzIiByPSIxMiIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjE1MCIgeT0iMTg4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5BPC90ZXh0PgogICAgICAgICAgPGNpcmNsZSBjeD0iMjkwIiBjeT0iMjU2IiByPSIxMiIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjI5MCIgeT0iMjYxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj5CPC90ZXh0PgogICAgICAgIDwvc3ZnPgogICAgICAgIDxkaXYgY2xhc3M9ImNhcCI+4pK2IFlvdSB0eXBlIHRoZXNlIGZpdmUgIMK3ICDikrcgQm9va2VkICZhbXA7IENyb3NzIGZpbGwgdGhlbXNlbHZlcyBmcm9tIHlvdXIgcmVmZXJlbmNlczwvZGl2PgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8IS0tIFNURVAgNCAtLT4KICA8ZGl2IGNsYXNzPSJzdGVwIj4KICAgIDxkaXYgY2xhc3M9InN0ZXBudW0iPjQ8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImJvZHkiPgogICAgICA8aDI+QWRkIGVhY2ggYm9va2luZyB3aXRoIGl0cyByZWZlcmVuY2U8L2gyPgogICAgICA8cD5UYXAgPGI+KyBBZGQgYm9va2luZzwvYj4gZm9yIGV2ZXJ5IGFwcG9pbnRtZW50IHlvdSBib29rZWQuIFR5cGUgdGhlIDxiPjYtY2hhcmFjdGVyIGpvYiByZWZlcmVuY2U8L2I+IOKAlCBsZXR0ZXJzIGFuZCBudW1iZXJzLCBsaWtlIDxzcGFuIGNsYXNzPSJtb25vIj5YMzJSVDc8L3NwYW4+LiBBIGdyZWVuIOKckyBtZWFucyBpdCdzIGdvb2QuPC9wPgogICAgICA8ZGl2IGNsYXNzPSJzaG90Ij4KICAgICAgICA8c3ZnIHZpZXdCb3g9IjAgMCA3MjAgMjUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZvbnQtZmFtaWx5PSJJbnRlciwgc2Fucy1zZXJpZiI+CiAgICAgICAgICA8cmVjdCB3aWR0aD0iNzIwIiBoZWlnaHQ9IjI1MCIgZmlsbD0iI0Y1RjhGNiIvPgogICAgICAgICAgPHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iNjgwIiBoZWlnaHQ9IjIxMCIgcng9IjE0IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiIHN0cm9rZS1kYXNoYXJyYXk9IjQgNCIvPgogICAgICAgICAgPHRleHQgeD0iMzgiIHk9IjUwIiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzEyMjAxOSI+8J+OryBCb29raW5nczwvdGV4dD4KICAgICAgICAgIDxyZWN0IHg9IjE1MCIgeT0iMzgiIHdpZHRoPSIxMTgiIGhlaWdodD0iMTgiIHJ4PSI5IiBmaWxsPSIjRTRGNUVFIi8+PHRleHQgeD0iMTYwIiB5PSI1MSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzBFOUY2RSI+am9iIHJlZiByZXF1aXJlZDwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjM4IiB5PSI3MiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzU2Njg2MCI+QWRkIG9uZSByb3cgcGVyIGJvb2tlZCBhcHBvaW50bWVudC4gUmVmZXJlbmNlID0gNiBjaGFyYWN0ZXJzLjwvdGV4dD4KICAgICAgICAgIDwhLS0gcm93cyAtLT4KICAgICAgICAgIDxnIGZvbnQtZmFtaWx5PSJKZXRCcmFpbnMgTW9ubyI+CiAgICAgICAgICAgIDx0ZXh0IHg9IjQwIiB5PSIxMDYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM4QTk4OEYiPjE8L3RleHQ+CiAgICAgICAgICAgIDxyZWN0IHg9IjU4IiB5PSI5MiIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIzMCIgcng9IjciIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjEyMCIgeT0iMTEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE1IiBmb250LXdlaWdodD0iNjAwIiBsZXR0ZXItc3BhY2luZz0iMyIgZmlsbD0iIzEyMjAxOSI+WDMyUlQ3PC90ZXh0PgogICAgICAgICAgICA8dGV4dCB4PSIyNTIiIHk9IjExMiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzBFOUY2RSI+4pyTPC90ZXh0PgogICAgICAgICAgICA8dGV4dCB4PSI0MCIgeT0iMTQ2IiBmb250LXNpemU9IjEyIiBmaWxsPSIjOEE5ODhGIj4yPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSI1OCIgeT0iMTMyIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjMwIiByeD0iNyIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iMTIwIiB5PSIxNTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSI2MDAiIGxldHRlci1zcGFjaW5nPSIzIiBmaWxsPSIjMTIyMDE5Ij5LOU0yUFE8L3RleHQ+CiAgICAgICAgICAgIDx0ZXh0IHg9IjI1MiIgeT0iMTUyIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMEU5RjZFIj7inJM8L3RleHQ+CiAgICAgICAgICA8L2c+CiAgICAgICAgICA8cmVjdCB4PSI0MCIgeT0iMTgyIiB3aWR0aD0iMTMwIiBoZWlnaHQ9IjMwIiByeD0iOCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iNTUiIHk9IjIwMiIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9IjYwMCIgZmlsbD0iIzEyMjAxOSI+KyBBZGQgYm9va2luZzwvdGV4dD4KICAgICAgICAgIDxjaXJjbGUgY3g9IjE0OCIgY3k9IjEwNyIgcj0iMTIiIGZpbGw9IiMwNDc4NTciLz48dGV4dCB4PSIxNDgiIHk9IjExMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2ZmZiI+MTwvdGV4dD4KICAgICAgICAgIDxjaXJjbGUgY3g9IjQwIiBjeT0iMTk3IiByPSIxMiIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjQwIiB5PSIyMDIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPis8L3RleHQ+CiAgICAgICAgPC9zdmc+CiAgICAgICAgPGRpdiBjbGFzcz0iY2FwIj7vvIsgVGFwIOKAnEFkZCBib29raW5n4oCdICDCtyAg4pGgIFR5cGUgdGhlIDYtY2hhcmFjdGVyIHJlZmVyZW5jZSDigJQgZ3JlZW4g4pyTID0gdmFsaWQ8L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InJlZmNhcmQiPgogICAgICAgIDxkaXYgY2xhc3M9InIgb2siPjxkaXYgY2xhc3M9ImgiPuKckyBMb29rcyByaWdodDwvZGl2PjxzcGFuIGNsYXNzPSJ0YWcgb2siPlgzMlJUNzwvc3Bhbj48cCBzdHlsZT0ibWFyZ2luLXRvcDo4cHg7Zm9udC1zaXplOjEzLjVweDtjb2xvcjp2YXIoLS1pbmsyKSI+NiBjaGFyYWN0ZXJzIMK3IGxldHRlcnMgKyBudW1iZXJzIMK3IGVhY2ggb25lIGRpZmZlcmVudDwvcD48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJyIG5vIj48ZGl2IGNsYXNzPSJoIj7inJcgV29uJ3QgYmUgYWNjZXB0ZWQ8L2Rpdj48c3BhbiBjbGFzcz0idGFnIG5vIj5YMzJSPC9zcGFuPiAmbmJzcDsgPHNwYW4gY2xhc3M9InRhZyBubyI+WDMyLVI3PC9zcGFuPjxwIHN0eWxlPSJtYXJnaW4tdG9wOjhweDtmb250LXNpemU6MTMuNXB4O2NvbG9yOnZhcigtLWluazIpIj5Ub28gc2hvcnQsIG9yIGhhcyBhIHN5bWJvbC9zcGFjZS4gTm8gZHVwbGljYXRlcyBlaXRoZXIuPC9wPjwvZGl2PgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8IS0tIFNURVAgNSAtLT4KICA8ZGl2IGNsYXNzPSJzdGVwIj4KICAgIDxkaXYgY2xhc3M9InN0ZXBudW0iPjU8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImJvZHkiPgogICAgICA8aDI+QWRkIGNyb3NzLWJvb2tpbmdzIHRoZSBzYW1lIHdheTwvaDI+CiAgICAgIDxwPkEgPGI+Y3Jvc3MtYm9va2luZzwvYj4gaXMgYW4gYXBwb2ludG1lbnQgeW91IGJvb2tlZCBmb3IgPGI+YW5vdGhlciBkZXBhcnRtZW50PC9iPi4gQWRkIG9uZSByb3cgcGVyIGNyb3NzLWJvb2tpbmcsIGVhY2ggd2l0aCBpdHMgb3duIDYtY2hhcmFjdGVyIHJlZmVyZW5jZS4gU2FtZSBydWxlcyBhcyBib29raW5ncy48L3A+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPCEtLSBTVEVQIDYgLS0+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj42PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPkFkZCBhIG5vdGUgKG9wdGlvbmFsKSBhbmQgU3VibWl0PC9oMj4KICAgICAgPHA+V3JpdGUgYW55dGhpbmcgd29ydGggZmxhZ2dpbmcgZm9yIHRoZSBtZWV0aW5nLCB0aGVuIHRhcCA8Yj5TdWJtaXQgcmVwb3J0PC9iPi4gVGhlIGJ1dHRvbiBvbmx5IHR1cm5zIGdyZWVuIHdoZW4gZXZlcnkgcmVmZXJlbmNlIGlzIHZhbGlkIGFuZCB1bmlxdWUg4oCUIHNvIGlmIGl0J3MgZ3JleSwgY2hlY2sgeW91ciByZWZlcmVuY2VzLjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNGNUY4RjYiLz4KICAgICAgICAgIDxyZWN0IHg9IjIwIiB5PSIzNCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI0MCIgcng9IjkiIGZpbGw9IiMxMEI5ODEiLz48dGV4dCB4PSIxMTAiIHk9IjU5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxNSIgZmlsbD0iI2ZmZiI+U3VibWl0IHJlcG9ydDwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjIyMiIgeT0iNTIiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSI2MDAiIGZpbGw9IiMwRTlGNkUiPlJlYWR5IHRvIHN1Ym1pdC48L3RleHQ+CiAgICAgICAgICA8dGV4dCB4PSIyMjIiIHk9IjcwIiBmb250LXNpemU9IjExIiBmaWxsPSIjOEE5ODhGIiBmb250LWZhbWlseT0iSmV0QnJhaW5zIE1vbm8iPmFwcGVhcnMgd2hlbiBhbGwgcmVmZXJlbmNlcyBhcmUgdmFsaWQ8L3RleHQ+CiAgICAgICAgICA8IS0tIGdyZXllZCBleGFtcGxlIC0tPgogICAgICAgICAgPHJlY3QgeD0iNDcwIiB5PSIzNCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI0MCIgcng9IjkiIGZpbGw9IiNFRUYyRUUiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjU2MCIgeT0iNTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNzAwIiBmb250LXNpemU9IjE1IiBmaWxsPSIjQjhDMkJCIj5TdWJtaXQgcmVwb3J0PC90ZXh0PgogICAgICAgICAgPHRleHQgeD0iNTYwIiB5PSI5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzhBOTg4RiIgZm9udC1mYW1pbHk9IkpldEJyYWlucyBNb25vIj5ncmV5ID0gZml4IGEgcmVmZXJlbmNlIGZpcnN0PC90ZXh0PgogICAgICAgIDwvc3ZnPgogICAgICAgIDxkaXYgY2xhc3M9ImNhcCI+R3JlZW4gJmFtcDsg4oCcUmVhZHkgdG8gc3VibWl04oCdID0gZ28uIEdyZXkgPSBhIHJlZmVyZW5jZSBzdGlsbCBuZWVkcyBmaXhpbmcuPC9kaXY+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJjYWxsb3V0IHRpcCI+PHNwYW4gY2xhc3M9ImljIj7inIU8L3NwYW4+PGRpdj5BZnRlciBpdCBzYXZlcyB5b3UnbGwgc2VlIOKAnDxiPlJlcG9ydCBzYXZlZDwvYj7igJ0uIFRoYXQncyBpdCDigJQgeW91J3JlIGRvbmUgZm9yIHRoZSBkYXkuPC9kaXY+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPCEtLSBTVEVQIDcgLS0+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj43PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPk1hZGUgYSBtaXN0YWtlPyBGaXggaXQ8L2gyPgogICAgICA8cD5QaWNrIHRoZSBzYW1lIDxiPmRhdGU8L2I+IGFnYWluIOKAlCB5b3VyIHNhdmVkIG51bWJlcnMgbG9hZCBiYWNrIGluLiBDaGFuZ2Ugd2hhdCdzIHdyb25nIGFuZCB0YXAgPGI+U3VibWl0PC9iPiBhZ2FpbiB0byBvdmVyd3JpdGUgaXQuIElmIGEgYm9va2luZydzIHNhbGUvc3RhdHVzIGlzIGFscmVhZHkgbG9ja2VkIGJ5IHRoZSBvZmZpY2UsIGFzayB5b3VyIGFkbWluIHRvIGNvcnJlY3QgaXQuPC9wPgogICAgPC9kaXY+CiAgPC9kaXY+CgogIDwhLS0gQk9OVVMgLS0+CiAgPGRpdiBjbGFzcz0ic2VjdGlvbi1sYWJlbCI+R29vZCB0byBrbm93PC9kaXY+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj7imIU8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImJvZHkiPgogICAgICA8aDI+U2VlIHdoZXJlIHlvdSBzdGFuZDwvaDI+CiAgICAgIDx1bCBjbGFzcz0iY2xlYW4iPgogICAgICAgIDxsaT48Yj5NZWV0aW5nPC9iPiDigJQgYSBsZWFkZXJib2FyZCBvZiB0aGUgdGVhbS4gVGFwIHlvdXIgcm93IHRvIG9wZW4geW91ciBvd24gcmVwb3J0IGNhcmQuIFBpY2sgYSBwZXJpb2QsIG9yIGNob29zZSA8Yj5DdXN0b208L2I+IHRvIHNldCB5b3VyIG93biBkYXRlcy48L2xpPgogICAgICAgIDxsaT48Yj5TY29yZWNhcmQ8L2I+IOKAlCBhbGwgeW91ciBudW1iZXJzIGZvciBhIHBlcmlvZCAocmVhY2ggcmF0ZSwgY29udGFjdOKGkmJvb2tpbmcsIGFuZCBtb3JlKS4gSXQgYWxzbyBoYXMgYSA8Yj5DdXN0b208L2I+IGRhdGUgb3B0aW9uLjwvbGk+CiAgICAgIDwvdWw+CiAgICAgIDxkaXYgY2xhc3M9InNob3QiPgogICAgICAgIDxzdmcgdmlld0JveD0iMCAwIDcyMCAxMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIj4KICAgICAgICAgIDxyZWN0IHdpZHRoPSI3MjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZmZmIi8+CiAgICAgICAgICA8cmVjdCB4PSIyMCIgeT0iMjQiIHdpZHRoPSI2ODAiIGhlaWdodD0iNzIiIHJ4PSIxNCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8dGV4dCB4PSI0NCIgeT0iNjYiIGZvbnQtZmFtaWx5PSJKZXRCcmFpbnMgTW9ubyIgZm9udC1zaXplPSIxMyIgZmlsbD0iIzhBOTg4RiI+MTwvdGV4dD4KICAgICAgICAgIDxyZWN0IHg9IjY2IiB5PSI0MiIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2IiByeD0iMTAiIGZpbGw9IiNFNEY1RUUiLz48dGV4dCB4PSI4NCIgeT0iNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNzAwIiBmb250LXNpemU9IjE0IiBmaWxsPSIjMEU5RjZFIj5TSDwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjExOCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNzAwIiBmb250LXNpemU9IjE1IiBmaWxsPSIjMTIyMDE5Ij5TaGllbmE8L3RleHQ+CiAgICAgICAgICA8cmVjdCB4PSIxMTgiIHk9IjY4IiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjgiIHJ4PSI0IiBmaWxsPSIjRUVGMkVFIi8+PHJlY3QgeD0iMTE4IiB5PSI2OCIgd2lkdGg9IjcwIiBoZWlnaHQ9IjgiIHJ4PSI0IiBmaWxsPSIjMTBCOTgxIi8+PHJlY3QgeD0iMTg4IiB5PSI2OCIgd2lkdGg9IjQ2IiBoZWlnaHQ9IjgiIGZpbGw9IiMyNTYzRUIiLz48cmVjdCB4PSIyMzQiIHk9IjY4IiB3aWR0aD0iMzAiIGhlaWdodD0iOCIgZmlsbD0iI0MwMzkyQiIvPgogICAgICAgICAgPHRleHQgeD0iNDcwIiB5PSI1NSIgdGV4dC1hbmNob3I9ImVuZCIgZm9udC1mYW1pbHk9IlNwYWNlIEdyb3Rlc2siIGZvbnQtd2VpZ2h0PSI3MDAiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiMxMjIwMTkiPjk2PC90ZXh0Pjx0ZXh0IHg9IjQ3MCIgeT0iNzAiIHRleHQtYW5jaG9yPSJlbmQiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzU2Njg2MCI+Q0FMTFM8L3RleHQ+CiAgICAgICAgICA8dGV4dCB4PSI1NjAiIHk9IjU1IiB0ZXh0LWFuY2hvcj0iZW5kIiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzBFOUY2RSI+MjwvdGV4dD48dGV4dCB4PSI1NjAiIHk9IjcwIiB0ZXh0LWFuY2hvcj0iZW5kIiBmb250LXNpemU9IjkiIGZpbGw9IiM1NjY4NjAiPkJPT0tJTkdTPC90ZXh0PgogICAgICAgICAgPHRleHQgeD0iNjYwIiB5PSI1NSIgdGV4dC1hbmNob3I9ImVuZCIgZm9udC1mYW1pbHk9IlNwYWNlIEdyb3Rlc2siIGZvbnQtd2VpZ2h0PSI3MDAiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiMxMjIwMTkiPjEzLjMlPC90ZXh0Pjx0ZXh0IHg9IjY2MCIgeT0iNzAiIHRleHQtYW5jaG9yPSJlbmQiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzU2Njg2MCI+Q09OVEFDVOKGkkJLPC90ZXh0PgogICAgICAgICAgPGNpcmNsZSBjeD0iNjg2IiBjeT0iNjAiIHI9IjExIiBmaWxsPSIjRjNGNUYyIi8+PHRleHQgeD0iNjg2IiB5PSI2NCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzU2Njg2MCI+4oaSPC90ZXh0PgogICAgICAgIDwvc3ZnPgogICAgICAgIDxkaXYgY2xhc3M9ImNhcCI+WW91ciByb3cgb24gdGhlIE1lZXRpbmcgbGVhZGVyYm9hcmQg4oCUIHRhcCBpdCB0byBvcGVuIHlvdXIgZnVsbCBjYXJkLjwvZGl2PgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJzZWN0aW9uLWxhYmVsIj5SZWZlcmVuY2UgY2hlYXQtc2hlZXQ8L2Rpdj4KICA8ZGl2IGNsYXNzPSJjYWxsb3V0IHJ1bGUiPjxzcGFuIGNsYXNzPSJpYyI+8J+UkTwvc3Bhbj48ZGl2PjxiPkV2ZXJ5IGJvb2tpbmcgJmFtcDsgY3Jvc3MtYm9va2luZyBuZWVkcyBhIHJlZmVyZW5jZTo8L2I+IGV4YWN0bHkgPGI+NiBjaGFyYWN0ZXJzPC9iPiwgPGI+bGV0dGVycyArIG51bWJlcnM8L2I+IChlLmcuIDxzcGFuIGNsYXNzPSJtb25vIj5YMzJSVDc8L3NwYW4+KSwgdHlwZWQgaW4gQ0FQSVRBTFMsIGFuZCA8Yj5ubyByZXBlYXRzPC9iPiBpbiB0aGUgc2FtZSBkYXkuIFRoYXQncyB0aGUgb25lIHRoaW5nIHRvIGdldCByaWdodCBldmVyeSB0aW1lLjwvZGl2PjwvZGl2PgoKICA8ZGl2IGNsYXNzPSJzZWN0aW9uLWxhYmVsIj5RdWljayBhbnN3ZXJzPC9kaXY+CiAgPGRpdiBjbGFzcz0iZmFxIj4KICAgIDxkaXYgY2xhc3M9InEiPjxiPlRoZSBTdWJtaXQgYnV0dG9uIGlzIGdyZXkg4oCUIHdoeT88L2I+PHA+QSByZWZlcmVuY2UgaXNuJ3QgNiBjaGFyYWN0ZXJzIHlldCwgaGFzIGEgc3ltYm9sL3NwYWNlLCBvciBpcyByZXBlYXRlZC4gVGhlIG1lc3NhZ2UgdW5kZXIgdGhlIGJ1dHRvbiB0ZWxscyB5b3Ugd2hpY2guIEZpeCBpdCBhbmQgdGhlIGJ1dHRvbiB0dXJucyBncmVlbi48L3A+PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJxIj48Yj5JIHBpY2tlZCB0aGUgd3JvbmcgbmFtZS48L2I+PHA+VGFwIOKAnE5vdCB5b3U/4oCdIG5leHQgdG8geW91ciBuYW1lIHRvIHN3aXRjaC4gWW91ciBkZXZpY2Ugd2lsbCB0aGVuIHJlbWVtYmVyIHRoZSBuZXcgY2hvaWNlLjwvcD48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InEiPjxiPkkgZm9yZ290IHRvIGxvZyB5ZXN0ZXJkYXkuPC9iPjxwPkNoYW5nZSB0aGUgZGF0ZSB0byB5ZXN0ZXJkYXksIGVudGVyIHRoZSBudW1iZXJzLCBhbmQgc3VibWl0LiBUaGUgYm9hcmQga2VlcHMgZXZlcnkgZGF5IHNlcGFyYXRlbHkuPC9wPjwvZGl2PgogICAgPGRpdiBjbGFzcz0icSI+PGI+RG8gSSBlbnRlciBCb29rZWQgYW5kIENyb3NzIHRvdGFscz88L2I+PHA+Tm8g4oCUIHRob3NlIGNvdW50IHRoZW1zZWx2ZXMgZnJvbSB0aGUgcmVmZXJlbmNlcyB5b3UgYWRkLiBKdXN0IGFkZCBhIHJvdyBwZXIgYm9va2luZy48L3A+PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJxIj48Yj5JdCdzIGFza2luZyBmb3IgYSDigJxQcm9qZWN0IFVSTCAvIGtleeKAnS48L2I+PHA+VGhhdCdzIHRoZSBtYW5hZ2VyJ3Mgb25lLXRpbWUgc2V0dXAsIG5vdCBmb3IgYWdlbnRzLiBMZXQgeW91ciBtYW5hZ2VyIGtub3cgYW5kIHRoZXknbGwgY29ubmVjdCB0aGUgZGV2aWNlLjwvcD48L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0iZm9vdGVyIj48c3Bhbj5Ib21lIEFsbGlhbmNlIMK3IEFEQyBPdXRib3VuZCDigJQgQWdlbnQgU09QPC9zcGFuPjxzcGFuPkxvZyBkYWlseSDCtyBUaW1lcyBhcmUgUFNUPC9zcGFuPjwvZGl2Pgo8L2Rpdj4KPC9ib2R5Pgo8L2h0bWw+Cg==";
+const SOP_SALES_B64="PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9IlVURi04Ij4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiPgo8dGl0bGU+T2ZmaWNlIFNhbGVzIOKAlCBTYWxlc3BlcnNvbiBHdWlkZTwvdGl0bGU+CjxsaW5rIHJlbD0icHJlY29ubmVjdCIgaHJlZj0iaHR0cHM6Ly9mb250cy5nb29nbGVhcGlzLmNvbSI+CjxsaW5rIGhyZWY9Imh0dHBzOi8vZm9udHMuZ29vZ2xlYXBpcy5jb20vY3NzMj9mYW1pbHk9U3BhY2UrR3JvdGVzazp3Z2h0QDUwMDs2MDA7NzAwJmZhbWlseT1JbnRlcjp3Z2h0QDQwMDs1MDA7NjAwOzcwMCZmYW1pbHk9SmV0QnJhaW5zK01vbm86d2dodEA1MDA7NjAwJmRpc3BsYXk9c3dhcCIgcmVsPSJzdHlsZXNoZWV0Ij4KPHN0eWxlPgo6cm9vdHsKICAtLXBhcGVyOiNGNUY4RjY7IC0tY2FyZDojRkZGRkZGOyAtLWluazojMTIyMDE5OyAtLWluazI6IzU2Njg2MDsgLS1pbmszOiM4QTk4OEY7CiAgLS1saW5lOiNFM0U5RTQ7IC0tbGluZTI6I0VFRjJFRTsKICAtLWVtOiMwRTlGNkU7IC0tZW0taGk6IzEwQjk4MTsgLS1lbS1kZWVwOiMwNDc4NTc7IC0tc29mdDojRTRGNUVFOwogIC0tYmx1ZTojMjU2M0VCOyAtLWJsdWUtc29mdDojRTVFREZCOyAtLWFtYmVyOiNCNDUzMDk7IC0tYW1iZXItc29mdDojRkNGMERDOyAtLXJlZDojQzAzOTJCOyAtLXJlZC1zb2Z0OiNGQUU1RTE7CiAgLS1kaXNwOidTcGFjZSBHcm90ZXNrJyxzeXN0ZW0tdWksc2Fucy1zZXJpZjsgLS1zYW5zOidJbnRlcicsc3lzdGVtLXVpLHNhbnMtc2VyaWY7IC0tbW9ubzonSmV0QnJhaW5zIE1vbm8nLG1vbm9zcGFjZTsKfQoqe2JveC1zaXppbmc6Ym9yZGVyLWJveDttYXJnaW46MH0KYm9keXtiYWNrZ3JvdW5kOnZhcigtLXBhcGVyKTtjb2xvcjp2YXIoLS1pbmspO2ZvbnQtZmFtaWx5OnZhcigtLXNhbnMpO2xpbmUtaGVpZ2h0OjEuNjI7LXdlYmtpdC1mb250LXNtb290aGluZzphbnRpYWxpYXNlZH0KLmRvY3ttYXgtd2lkdGg6OTIwcHg7bWFyZ2luOjAgYXV0bztwYWRkaW5nOjAgMjJweCA4MHB4fQpoMSxoMixoM3tmb250LWZhbWlseTp2YXIoLS1kaXNwKTtsZXR0ZXItc3BhY2luZzotLjNweDtsaW5lLWhlaWdodDoxLjE1fQoubW9ub3tmb250LWZhbWlseTp2YXIoLS1tb25vKX0KCi5jb3ZlcntiYWNrZ3JvdW5kOmxpbmVhci1ncmFkaWVudCgxNTBkZWcsIzBBMkU1MiwjMjU2M0VCIDEzNSUpO2NvbG9yOiNmZmY7Ym9yZGVyLXJhZGl1czoyNnB4O3BhZGRpbmc6NDZweCA0NHB4O21hcmdpbjoyNnB4IDAgMzBweDtwb3NpdGlvbjpyZWxhdGl2ZTtvdmVyZmxvdzpoaWRkZW59Ci5jb3Zlcjo6YWZ0ZXJ7Y29udGVudDoiIjtwb3NpdGlvbjphYnNvbHV0ZTtyaWdodDotOTBweDt0b3A6LTkwcHg7d2lkdGg6MzIwcHg7aGVpZ2h0OjMyMHB4O2JvcmRlci1yYWRpdXM6NTAlO2JhY2tncm91bmQ6cmdiYSgyNTUsMjU1LDI1NSwuMDgpfQouY292ZXIgLmtpY2tlcntmb250LWZhbWlseTp2YXIoLS1tb25vKTtmb250LXNpemU6MTJweDtsZXR0ZXItc3BhY2luZzozcHg7dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlO29wYWNpdHk6Ljg1O21hcmdpbi1ib3R0b206MTRweH0KLmNvdmVyIGgxe2ZvbnQtc2l6ZTo0MnB4O2ZvbnQtd2VpZ2h0OjcwMDttYXgtd2lkdGg6MTZjaH0KLmNvdmVyIHB7bWFyZ2luLXRvcDoxNHB4O2ZvbnQtc2l6ZToxNnB4O21heC13aWR0aDo1MmNoO29wYWNpdHk6Ljk1fQouY292ZXIgLnBpbGx7ZGlzcGxheTppbmxpbmUtZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjhweDtiYWNrZ3JvdW5kOnJnYmEoMjU1LDI1NSwyNTUsLjE1KTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMjU1LDI1NSwyNTUsLjI1KTtwYWRkaW5nOjdweCAxNHB4O2JvcmRlci1yYWRpdXM6OTlweDtmb250LXNpemU6MTNweDtmb250LXdlaWdodDo2MDA7bWFyZ2luLXRvcDoyMnB4fQoKLnRsZHJ7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoMywxZnIpO2dhcDoxNHB4O21hcmdpbi1ib3R0b206MzRweH0KLnRsZHIgLmJveHtiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxNnB4O3BhZGRpbmc6MTZweCAxOHB4fQoudGxkciAuYm94IC5ue2ZvbnQtZmFtaWx5OnZhcigtLWRpc3ApO2ZvbnQtd2VpZ2h0OjcwMDtmb250LXNpemU6MTVweDtjb2xvcjp2YXIoLS1lbS1kZWVwKX0KLnRsZHIgLmJveCAudHtmb250LXNpemU6MTMuNXB4O2NvbG9yOnZhcigtLWluazIpO21hcmdpbi10b3A6M3B4fQoKLnNlY3Rpb24tbGFiZWx7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7Zm9udC1zaXplOjEycHg7bGV0dGVyLXNwYWNpbmc6MnB4O3RleHQtdHJhbnNmb3JtOnVwcGVyY2FzZTtjb2xvcjp2YXIoLS1lbSk7bWFyZ2luOjM2cHggMCAxMnB4O2ZvbnQtd2VpZ2h0OjYwMH0KCi5zdGVwe2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6NjBweCAxZnI7Z2FwOjIwcHg7bWFyZ2luOjI2cHggMDthbGlnbi1pdGVtczpzdGFydH0KLnN0ZXBudW17d2lkdGg6NTJweDtoZWlnaHQ6NTJweDtib3JkZXItcmFkaXVzOjE1cHg7YmFja2dyb3VuZDp2YXIoLS1zb2Z0KTtjb2xvcjp2YXIoLS1lbS1kZWVwKTtmb250LWZhbWlseTp2YXIoLS1kaXNwKTtmb250LXdlaWdodDo3MDA7Zm9udC1zaXplOjI0cHg7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtqdXN0aWZ5LWNvbnRlbnQ6Y2VudGVyO2JvcmRlcjoxcHggc29saWQgI0NERUJERH0KLnN0ZXAgaDJ7Zm9udC1zaXplOjIycHg7bWFyZ2luLWJvdHRvbTo2cHh9Ci5zdGVwIHB7Y29sb3I6dmFyKC0taW5rMik7Zm9udC1zaXplOjE1LjVweDttYXJnaW46NnB4IDB9Ci5zdGVwIC5ib2R5PnN0cm9uZ3tjb2xvcjp2YXIoLS1pbmspfQp1bC5jbGVhbntsaXN0LXN0eWxlOm5vbmU7cGFkZGluZzowO21hcmdpbjoxMHB4IDB9CnVsLmNsZWFuIGxpe3Bvc2l0aW9uOnJlbGF0aXZlO3BhZGRpbmctbGVmdDoyNnB4O21hcmdpbjo3cHggMDtmb250LXNpemU6MTVweDtjb2xvcjp2YXIoLS1pbmsyKX0KdWwuY2xlYW4gbGk6OmJlZm9yZXtjb250ZW50OiIiO3Bvc2l0aW9uOmFic29sdXRlO2xlZnQ6NHB4O3RvcDo5cHg7d2lkdGg6OHB4O2hlaWdodDo4cHg7Ym9yZGVyLXJhZGl1czozcHg7YmFja2dyb3VuZDp2YXIoLS1lbS1oaSl9CnVsLmNsZWFuIGxpIGJ7Y29sb3I6dmFyKC0taW5rKX0KCi5zaG90e21hcmdpbjoxNHB4IDAgNHB4O2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxOHB4O292ZXJmbG93OmhpZGRlbjtiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JveC1zaGFkb3c6MCAxcHggMnB4IHJnYmEoMTYsMjQsMjAsLjA0KSwwIDEwcHggMzBweCByZ2JhKDE2LDI0LDIwLC4wNSl9Ci5zaG90IHN2Z3tkaXNwbGF5OmJsb2NrO3dpZHRoOjEwMCU7aGVpZ2h0OmF1dG99Ci5jYXB7Zm9udC1zaXplOjEzcHg7Y29sb3I6dmFyKC0taW5rMyk7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7cGFkZGluZzo5cHggMTRweDtib3JkZXItdG9wOjFweCBkYXNoZWQgdmFyKC0tbGluZSk7YmFja2dyb3VuZDojRkJGREZCfQoKLmNhbGxvdXR7ZGlzcGxheTpmbGV4O2dhcDoxMnB4O2JvcmRlci1yYWRpdXM6MTRweDtwYWRkaW5nOjE0cHggMTZweDttYXJnaW46MTRweCAwO2ZvbnQtc2l6ZToxNC41cHh9Ci5jYWxsb3V0IC5pY3tmbGV4OjAgMCBhdXRvO2ZvbnQtc2l6ZToxOHB4O2xpbmUtaGVpZ2h0OjEuM30KLmNhbGxvdXQudGlwe2JhY2tncm91bmQ6dmFyKC0tc29mdCk7Ym9yZGVyOjFweCBzb2xpZCAjQ0RFQkREO2NvbG9yOiMxNDUwM2J9Ci5jYWxsb3V0Lndhcm57YmFja2dyb3VuZDp2YXIoLS1hbWJlci1zb2Z0KTtib3JkZXI6MXB4IHNvbGlkICNGMEQ5QTg7Y29sb3I6IzczNDQwMH0KLmNhbGxvdXQucnVsZXtiYWNrZ3JvdW5kOnZhcigtLWJsdWUtc29mdCk7Ym9yZGVyOjFweCBzb2xpZCAjQzlEQkY4O2NvbG9yOiMxNzNhN2F9CgouZGVmc3tkaXNwbGF5OmdyaWQ7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjFmciAxZnI7Z2FwOjEycHg7bWFyZ2luOjEycHggMH0KLmRlZntib3JkZXI6MXB4IHNvbGlkIHZhcigtLWxpbmUpO2JvcmRlci1yYWRpdXM6MTRweDtwYWRkaW5nOjE0cHggMTZweDtiYWNrZ3JvdW5kOnZhcigtLWNhcmQpfQouZGVmIC50e2ZvbnQtZmFtaWx5OnZhcigtLWRpc3ApO2ZvbnQtd2VpZ2h0OjcwMDtmb250LXNpemU6MTVweH0KLmRlZiAuZntmb250LWZhbWlseTp2YXIoLS1tb25vKTtmb250LXNpemU6MTJweDtjb2xvcjp2YXIoLS1lbS1kZWVwKTttYXJnaW46NHB4IDB9Ci5kZWYgLmR7Zm9udC1zaXplOjEzLjVweDtjb2xvcjp2YXIoLS1pbmsyKX0KCi5mYXF7Ym9yZGVyLXRvcDoxcHggc29saWQgdmFyKC0tbGluZSk7bWFyZ2luLXRvcDoxMHB4fQouZmFxIC5xe3BhZGRpbmc6MTRweCAwO2JvcmRlci1ib3R0b206MXB4IHNvbGlkIHZhcigtLWxpbmUpfQouZmFxIC5xIGJ7Zm9udC1mYW1pbHk6dmFyKC0tZGlzcCk7Zm9udC1zaXplOjE1LjVweH0KLmZhcSAucSBwe2NvbG9yOnZhcigtLWluazIpO2ZvbnQtc2l6ZToxNC41cHg7bWFyZ2luLXRvcDo0cHh9CgouZm9vdGVye21hcmdpbi10b3A6NDBweDtwYWRkaW5nLXRvcDoxOHB4O2JvcmRlci10b3A6MnB4IHNvbGlkIHZhcigtLWxpbmUpO2ZvbnQtc2l6ZToxM3B4O2NvbG9yOnZhcigtLWluazMpO2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjtmbGV4LXdyYXA6d3JhcDtnYXA6OHB4O2ZvbnQtZmFtaWx5OnZhcigtLW1vbm8pfQoKQG1lZGlhKG1heC13aWR0aDo2MjBweCl7LnRsZHIsLmRlZnN7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjFmcn0uY292ZXIgaDF7Zm9udC1zaXplOjMycHh9LnN0ZXB7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjQ0cHggMWZyO2dhcDoxNHB4fS5zdGVwbnVte3dpZHRoOjQwcHg7aGVpZ2h0OjQwcHg7Zm9udC1zaXplOjE5cHg7Ym9yZGVyLXJhZGl1czoxMnB4fX0KQG1lZGlhIHByaW50ewogIGJvZHl7YmFja2dyb3VuZDojZmZmfS5kb2N7bWF4LXdpZHRoOjEwMCU7cGFkZGluZzowfQogIC5jb3Zlciwuc2hvdCwuY2FsbG91dCwudGxkciAuYm94LC5kZWYsLnN0ZXBudW17LXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6ZXhhY3Q7cHJpbnQtY29sb3ItYWRqdXN0OmV4YWN0fQogIC5zdGVwLC5zaG90LC5jYWxsb3V0e2JyZWFrLWluc2lkZTphdm9pZH1oMnticmVhay1hZnRlcjphdm9pZH0KfQo8L3N0eWxlPgo8L2hlYWQ+Cjxib2R5Pgo8ZGl2IGNsYXNzPSJkb2MiPgoKICA8ZGl2IGNsYXNzPSJjb3ZlciI+CiAgICA8ZGl2IGNsYXNzPSJraWNrZXIiPkhvbWUgQWxsaWFuY2UgwrcgT2ZmaWNlIFNhbGVzPC9kaXY+CiAgICA8aDE+T2ZmaWNlIFNhbGVzLCBzdGVwIGJ5IHN0ZXA8L2gxPgogICAgPHA+SG93IHRvIGxvZyB5b3VyIHNhbGVzIGFuZCByZWFkIHlvdXIgbnVtYmVycyBpbiB0aGUgYm9hcmQg4oCUIGZvciBzYWxlc3BlcnNvbnMuIEp1c3QgZm9sbG93IHRoZSBwaWN0dXJlcy48L3A+CiAgICA8c3BhbiBjbGFzcz0icGlsbCI+8J+UkCBZb3UgZ2V0IGluIHdpdGggeW91ciBQSU4gwrcg8J+VlyBUaW1lcyBhcmUgUGFjaWZpYyAoUFNUKTwvc3Bhbj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0idGxkciI+CiAgICA8ZGl2IGNsYXNzPSJib3giPjxkaXYgY2xhc3M9Im4iPjEgwrcgT3BlbiBPZmZpY2UgU2FsZXM8L2Rpdj48ZGl2IGNsYXNzPSJ0Ij5Td2l0Y2ggd29ya3NwYWNlLCBlbnRlciB5b3VyIFBJTi48L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImJveCI+PGRpdiBjbGFzcz0ibiI+MiDCtyBMb2cgZXZlcnkgc2FsZTwvZGl2PjxkaXYgY2xhc3M9InQiPlRoZSBvbmUgaGFiaXQgdGhhdCBtYXR0ZXJzIG1vc3QuPC9kaXY+PC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib3giPjxkaXYgY2xhc3M9Im4iPjMgwrcgRmlsbCB5b3VyIG1ldHJpY3M8L2Rpdj48ZGl2IGNsYXNzPSJ0Ij5PbmUgcm93IGEgZGF5IOKAlCBpdCBzYXZlcyBpdHNlbGYuPC9kaXY+PC9kaXY+CiAgPC9kaXY+CgogIDxkaXYgY2xhc3M9InNlY3Rpb24tbGFiZWwiPkdldHRpbmcgaW48L2Rpdj4KCiAgPCEtLSBTVEVQIDEgLS0+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj4xPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPlN3aXRjaCB0byB0aGUgT2ZmaWNlIFNhbGVzIHdvcmtzcGFjZTwvaDI+CiAgICAgIDxwPkF0IHRoZSB0b3AtbGVmdCwgdGFwIHRoZSBuYW1lIDxiPkFEQyBPVVRCT1VORCDilr48L2I+IHRvIG9wZW4gdGhlIG1lbnUsIHRoZW4gY2hvb3NlIDxiPk9mZmljZSBTYWxlczwvYj4uPC9wPgogICAgICA8ZGl2IGNsYXNzPSJzaG90Ij4KICAgICAgICA8c3ZnIHZpZXdCb3g9IjAgMCA3MjAgMjEwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZvbnQtZmFtaWx5PSJJbnRlciwgc2Fucy1zZXJpZiI+CiAgICAgICAgICA8cmVjdCB3aWR0aD0iNzIwIiBoZWlnaHQ9IjIxMCIgZmlsbD0iI0Y1RjhGNiIvPgogICAgICAgICAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjcyMCIgaGVpZ2h0PSI0NiIgZmlsbD0iI2ZmZiIvPjxsaW5lIHgxPSIwIiB5MT0iNDYiIHgyPSI3MjAiIHkyPSI0NiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8Y2lyY2xlIGN4PSIyNiIgY3k9IjIzIiByPSI1IiBmaWxsPSIjMTBCOTgxIi8+PHRleHQgeD0iNDAiIHk9IjI4IiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxMyIgZmlsbD0iIzEyMjAxOSI+QURDIE9VVEJPVU5EIOKWvjwvdGV4dD4KICAgICAgICAgIDwhLS0gZHJvcGRvd24gLS0+CiAgICAgICAgICA8cmVjdCB4PSIxOCIgeT0iNTQiIHdpZHRoPSIyMzAiIGhlaWdodD0iODgiIHJ4PSIxNCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8cmVjdCB4PSIyNCIgeT0iNjAiIHdpZHRoPSIyMTgiIGhlaWdodD0iMzQiIHJ4PSI5IiBmaWxsPSIjZmZmIi8+PHRleHQgeD0iMzgiIHk9IjgyIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iNjAwIiBmaWxsPSIjMTIyMDE5Ij5BREMgT3V0Ym91bmQ8L3RleHQ+CiAgICAgICAgICA8cmVjdCB4PSIyNCIgeT0iOTgiIHdpZHRoPSIyMTgiIGhlaWdodD0iMzQiIHJ4PSI5IiBmaWxsPSIjRTRGNUVFIi8+PHRleHQgeD0iMzgiIHk9IjEyMCIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzBFOUY2RSI+T2ZmaWNlIFNhbGVzPC90ZXh0PgogICAgICAgICAgPGNpcmNsZSBjeD0iMjMwIiBjeT0iMTE1IiByPSIxMyIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjIzMCIgeT0iMTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj4yPC90ZXh0PgogICAgICAgICAgPGNpcmNsZSBjeD0iMTIwIiBjeT0iMjMiIHI9IjEzIiBmaWxsPSIjMDQ3ODU3Ii8+PHRleHQgeD0iMTIwIiB5PSIyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2ZmZiI+MTwvdGV4dD4KICAgICAgICA8L3N2Zz4KICAgICAgICA8ZGl2IGNsYXNzPSJjYXAiPuKRoCBUYXAgdGhlIG5hbWUgYXQgdG9wLWxlZnQgIOKGkiAg4pGhIENob29zZSDigJxPZmZpY2UgU2FsZXPigJ08L2Rpdj4KICAgICAgPC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPCEtLSBTVEVQIDIgLS0+CiAgPGRpdiBjbGFzcz0ic3RlcCI+CiAgICA8ZGl2IGNsYXNzPSJzdGVwbnVtIj4yPC9kaXY+CiAgICA8ZGl2IGNsYXNzPSJib2R5Ij4KICAgICAgPGgyPkVudGVyIHlvdXIgUElOPC9oMj4KICAgICAgPHA+VHlwZSB0aGUgPGI+Ni1jaGFyYWN0ZXIgUElOPC9iPiB5b3VyIGFkbWluIGdhdmUgeW91LiBJdCdzIHlvdXJzIGFsb25lIOKAlCBpdCBvcGVucyBPZmZpY2UgU2FsZXMgZm9yIHRoaXMgYnJvd3NlciBzZXNzaW9uLjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNFRUYyRUUiLz4KICAgICAgICAgIDxyZWN0IHg9IjE4MCIgeT0iNDAiIHdpZHRoPSIzNjAiIGhlaWdodD0iMTAwIiByeD0iMTQiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPgogICAgICAgICAgPHRleHQgeD0iMjAwIiB5PSI3MiIgZm9udC1zaXplPSIxMyIgZmlsbD0iIzEyMjAxOSI+RW50ZXIgeW91ciBPZmZpY2UgU2FsZXMgUElOOjwvdGV4dD4KICAgICAgICAgIDxyZWN0IHg9IjIwMCIgeT0iODQiIHdpZHRoPSIzMjAiIGhlaWdodD0iMzQiIHJ4PSI3IiBmaWxsPSIjZmZmIiBzdHJva2U9IiMyNTYzRUIiLz48dGV4dCB4PSIyMTIiIHk9IjEwNiIgZm9udC1mYW1pbHk9IkpldEJyYWlucyBNb25vIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iNjAwIiBsZXR0ZXItc3BhY2luZz0iNiIgZmlsbD0iIzEyMjAxOSI+WDdLM005PC90ZXh0PgogICAgICAgICAgPGNpcmNsZSBjeD0iMjAwIiBjeT0iMTAxIiByPSIxMyIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjIwMCIgeT0iMTA2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZmZmIj7igLo8L3RleHQ+CiAgICAgICAgPC9zdmc+CiAgICAgICAgPGRpdiBjbGFzcz0iY2FwIj5UeXBlIHlvdXIgUElOIGV4YWN0bHkgYXMgZ2l2ZW4gKENBUElUQUxTIGFyZSBmaW5lIGVpdGhlciB3YXkpLjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iY2FsbG91dCB3YXJuIj48c3BhbiBjbGFzcz0iaWMiPvCflJA8L3NwYW4+PGRpdj48Yj5LZWVwIHlvdXIgUElOIHRvIHlvdXJzZWxmLjwvYj4gSWYgaXQgZXZlciBzdG9wcyB3b3JraW5nLCB5b3VyIGFkbWluIGNhbiBpc3N1ZSB5b3UgYSBuZXcgb25lIOKAlCB0aGUgb2xkIG9uZSBpcyByZXBsYWNlZCBpbnN0YW50bHkuPC9kaXY+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0ic2VjdGlvbi1sYWJlbCI+WW91ciBkYWlseSB3b3JrPC9kaXY+CgogIDwhLS0gU1RFUCAzIC0tPgogIDxkaXYgY2xhc3M9InN0ZXAiPgogICAgPGRpdiBjbGFzcz0ic3RlcG51bSI+MzwvZGl2PgogICAgPGRpdiBjbGFzcz0iYm9keSI+CiAgICAgIDxoMj5Mb2cgZXZlcnkgc2FsZSAobW9zdCBpbXBvcnRhbnQpPC9oMj4KICAgICAgPHA+R28gdG8gdGhlIDxiPlNhbGVzIExvZzwvYj4gdGFiLiBGb3IgZWFjaCBzb2xkIGpvYiwgZmlsbCB0aGUgcm93IGFuZCB0YXAgPGI+TG9nIHNhbGU8L2I+LiBUaGlzIG9uZSBhY3Rpb24gZmVlZHMgeW91ciBTb2xkICMsIFNvbGQgJCwgY2xvc2luZyByYXRpbyBhbmQgQURMIGV2ZXJ5d2hlcmUgZWxzZSDigJQgc28gbG9nIGVhY2ggc2FsZSB0aGUgZGF5IGl0IGhhcHBlbnMuPC9wPgogICAgICA8ZGl2IGNsYXNzPSJzaG90Ij4KICAgICAgICA8c3ZnIHZpZXdCb3g9IjAgMCA3MjAgMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZvbnQtZmFtaWx5PSJJbnRlciwgc2Fucy1zZXJpZiI+CiAgICAgICAgICA8cmVjdCB3aWR0aD0iNzIwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI0Y1RjhGNiIvPgogICAgICAgICAgPCEtLSBuYXYgLS0+CiAgICAgICAgICA8cmVjdCB4PSIyMCIgeT0iMTYiIHdpZHRoPSIzMjAiIGhlaWdodD0iMjYiIHJ4PSIxMyIgZmlsbD0iI0YzRjVGMiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8dGV4dCB4PSI0MCIgeT0iMzMiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM1NjY4NjAiPkRhc2hib2FyZDwvdGV4dD48dGV4dCB4PSIxMTgiIHk9IjMzIiBmb250LXNpemU9IjExIiBmaWxsPSIjNTY2ODYwIj5EYWlseSBNZXRyaWNzPC90ZXh0PgogICAgICAgICAgPHJlY3QgeD0iMjA2IiB5PSIxOSIgd2lkdGg9IjcwIiBoZWlnaHQ9IjIwIiByeD0iMTAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjIxOCIgeT0iMzMiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPlNhbGVzIExvZzwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjI4NiIgeT0iMzMiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM1NjY4NjAiPlBlb3BsZTwvdGV4dD4KICAgICAgICAgIDwhLS0gbG9nIGEgc2FsZSBwYW5lbCAtLT4KICAgICAgICAgIDxyZWN0IHg9IjIwIiB5PSI1NiIgd2lkdGg9IjY4MCIgaGVpZ2h0PSIxMjAiIHJ4PSIxNCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8dGV4dCB4PSIzOCIgeT0iODIiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNjAwIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNTY2ODYwIj5MT0cgQSBTQUxFPC90ZXh0PgogICAgICAgICAgPGcgZm9udC1mYW1pbHk9IkludGVyIj4KICAgICAgICAgICAgPHRleHQgeD0iMzgiIHk9IjEwNCIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNTY2ODYwIj5EQVRFIE9GIFNBTEU8L3RleHQ+PHJlY3QgeD0iMzgiIHk9IjExMCIgd2lkdGg9IjExMCIgaGVpZ2h0PSIzMCIgcng9IjciIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjQ4IiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMxMjIwMTkiPjIwMjYtMDctMjM8L3RleHQ+CiAgICAgICAgICAgIDx0ZXh0IHg9IjE2MCIgeT0iMTA0IiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlNBTEVTUEVSU09OPC90ZXh0PjxyZWN0IHg9IjE2MCIgeT0iMTEwIiB3aWR0aD0iMTEwIiBoZWlnaHQ9IjMwIiByeD0iNyIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iMTcwIiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMxMjIwMTkiPkRhdmlkIOKWvjwvdGV4dD4KICAgICAgICAgICAgPHRleHQgeD0iMjgyIiB5PSIxMDQiIGZvbnQtc2l6ZT0iOSIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzU2Njg2MCI+Q1JNIEpPQiBSRUY8L3RleHQ+PHJlY3QgeD0iMjgyIiB5PSIxMTAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMzAiIHJ4PSI3IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSIyOTIiIHk9IjEzMCIgZm9udC1mYW1pbHk9IkpldEJyYWlucyBNb25vIiBmb250LXNpemU9IjExIiBmaWxsPSIjMTIyMDE5Ij5KT0ItNDgyMTM8L3RleHQ+CiAgICAgICAgICAgIDx0ZXh0IHg9IjQxNCIgeT0iMTA0IiBmb250LXNpemU9IjkiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlNBTEUgJDwvdGV4dD48cmVjdCB4PSI0MTQiIHk9IjExMCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjMwIiByeD0iNyIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iNDI0IiB5PSIxMzAiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiMxMjIwMTkiPjIsNDUwPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSI1MTYiIHk9IjExMCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjMwIiByeD0iOCIgZmlsbD0iIzEwQjk4MSIvPjx0ZXh0IHg9IjU2MSIgeT0iMTMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iU3BhY2UgR3JvdGVzayIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSIxMiIgZmlsbD0iI2ZmZiI+TG9nIHNhbGU8L3RleHQ+CiAgICAgICAgICA8L2c+CiAgICAgICAgICA8Y2lyY2xlIGN4PSI1NjEiIGN5PSIxMjUiIHI9IjEzIiBmaWxsPSIjMDQ3ODU3Ii8+PHRleHQgeD0iNTYxIiB5PSIxMzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPuKckzwvdGV4dD4KICAgICAgICA8L3N2Zz4KICAgICAgICA8ZGl2IGNsYXNzPSJjYXAiPkZpbGwgZGF0ZSDCtyB5b3VyIG5hbWUgwrcgQ1JNIHJlZmVyZW5jZSDCtyBhbW91bnQg4oaSIHRhcCDigJxMb2cgc2FsZeKAnS48L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9ImNhbGxvdXQgdGlwIj48c3BhbiBjbGFzcz0iaWMiPvCfkqE8L3NwYW4+PGRpdj5Zb3UgY2FuIDxiPmZpbHRlciwgc2VhcmNoIGJ5IENSTSByZWZlcmVuY2UsIGFuZCBFeHBvcnQgQ1NWPC9iPiBmcm9tIHRoZSBsaXN0IGJlbG93IHRoZSBmb3JtIOKAlCBoYW5keSBmb3IgbW9udGgtZW5kLjwvZGl2PjwvZGl2PgogICAgPC9kaXY+CiAgPC9kaXY+CgogIDwhLS0gU1RFUCA0IC0tPgogIDxkaXYgY2xhc3M9InN0ZXAiPgogICAgPGRpdiBjbGFzcz0ic3RlcG51bSI+NDwvZGl2PgogICAgPGRpdiBjbGFzcz0iYm9keSI+CiAgICAgIDxoMj5GaWxsIHlvdXIgRGFpbHkgTWV0cmljczwvaDI+CiAgICAgIDxwPk9wZW4gdGhlIDxiPkRhaWx5IE1ldHJpY3M8L2I+IHRhYiwgcGljayB0aGUgPGI+ZGF0ZTwvYj4sIGFuZCBmaWxsIHlvdXIgcm93OiBwb3RlbnRpYWxzLCBwcm9taXNpbmcsIHJlYWNoIGF0dGVtcHRzLCByZWFjaGVkLCBjYW5jZWxsYXRpb25zLCBlc3RpbWF0ZXMgJC4gSXQgPGI+c2F2ZXMgYXV0b21hdGljYWxseTwvYj4gd2hlbiB5b3UgY2xpY2sgb3V0IG9mIGEgYm94LjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmZmYiLz4KICAgICAgICAgIDwhLS0gaGVhZGVyIHJvdyAtLT4KICAgICAgICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI3MjAiIGhlaWdodD0iMzAiIGZpbGw9IiNGM0Y1RjIiLz4KICAgICAgICAgIDxnIGZvbnQtZmFtaWx5PSJJbnRlciIgZm9udC1zaXplPSI5IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNTY2ODYwIj4KICAgICAgICAgICAgPHRleHQgeD0iMTYiIHk9IjE5Ij5TQUxFU1BFUlNPTjwvdGV4dD48dGV4dCB4PSIxNTAiIHk9IjE5Ij5QT1RFTlRJQUxTPC90ZXh0Pjx0ZXh0IHg9IjIzOCIgeT0iMTkiPlBST01JU0lORzwvdGV4dD48dGV4dCB4PSIzMjYiIHk9IjE5Ij5BVFRFTVBUUzwvdGV4dD48dGV4dCB4PSI0MDQiIHk9IjE5Ij5SRUFDSEVEPC90ZXh0Pjx0ZXh0IHg9IjQ3NCIgeT0iMTkiPkNBTkNFTFM8L3RleHQ+PHRleHQgeD0iNTQ4IiB5PSIxOSI+RVNUICQ8L3RleHQ+CiAgICAgICAgICAgIDx0ZXh0IHg9IjYxMiIgeT0iMTkiIGZpbGw9IiMwRTlGNkUiPlNPTEQgIy8kIChhdXRvKTwvdGV4dD4KICAgICAgICAgIDwvZz4KICAgICAgICAgIDxsaW5lIHgxPSIwIiB5MT0iMzAiIHgyPSI3MjAiIHkyPSIzMCIgc3Ryb2tlPSIjRTNFOUU0Ii8+CiAgICAgICAgICA8dGV4dCB4PSIxNiIgeT0iNjQiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNzAwIiBmb250LXNpemU9IjEzIiBmaWxsPSIjMTIyMDE5Ij5EYXZpZDwvdGV4dD4KICAgICAgICAgIDxnIGZvbnQtZmFtaWx5PSJKZXRCcmFpbnMgTW9ubyIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzEyMjAxOSI+CiAgICAgICAgICAgIDxyZWN0IHg9IjE1MCIgeT0iNDgiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyNiIgcng9IjYiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjE2MCIgeT0iNjYiPjQwPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSIyMzgiIHk9IjQ4IiB3aWR0aD0iNjAiIGhlaWdodD0iMjYiIHJ4PSI2IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSIyNDgiIHk9IjY2Ij4xODwvdGV4dD4KICAgICAgICAgICAgPHJlY3QgeD0iMzI2IiB5PSI0OCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjI2IiByeD0iNiIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iMzM2IiB5PSI2NiI+NTU8L3RleHQ+CiAgICAgICAgICAgIDxyZWN0IHg9IjQwNCIgeT0iNDgiIHdpZHRoPSI1MiIgaGVpZ2h0PSIyNiIgcng9IjYiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjQxNCIgeT0iNjYiPjIyPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSI0NzQiIHk9IjQ4IiB3aWR0aD0iNTIiIGhlaWdodD0iMjYiIHJ4PSI2IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI0ODQiIHk9IjY2Ij4xPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSI1NDgiIHk9IjQ4IiB3aWR0aD0iNTQiIGhlaWdodD0iMjYiIHJ4PSI2IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI1NTYiIHk9IjY2Ij42LDkwMDwvdGV4dD4KICAgICAgICAgIDwvZz4KICAgICAgICAgIDx0ZXh0IHg9IjYyOCIgeT0iNjYiIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIiBmb250LXdlaWdodD0iNzAwIiBmb250LXNpemU9IjEzIiBmaWxsPSIjMEU5RjZFIj4yIMK3ICQyLDQ1MDwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjE2IiB5PSIxMDQiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM1NjY4NjAiPlJlYWNoIHJhdGUsIGNsb3NpbmcgcmF0aW8gYW5kIEFETCBhcHBlYXIgaGVyZSBhdXRvbWF0aWNhbGx5IOKGkjwvdGV4dD4KICAgICAgICAgIDx0ZXh0IHg9IjQ3MCIgeT0iMTA0IiBmb250LWZhbWlseT0iSmV0QnJhaW5zIE1vbm8iIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiMxMjIwMTkiPjQwJSDCtyA1LjAlIMK3ICQxLDIyNTwvdGV4dD4KICAgICAgICAgIDxjaXJjbGUgY3g9IjQ4MCIgY3k9IjYxIiByPSIxMiIgZmlsbD0iIzA0Nzg1NyIvPjx0ZXh0IHg9IjQ4MCIgeT0iNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNmZmYiPuKGtTwvdGV4dD4KICAgICAgICA8L3N2Zz4KICAgICAgICA8ZGl2IGNsYXNzPSJjYXAiPlR5cGUgeW91ciBudW1iZXJzIMK3IFNvbGQgIy8kIGNvbWUgZnJvbSB0aGUgU2FsZXMgTG9nIMK3IHJhdGVzIGNhbGN1bGF0ZSB0aGVtc2VsdmVzLjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iY2FsbG91dCB0aXAiPjxzcGFuIGNsYXNzPSJpYyI+8J+Svjwvc3Bhbj48ZGl2PlRoZXJlJ3Mgbm8g4oCcc2F2ZeKAnSBidXR0b24g4oCUIGVhY2ggYm94IDxiPnNhdmVzIGFzIHNvb24gYXMgeW91IGNsaWNrIG91dCBvZiBpdDwvYj4sIGFuZCBhIHNtYWxsIGdyZWVuIDxiPuKckzwvYj4gYXBwZWFycyBhdCB0aGUgZW5kIG9mIHlvdXIgcm93LiBUaGUgcGFnZSB3b24ndCByZWxvYWQgb3IganVtcC48L2Rpdj48L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8IS0tIFNURVAgNSAtLT4KICA8ZGl2IGNsYXNzPSJzdGVwIj4KICAgIDxkaXYgY2xhc3M9InN0ZXBudW0iPjU8L2Rpdj4KICAgIDxkaXYgY2xhc3M9ImJvZHkiPgogICAgICA8aDI+UmVhZCB5b3VyIERhc2hib2FyZDwvaDI+CiAgICAgIDxwPlRoZSA8Yj5EYXNoYm9hcmQ8L2I+IHNob3dzIHlvdXIgdG90YWxzIGZvciBhIHJhbmdlIHlvdSBjaG9vc2UgKFRvZGF5LCA3LzMwLzkwIGRheXMsIG9yIDxiPkN1c3RvbTwvYj4pLCB3aXRoIGEgYnktc2FsZXNwZXJzb24gdGFibGUsIGEgc29sZC0kLWJ5LWRheSBjaGFydCwgYW5kIGEgZnVubmVsLiBGaWx0ZXIgdG8ganVzdCB5b3Vyc2VsZiB3aXRoIHRoZSA8Yj5TYWxlc3BlcnNvbjwvYj4gYm94LjwvcD4KICAgICAgPGRpdiBjbGFzcz0ic2hvdCI+CiAgICAgICAgPHN2ZyB2aWV3Qm94PSIwIDAgNzIwIDE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBmb250LWZhbWlseT0iSW50ZXIsIHNhbnMtc2VyaWYiPgogICAgICAgICAgPHJlY3Qgd2lkdGg9IjcyMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNGNUY4RjYiLz4KICAgICAgICAgIDxnIGZvbnQtZmFtaWx5PSJTcGFjZSBHcm90ZXNrIj4KICAgICAgICAgICAgPHJlY3QgeD0iMjAiICB5PSIyMCIgd2lkdGg9IjEyMCIgaGVpZ2h0PSI1MiIgcng9IjEwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSIzMiIgeT0iNDAiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPjQwPC90ZXh0Pjx0ZXh0IHg9IjMyIiB5PSI2MCIgZm9udC1mYW1pbHk9IkludGVyIiBmb250LXNpemU9IjgiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlRPVEFMIFBPVEVOVElBTFM8L3RleHQ+CiAgICAgICAgICAgIDxyZWN0IHg9IjE1MCIgeT0iMjAiIHdpZHRoPSIxMjAiIGhlaWdodD0iNTIiIHJ4PSIxMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjRTNFOUU0Ii8+PHRleHQgeD0iMTYyIiB5PSI0MCIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzBFOUY2RSI+NDAlPC90ZXh0Pjx0ZXh0IHg9IjE2MiIgeT0iNjAiIGZvbnQtZmFtaWx5PSJJbnRlciIgZm9udC1zaXplPSI4IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjNTY2ODYwIj5SRUFDSCBSQVRFPC90ZXh0PgogICAgICAgICAgICA8cmVjdCB4PSIyODAiIHk9IjIwIiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjUyIiByeD0iMTAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI0UzRTlFNCIvPjx0ZXh0IHg9IjI5MiIgeT0iNDAiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxMjIwMTkiPjI8L3RleHQ+PHRleHQgeD0iMjkyIiB5PSI2MCIgZm9udC1mYW1pbHk9IkludGVyIiBmb250LXNpemU9IjgiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlNPTEQgIzwvdGV4dD4KICAgICAgICAgICAgPHJlY3QgeD0iNDEwIiB5PSIyMCIgd2lkdGg9IjEzMCIgaGVpZ2h0PSI1MiIgcng9IjEwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI0MjIiIHk9IjQwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMEU5RjZFIj4kMiw0NTA8L3RleHQ+PHRleHQgeD0iNDIyIiB5PSI2MCIgZm9udC1mYW1pbHk9IkludGVyIiBmb250LXNpemU9IjgiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPlNPTEQgJDwvdGV4dD4KICAgICAgICAgICAgPHJlY3QgeD0iNTUwIiB5PSIyMCIgd2lkdGg9IjE1MCIgaGVpZ2h0PSI1MiIgcng9IjEwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNFM0U5RTQiLz48dGV4dCB4PSI1NjIiIHk9IjQwIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMTIyMDE5Ij4kMSwyMjU8L3RleHQ+PHRleHQgeD0iNTYyIiB5PSI2MCIgZm9udC1mYW1pbHk9IkludGVyIiBmb250LXNpemU9IjgiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiM1NjY4NjAiPkFETDwvdGV4dD4KICAgICAgICAgIDwvZz4KICAgICAgICAgIDwhLS0gZnVubmVsIGJhcnMgLS0+CiAgICAgICAgICA8ZyBmb250LWZhbWlseT0iSW50ZXIiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM1NjY4NjAiPgogICAgICAgICAgICA8dGV4dCB4PSIyMCIgeT0iOTgiPlBvdGVudGlhbHM8L3RleHQ+PHJlY3QgeD0iMTEwIiB5PSI5MCIgd2lkdGg9IjU2MCIgaGVpZ2h0PSIxMCIgcng9IjUiIGZpbGw9IiNFRUYyRUUiLz48cmVjdCB4PSIxMTAiIHk9IjkwIiB3aWR0aD0iNTQwIiBoZWlnaHQ9IjEwIiByeD0iNSIgZmlsbD0iIzkzQzVGRCIvPgogICAgICAgICAgICA8dGV4dCB4PSIyMCIgeT0iMTE4Ij5SZWFjaGVkPC90ZXh0PjxyZWN0IHg9IjExMCIgeT0iMTEwIiB3aWR0aD0iNTYwIiBoZWlnaHQ9IjEwIiByeD0iNSIgZmlsbD0iI0VFRjJFRSIvPjxyZWN0IHg9IjExMCIgeT0iMTEwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEwIiByeD0iNSIgZmlsbD0iIzYwQTVGQSIvPgogICAgICAgICAgICA8dGV4dCB4PSIyMCIgeT0iMTM4Ij5Tb2xkPC90ZXh0PjxyZWN0IHg9IjExMCIgeT0iMTMwIiB3aWR0aD0iNTYwIiBoZWlnaHQ9IjEwIiByeD0iNSIgZmlsbD0iI0VFRjJFRSIvPjxyZWN0IHg9IjExMCIgeT0iMTMwIiB3aWR0aD0iNzAiIGhlaWdodD0iMTAiIHJ4PSI1IiBmaWxsPSIjMjU2M0VCIi8+CiAgICAgICAgICA8L2c+CiAgICAgICAgPC9zdmc+CiAgICAgICAgPGRpdiBjbGFzcz0iY2FwIj5Zb3VyIEtQSXMsIGEgZnVubmVsLCBhbmQgc29sZC0kIGJ5IGRheSDigJQgZm9yIGFueSBkYXRlIHJhbmdlIHlvdSBwaWNrLjwvZGl2PgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJzZWN0aW9uLWxhYmVsIj5XaGF0IHlvdXIgbnVtYmVycyBtZWFuPC9kaXY+CiAgPGRpdiBjbGFzcz0iZGVmcyI+CiAgICA8ZGl2IGNsYXNzPSJkZWYiPjxkaXYgY2xhc3M9InQiPlJlYWNoIHJhdGU8L2Rpdj48ZGl2IGNsYXNzPSJmIj5yZWFjaGVkIMO3IHJlYWNoIGF0dGVtcHRzPC9kaXY+PGRpdiBjbGFzcz0iZCI+SG93IG9mdGVuIHlvdXIgYXR0ZW1wdHMgYWN0dWFsbHkgZ290IGEgcGVyc29uIG9uIHRoZSBsaW5lLjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0iZGVmIj48ZGl2IGNsYXNzPSJ0Ij5DbG9zaW5nIHJhdGlvPC9kaXY+PGRpdiBjbGFzcz0iZiI+c29sZCDDtyB0b3RhbCBwb3RlbnRpYWxzPC9kaXY+PGRpdiBjbGFzcz0iZCI+SG93IG1hbnkgb2YgeW91ciBvcHBvcnR1bml0aWVzIHR1cm5lZCBpbnRvIHNhbGVzLjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0iZGVmIj48ZGl2IGNsYXNzPSJ0Ij5BREw8L2Rpdj48ZGl2IGNsYXNzPSJmIj5zb2xkICQgw7cgc29sZCAjPC9kaXY+PGRpdiBjbGFzcz0iZCI+QXZlcmFnZSBkb2xsYXJzIHBlciBzb2xkIGpvYiDigJQgeW91ciB0eXBpY2FsIHRpY2tldCBzaXplLjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0iZGVmIj48ZGl2IGNsYXNzPSJ0Ij5Tb2xkICMgLyBTb2xkICQ8L2Rpdj48ZGl2IGNsYXNzPSJmIj5mcm9tIHlvdXIgU2FsZXMgTG9nPC9kaXY+PGRpdiBjbGFzcz0iZCI+Q291bnRlZCBhdXRvbWF0aWNhbGx5IGZyb20gdGhlIHNhbGVzIHlvdSBsb2cg4oCUIHNvIGxvZyB0aGVtIGFsbC48L2Rpdj48L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0ic2VjdGlvbi1sYWJlbCI+UXVpY2sgYW5zd2VyczwvZGl2PgogIDxkaXYgY2xhc3M9ImZhcSI+CiAgICA8ZGl2IGNsYXNzPSJxIj48Yj5NeSBTb2xkIG51bWJlcnMgbG9vayB3cm9uZy48L2I+PHA+U29sZCAjLyQgY29tZSBvbmx5IGZyb20gdGhlIDxiPlNhbGVzIExvZzwvYj4uIElmIGEgc2FsZSBpcyBtaXNzaW5nLCBhZGQgaXQgdGhlcmU7IGlmIG9uZSdzIGRvdWJsZWQsIGRlbGV0ZSB0aGUgZXh0cmEgcm93LjwvcD48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InEiPjxiPkRvIEkgcHJlc3Mgc2F2ZSBvbiBEYWlseSBNZXRyaWNzPzwvYj48cD5ObyDigJQgaXQgc2F2ZXMgdGhlIG1vbWVudCB5b3UgY2xpY2sgb3V0IG9mIGEgYm94LCBhbmQgYSBncmVlbiDinJMgc2hvd3MgYXQgdGhlIGVuZCBvZiB0aGUgcm93LiBUaGVyZSdzIG5vIHNhdmUgYnV0dG9uLjwvcD48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InEiPjxiPk15IFBJTiB3b24ndCBvcGVuIE9mZmljZSBTYWxlcy48L2I+PHA+Q2hlY2sgeW91IHR5cGVkIGFsbCA2IGNoYXJhY3RlcnMuIElmIGl0IHN0aWxsIGZhaWxzLCBhc2sgeW91ciBhZG1pbiB0byBpc3N1ZSBhIG5ldyBQSU4uPC9wPjwvZGl2PgogICAgPGRpdiBjbGFzcz0icSI+PGI+Q2FuIEkgYWRkIGEgbmV3IHNhbGVzcGVyc29uIG15c2VsZj88L2I+PHA+Tm8g4oCUIG9ubHkgYW4gYWRtaW4gY2FuIGFkZCBzYWxlc3BlcnNvbnMgYW5kIGlzc3VlIFBJTnMuIEFzayB5b3VyIGFkbWluLjwvcD48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InEiPjxiPldoaWNoIGRheSBkb2VzIGEgc2FsZSBjb3VudCBvbj88L2I+PHA+VGhlIDxiPmRhdGUgb2Ygc2FsZTwvYj4geW91IHBpY2ssIGluIFBhY2lmaWMgdGltZSAoUFNUKSDigJQgdGhlIHdob2xlIGJvYXJkIHJ1bnMgb24gUFNULjwvcD48L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0iZm9vdGVyIj48c3Bhbj5Ib21lIEFsbGlhbmNlIMK3IE9mZmljZSBTYWxlcyDigJQgU2FsZXNwZXJzb24gU09QPC9zcGFuPjxzcGFuPkxvZyBldmVyeSBzYWxlIMK3IFRpbWVzIGFyZSBQU1Q8L3NwYW4+PC9kaXY+CjwvZGl2Pgo8L2JvZHk+CjwvaHRtbD4K";
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',adminSession:'adc_admin_session',salesSession:'adc_sales_session',theme:'adc_theme'};
+let sb=null;
+let STATE={agents:[],reports:[],bookings:[],view:'report',isAdmin:false,
+  scPeriod:'last7',scAgent:'all',meetPeriod:'thisweek',meetSort:'bookings',_bkFilter:'open',loaded:false};
+
+const SCHEMA_SQL=`-- Run in Supabase > SQL Editor. Full file also shipped as schema.sql
+create table if not exists agents(
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique, active boolean not null default true,
+  target_bookings int not null default 5, target_crossbookings int not null default 3,
+  sort_order int not null default 0, created_at timestamptz not null default now());
+create table if not exists daily_reports(
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references agents(id) on delete cascade,
+  report_date date not null,
+  total_calls int not null default 0, reached_contacts int not null default 0,
+  no_answer int not null default 0, not_interested int not null default 0,
+  follow_up_needed int not null default 0,
+  booked_appointments int not null default 0, cross_bookings int not null default 0, note text,
+  submitted_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+  unique(agent_id,report_date));
+-- migrations for already-deployed databases:
+alter table daily_reports add column if not exists booked_appointments int not null default 0;
+alter table daily_reports add column if not exists cross_bookings int not null default 0;
+create table if not exists bookings(
+  id uuid primary key default gen_random_uuid(),
+  agent_id uuid not null references agents(id) on delete cascade,
+  report_date date not null,
+  kind text not null check(kind in('booking','crossbooking')),
+  job_ref text not null, sale_amount numeric(12,2),
+  status text not null default 'pending' check(status in('pending','ran_not_sold','sold','cancelled')),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists app_settings(
+  key text primary key, value text, updated_at timestamptz not null default now());
+alter table agents enable row level security;
+alter table daily_reports enable row level security;
+alter table bookings enable row level security;
+alter table app_settings enable row level security;
+drop policy if exists anon_all on agents;
+create policy anon_all on agents for all using(true) with check(true);
+drop policy if exists anon_all on daily_reports;
+create policy anon_all on daily_reports for all using(true) with check(true);
+drop policy if exists anon_all on bookings;
+create policy anon_all on bookings for all using(true) with check(true);
+drop policy if exists anon_all on app_settings;
+create policy anon_all on app_settings for all using(true) with check(true);
+-- admin PIN (4271) stored as sha256 hash:
+insert into app_settings(key,value) values('admin_pin','0b94cd5e95afb17f118c0ed090fa2621bae55c692e2f7b13948c7d805985974e')
+ on conflict(key) do nothing;
+insert into agents(name,sort_order) values
+ ('Shiena',1),('Levi',2),('Reagan',3),('Jane',4),('Felicia',5),('Toni',6)
+ on conflict(name) do nothing;`;
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+const money2=v=>isFinite(v)?'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+const fmtPct=v=>isFinite(v)?(v*100).toFixed(1)+'%':'—';
+const pct=(n,d)=>d>0?(100*n/d).toFixed(1)+'%':'—';
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const todayStr=()=>iso(nowPST());
+function fillSelect(sel,items,keepFirst){const first=keepFirst&&sel.firstElementChild?sel.firstElementChild.outerHTML:'';sel.innerHTML=first+items.map(i=>`<option>${esc(i)}</option>`).join('');}
+let SP_ROWS=[];
+const SPS=()=>SP_ROWS.filter(d=>d.active!==false).map(d=>d.name);
+function refreshSpSelects(){fillSelect($('#sdashPerson'),SPS(),true);fillSelect($('#slFilterPerson'),SPS(),true);fillSelect($('#slPerson'),SPS(),false);}
+const round1=n=>isFinite(n)?Math.round(n*10)/10:0;
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className='toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2600);}
+function colorFor(name){let h=0;for(const c of(name||''))h=(h*31+c.charCodeAt(0))>>>0;return`hsl(${h%360} 52% 46%)`;}
+function initials(name){return(name||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+
+/* ---------- dates ---------- */
+const PST_TZ='America/Los_Angeles';
+function nowPST(){return new Date(new Date().toLocaleString('en-US',{timeZone:PST_TZ}));}
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>iso(nowPST());
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
+function periodRange(key,from,to){
+  const now=nowPST();now.setHours(0,0,0,0);
+  if(key==='custom')return[from||iso(addDays(now,-6)),to||iso(now),'Custom range'];
+  if(key==='yesterday'){const y=addDays(now,-1);return[iso(y),iso(y),'Yesterday'];}
+  if(key==='thisweek')return[iso(startOfWeek(now)),iso(now),'This week'];
+  if(key==='lastweek'){const s=addDays(startOfWeek(now),-7);return[iso(s),iso(addDays(s,6)),'Last week'];}
+  if(key==='thismonth')return[iso(new Date(now.getFullYear(),now.getMonth(),1)),iso(now),'This month'];
+  if(key==='lastmonth'){const s=new Date(now.getFullYear(),now.getMonth()-1,1);return[iso(s),iso(new Date(now.getFullYear(),now.getMonth(),0)),'Last month'];}
+  if(key==='last7')return[iso(addDays(now,-6)),iso(now),'Last 7 days'];
+  if(key==='last30')return[iso(addDays(now,-29)),iso(now),'Last 30 days'];
+  return[iso(addDays(now,-6)),iso(now),'Last 7 days'];
+}
+const inRange=(d,a,b)=>d>=a&&d<=b;
+
+/* ---------- theme ---------- */
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';localStorage.setItem(LS.theme,t);}
+
+/* ---------- connection ---------- */
+function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
+function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
+function setConn(ok){$('#connDot').className='dot'+(ok?' live':'');}
+function setLoggedOut(v){
+  document.body.classList.toggle('logged-out',v);
+  if(v){WS='adc';const sr=$('#salesRoot');if(sr)sr.style.display='none';const ap=$('#app');if(ap)ap.style.display='block';}
+}
+async function connect(){
+  const c=loadConf();if(!c||!c.url||!c.key){renderSetup();return false;}
+  try{sb=window.supabase.createClient(c.url,c.key);const{error}=await sb.from('agents').select('id').limit(1);if(error)throw error;setConn(true);setLoggedOut(false);return true;}
+  catch(e){setConn(false);renderSetup(e.message||'Could not reach Supabase.');return false;}
+}
+function logout(){
+  sb=null;setConn(false);
+  try{sessionStorage.removeItem(LS.adminSession);sessionStorage.removeItem(LS.salesSession);}catch(e){}
+  STATE.isAdmin=false;document.body.classList.remove('admin-on');$('#adminBtn').textContent='Admin';
+  renderSetup();
+  toast('Logged out — enter Supabase keys to continue');
+}
+async function getSetting(k){const{data}=await sb.from('app_settings').select('value').eq('key',k).maybeSingle();return data?data.value:null;}
+async function setSetting(k,v){return sb.from('app_settings').upsert({key:k,value:v,updated_at:new Date().toISOString()},{onConflict:'key'});}
+
+/* ---------- data ---------- */
+async function loadAll(){
+  const[ag,rp,bk]=await Promise.all([
+    sb.from('agents').select('*').order('sort_order'),
+    sb.from('daily_reports').select('*'),
+    sb.from('bookings').select('*')]);
+  if(ag.error||rp.error||bk.error)toast('Load failed — is the schema installed?',true);
+  STATE.agents=ag.data||[];STATE.reports=rp.data||[];STATE.bookings=bk.data||[];STATE.loaded=true;
+}
+
+/* ---------- metric engine ---------- */
+function compute(a,b,agentId){
+  const rs=STATE.reports.filter(r=>inRange(r.report_date,a,b)&&(agentId==='all'||r.agent_id===agentId));
+  const bs=STATE.bookings.filter(x=>inRange(x.report_date,a,b)&&(agentId==='all'||x.agent_id===agentId));
+  const sum=k=>rs.reduce((t,r)=>t+(+r[k]||0),0);
+  const totalCalls=sum('total_calls'),reached=sum('reached_contacts');
+  const noAnswer=sum('no_answer'),notInt=sum('not_interested'),followUp=sum('follow_up_needed');
+  // booking counts: prefer the stored aggregate on each report (set by live submit AND historical import);
+  // fall back to counting booking rows for that report when the aggregate is 0 (older rows).
+  const rowCount=(aid,d,kind)=>bs.filter(x=>x.agent_id===aid&&x.report_date===d&&x.kind===kind).length;
+  let booked=0,cross=0;
+  rs.forEach(r=>{
+    booked += (+r.booked_appointments||0) || rowCount(r.agent_id,r.report_date,'booking');
+    cross  += (+r.cross_bookings||0)      || rowCount(r.agent_id,r.report_date,'crossbooking');
+  });
+  const scheduled=booked+cross;
+  const sold=bs.filter(x=>x.status==='sold'),soldN=sold.length;
+  const runs=bs.filter(x=>x.status==='sold'||x.status==='ran_not_sold').length;
+  const cancelled=bs.filter(x=>x.status==='cancelled').length;
+  const revenue=sold.reduce((t,x)=>t+(+x.sale_amount||0),0);
+  const revenueCross=sold.filter(x=>x.kind==='crossbooking').reduce((t,x)=>t+(+x.sale_amount||0),0);
+  const leads=booked+cross;
+  return{agentsN:new Set(rs.map(r=>r.agent_id)).size,totalCalls,reached,noAnswer,notInt,followUp,
+    booked,cross,scheduled,soldN,runs,cancelled,revenue,revenueCross,leads,
+    reachRate:reached/(totalCalls||1),contactToBooking:booked/(reached||1),callToBooking:booked/(totalCalls||1),
+    adl:revenue/(leads||1),avt:revenue/(soldN||1),revPerCall:revenue/(totalCalls||1),cancelPct:cancelled/(scheduled||1)};
+}
+
+/* ---------- shell ---------- */
+function tabs(){const t=[{id:'report',label:'Report'},{id:'meeting',label:'Meeting'},{id:'scorecard',label:'Scorecard'}];if(STATE.isAdmin)t.push({id:'admin',label:'Admin'});t.push({id:'sop',label:'SOP'});return t;}
+function renderNav(){
+  const nav=$('#nav');nav.innerHTML='';
+  tabs().forEach(t=>{const b=el('button',STATE.view===t.id?'on':'',t.label);b.onclick=()=>go(t.id);nav.appendChild(b);});
+  const me=localStorage.getItem(LS.agent);$('#whoami').textContent=me?('Agent · '+me):'';
+}
+function go(view){STATE.view=view;renderNav();render();window.scrollTo({top:0,behavior:'smooth'});}
+function render(){
+  const app=$('#app');app.innerHTML='';
+  if(!STATE.loaded){app.appendChild(el('div','empty','Loading…'));return;}
+  if(STATE.view==='report')return renderReport(app);
+  if(STATE.view==='meeting')return renderMeeting(app);
+  if(STATE.view==='scorecard')return renderScorecard(app);
+  if(STATE.view==='sop')return renderSOPInto(app);
+  if(STATE.view==='admin')return STATE.isAdmin?renderAdmin(app):go('scorecard');
+}
+function head(app,eyebrow,title,sub,rightEl){
+  const h=el('div','section-head');
+  h.appendChild(el('div','',`<div class="eyebrow">${esc(eyebrow)}</div><h2>${esc(title)}</h2>`));
+  if(rightEl)h.appendChild(rightEl);app.appendChild(h);
+  if(sub)app.appendChild(el('div','sub',esc(sub)));
+}
+
+/* =========================================================================
+   SOP tab (embedded how-to guides)
+   ========================================================================= */
+function b64toUtf8(b64){const bin=atob(b64);const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));return new TextDecoder('utf-8').decode(bytes);}
+function sopHtml(which){return b64toUtf8(which==='sales'?SOP_SALES_B64:SOP_AGENT_B64);}
+function openSOP(which){
+  const html=sopHtml(which);
+  try{
+    const url=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+    const win=window.open(url,'_blank');
+    if(win){setTimeout(()=>URL.revokeObjectURL(url),60000);return;}
+    URL.revokeObjectURL(url);
+  }catch(e){}
+  try{const win=window.open('','_blank');if(win){win.document.open();win.document.write(html);win.document.close();return;}}catch(e){}
+  toast('Please allow pop-ups to open the guide',true);
+}
+function renderSOPInto(container){
+  container.innerHTML=`
+    <div class="section-head"><div><div class="eyebrow">Help</div><h2>SOP — how-to guides</h2></div></div>
+    <div class="sub">Step-by-step guides for the team. Tap <b>Open guide</b> to read full-screen in a new tab (and print if you like), or use <b>Preview</b> to read it right here.</div>
+    <div class="sop-cards">
+      <div class="sop-card">
+        <div class="sop-ic" style="background:linear-gradient(135deg,#10B981,#047857)">📞</div>
+        <h3>Dedicated Outbound Agent</h3>
+        <p>Pick your name, log the daily call numbers, add 6-character booking references, and submit.</p>
+        <div class="sop-btns"><button class="btn" data-sop-open="agent">Open guide ↗</button><button class="btn ghost" data-sop-prev="agent">Preview below</button></div>
+      </div>
+      <div class="sop-card">
+        <div class="sop-ic" style="background:linear-gradient(135deg,#3B82F6,#2563EB)">💼</div>
+        <h3>Office Sales</h3>
+        <p>Switch workspace, enter your PIN, log every sale, and fill your daily metrics.</p>
+        <div class="sop-btns"><button class="btn" data-sop-open="sales">Open guide ↗</button><button class="btn ghost" data-sop-prev="sales">Preview below</button></div>
+      </div>
+    </div>
+    <div class="sop-preview">
+      <div class="sop-preview-bar"><span id="sopPrevLabel">Preview · Dedicated Outbound Agent</span><span style="margin-left:auto">read-only preview</span></div>
+      <iframe id="sopFrame" title="SOP preview"></iframe>
+    </div>`;
+  const frame=container.querySelector('#sopFrame'), lbl=container.querySelector('#sopPrevLabel');
+  const setPrev=which=>{frame.setAttribute('srcdoc',sopHtml(which));lbl.textContent='Preview · '+(which==='sales'?'Office Sales':'Dedicated Outbound Agent');};
+  container.querySelectorAll('[data-sop-open]').forEach(b=>b.onclick=()=>openSOP(b.dataset.sopOpen));
+  container.querySelectorAll('[data-sop-prev]').forEach(b=>b.onclick=()=>setPrev(b.dataset.sopPrev));
+  setPrev('agent');
+}
+
+/* =========================================================================
+   Admin header button (PIN)
+   ========================================================================= */
+async function adminButtonClick(){
+  if(STATE.isAdmin){STATE.isAdmin=false;sessionStorage.removeItem(LS.adminSession);document.body.classList.remove('admin-on');$('#adminBtn').textContent='Admin';
+    if(WS==='sales'){showSalesTab($$('#navSales button.on')[0]?.dataset.tab||'sdash');}
+    else if(STATE.view==='admin'){go('scorecard');} else {renderNav();}
+    toast('Admin locked');return;}
+  // Touch ID / fingerprint first when enrolled on this device, else fall back to PIN
+  if(await unlockWithPasskey()){unlockAdmin();return;}
+  let stored=null;try{stored=await getSetting('admin_pin');}catch(e){}
+  if(!stored){
+    const p1=prompt('No admin PIN yet. Set one (4–6 digits):');if(p1==null)return;
+    if(!/^\d{4,6}$/.test(p1)){toast('PIN must be 4–6 digits',true);return;}
+    const p2=prompt('Confirm PIN:');if(p2!==p1){toast('PINs did not match',true);return;}
+    await setSetting('admin_pin',await sha256(p1));unlockAdmin();toast('Admin PIN set');return;
+  }
+  const pin=prompt('Enter admin PIN:');if(pin==null)return;
+  if(await sha256(pin)===stored)unlockAdmin();else toast('Wrong PIN',true);
+}
+function unlockAdmin(){
+  STATE.isAdmin=true;sessionStorage.setItem(LS.adminSession,'1');document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';
+  if(WS==='sales'){showSalesTab($$('#navSales button.on')[0]?.dataset.tab||'sdash');}
+  else{go('admin');}
+}
+
+/* =========================================================================
+   VIEW: Report
+   ========================================================================= */
+function renderReport(app){
+  const me=localStorage.getItem(LS.agent);
+  if(!me)return renderChooseAgent(app);
+  const agent=STATE.agents.find(a=>a.name===me);
+  if(!agent){localStorage.removeItem(LS.agent);return renderChooseAgent(app);}
+
+  const sw=el('button','btn ghost sm','Not you?');sw.onclick=()=>{localStorage.removeItem(LS.agent);render();renderNav();};
+  head(app,'Daily report',`Hi ${agent.name} — log today's numbers`,'Bookings and cross-bookings each need a 5-digit job reference before you can submit.',sw);
+
+  const q=compute(...periodRange('last30').slice(0,2),agent.id);
+  const kp=el('div','kpis');
+  kp.innerHTML=`${kpiCard(q.totalCalls,'Calls · 30d')}${kpiCard(q.booked,'Bookings · 30d','a')}${kpiCard(q.cross,'Cross · 30d','blue')}${kpiCard(pct(q.booked,q.reached),'Contact→bk')}`;
+  app.appendChild(kp);
+
+  const form=el('div','panel');app.appendChild(form);
+  form.appendChild(el('div','bar tight',`<div class="fld"><label>Report date</label><input type="date" id="rp_date" max="${today()}" value="${today()}"></div>`));
+
+  const fields=[['total_calls','Total Calls'],['reached_contacts','Reached Contacts'],['no_answer','No Answer'],['not_interested','Not Interested'],['follow_up_needed','Follow-Up Needed']];
+  const grid=el('div','entry-grid');grid.style.marginTop='14px';
+  fields.forEach(([k,lab])=>{const w=el('div','numwrap');w.innerHTML=`<label>${lab}</label><input inputmode="numeric" data-k="${k}" value="0">`;grid.appendChild(w);});
+  const dB=el('div','numwrap derived');dB.innerHTML=`<label>Booked Appointments</label><div class="val" id="cnt_booking">0</div>`;
+  const dC=el('div','numwrap derived cross');dC.innerHTML=`<label>Cross-Bookings</label><div class="val" id="cnt_cross">0</div>`;
+  grid.appendChild(dB);grid.appendChild(dC);form.appendChild(grid);
+
+  const bWrap=el('div','bookblock');bWrap.innerHTML=`<h4>🎯 Bookings <span class="badge booking">job ref required</span></h4>
+    <div class="hint">Add one row per booked appointment. Reference = 6 characters (letters &amp; numbers), e.g. X32RT7.</div><div id="rows_booking"></div>
+    <button class="btn ghost sm" id="add_booking">+ Add booking</button>`;
+  form.appendChild(bWrap);
+  const cWrap=el('div','bookblock cross');cWrap.innerHTML=`<h4>🔁 Cross-Bookings <span class="badge crossbooking">job ref required</span></h4>
+    <div class="hint">A booking passed to another department. Reference = 6 characters (letters &amp; numbers), e.g. X32RT7.</div><div id="rows_cross"></div>
+    <button class="btn ghost sm" id="add_cross">+ Add cross-booking</button>`;
+  form.appendChild(cWrap);
+
+  form.appendChild(el('div','',`<div class="fld" style="margin-top:14px"><label>Note (optional)</label><textarea id="rp_note" rows="2" placeholder="Anything worth flagging for the meeting…"></textarea></div>`));
+  const foot=el('div','');foot.style.cssText='display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap';
+  const submit=el('button','btn','Submit report');submit.id='rp_submit';
+  const status=el('span','count-note','');status.id='rp_status';
+  foot.appendChild(submit);foot.appendChild(status);form.appendChild(foot);
+
+  function makeRow(kind,ref){
+    const row=el('div','refrow'),list=kind==='booking'?'#rows_booking':'#rows_cross';
+    row.innerHTML=`<span class="idx"></span><input maxlength="6" placeholder="X32RT7" style="text-transform:uppercase" value="${esc(ref||'')}"><span class="state warn"></span><button class="btn ghost sm">✕</button>`;
+    const input=row.querySelector('input');
+    input.addEventListener('input',()=>{input.value=input.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,6);validate();});
+    row.querySelector('button').onclick=()=>{row.remove();reindex();validate();};
+    $(list,form).appendChild(row);reindex();validate();input.focus();
+  }
+  function reindex(){
+    ['#rows_booking','#rows_cross'].forEach(sel=>[...form.querySelectorAll(sel+' .refrow')].forEach((r,i)=>r.querySelector('.idx').textContent=i+1));
+    $('#cnt_booking',form).textContent=form.querySelectorAll('#rows_booking .refrow').length;
+    $('#cnt_cross',form).textContent=form.querySelectorAll('#rows_cross .refrow').length;
+  }
+  function validate(){
+    let ok=true,bad=0;
+    form.querySelectorAll('.refrow').forEach(r=>{const inp=r.querySelector('input'),st=r.querySelector('.state'),v=inp.value;
+      if(/^[A-Z0-9]{6}$/.test(v)){inp.classList.remove('bad');st.className='state ok';st.textContent='✓';}
+      else{inp.classList.add('bad');st.className='state warn';st.textContent=v.length?'needs 6 characters':'enter 6-char ref';ok=false;bad++;}});
+    const refs=[...form.querySelectorAll('.refrow input')].map(i=>i.value).filter(v=>/^[A-Z0-9]{6}$/.test(v));
+    const dups=refs.filter((v,i)=>refs.indexOf(v)!==i);if(dups.length)ok=false;
+    submit.disabled=!ok;
+    status.textContent=ok?'Ready to submit.':(dups.length?'Duplicate job reference — each must be unique.':(bad+' booking'+(bad>1?'s':'')+' need a valid 6-character reference.'));
+    status.style.color=ok?'var(--accent)':'var(--red)';return ok;
+  }
+  $('#add_booking',form).onclick=()=>makeRow('booking');
+  $('#add_cross',form).onclick=()=>makeRow('cross');
+
+  function loadForDate(){
+    const d=$('#rp_date',form).value;
+    const r=STATE.reports.find(x=>x.agent_id===agent.id&&x.report_date===d);
+    fields.forEach(([k])=>{form.querySelector(`[data-k="${k}"]`).value=r?(r[k]??0):0;});
+    $('#rp_note',form).value=r?(r.note||''):'';
+    form.querySelector('#rows_booking').innerHTML='';form.querySelector('#rows_cross').innerHTML='';
+    STATE.bookings.filter(x=>x.agent_id===agent.id&&x.report_date===d).forEach(x=>makeRow(x.kind==='crossbooking'?'cross':'booking',x.job_ref));
+    reindex();validate();
+    status.textContent=r?'Editing a report already saved for this date.':'New report.';status.style.color='var(--ink-2)';
+  }
+  $('#rp_date',form).onchange=loadForDate;loadForDate();
+
+  submit.onclick=async()=>{
+    if(!validate())return;submit.disabled=true;submit.textContent='Saving…';
+    const d=$('#rp_date',form).value;
+    const nBook=form.querySelectorAll('#rows_booking .refrow').length, nCross=form.querySelectorAll('#rows_cross .refrow').length;
+    const payload={agent_id:agent.id,report_date:d,note:$('#rp_note',form).value||null,booked_appointments:nBook,cross_bookings:nCross,submitted_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    fields.forEach(([k])=>payload[k]=+form.querySelector(`[data-k="${k}"]`).value||0);
+    try{
+      const{error:e1}=await sb.from('daily_reports').upsert(payload,{onConflict:'agent_id,report_date'});if(e1)throw e1;
+      await sb.from('bookings').delete().eq('agent_id',agent.id).eq('report_date',d);
+      const rows=[];
+      form.querySelectorAll('#rows_booking .refrow input').forEach(i=>rows.push({agent_id:agent.id,report_date:d,kind:'booking',job_ref:i.value}));
+      form.querySelectorAll('#rows_cross .refrow input').forEach(i=>rows.push({agent_id:agent.id,report_date:d,kind:'crossbooking',job_ref:i.value}));
+      if(rows.length){const{error:e2}=await sb.from('bookings').insert(rows);if(e2)throw e2;}
+      await loadAll();toast('Report saved for '+d);submit.textContent='Submit report';submit.disabled=false;loadForDate();
+    }catch(err){toast('Save failed: '+(err.message||err),true);submit.textContent='Submit report';submit.disabled=false;}
+  };
+}
+function kpiCard(v,l,cls){return`<div class="kpi ${cls||''}"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`;}
+function renderChooseAgent(app){
+  const wrap=el('div','center-wrap'),g=el('div','gate');
+  g.innerHTML=`<div class="lockbig">👋</div><h2>Who's reporting?</h2><p>Pick your name once — this device will remember it.</p>`;
+  const sel=el('select');sel.style.cssText='width:100%;margin-bottom:14px';
+  sel.innerHTML='<option value="">Select your name…</option>'+STATE.agents.filter(a=>a.active).map(a=>`<option>${esc(a.name)}</option>`).join('');
+  const b=el('button','btn','Continue');b.style.width='100%';
+  b.onclick=()=>{if(!sel.value){toast('Pick your name',true);return;}localStorage.setItem(LS.agent,sel.value);render();renderNav();};
+  g.appendChild(sel);g.appendChild(b);wrap.appendChild(g);app.appendChild(wrap);
+}
+
+/* =========================================================================
+   VIEW: Meeting (leaderboard + report modal)
+   ========================================================================= */
+function renderMeeting(app){
+  app.innerHTML='';
+  head(app,'Meeting','Team leaderboard','Ranked over the selected period. Click a row to open the agent report.');
+  const controls=el('div','bar');
+  const periods=[['yesterday','Yesterday'],['thisweek','This week'],['lastweek','Last week'],['thismonth','This month'],['lastmonth','Last month'],['last30','Last 30d'],['custom','Custom']];
+  const psel=el('div','',`<div class="fld"><label>Period</label></div>`);
+  const seg=el('div','');seg.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  periods.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.meetPeriod===k?' on':''),l);b.onclick=()=>{STATE.meetPeriod=k;renderMeeting(app);};seg.appendChild(b);});
+  psel.appendChild(seg);controls.appendChild(psel);
+  if(STATE.meetPeriod==='custom'){
+    const cf=el('div','fld');cf.innerHTML='<label>From</label>';const fi=el('input');fi.type='date';fi.value=STATE.meetFrom||iso(addDays(nowPST(),-6));fi.max=today();
+    fi.onchange=()=>{STATE.meetFrom=fi.value;renderMeeting(app);};cf.appendChild(fi);controls.appendChild(cf);
+    const ct=el('div','fld');ct.innerHTML='<label>To</label>';const ti=el('input');ti.type='date';ti.value=STATE.meetTo||today();ti.max=today();
+    ti.onchange=()=>{STATE.meetTo=ti.value;renderMeeting(app);};ct.appendChild(ti);controls.appendChild(ct);
+  }
+  app.appendChild(controls);
+
+  const[a,b,label]=periodRange(STATE.meetPeriod,STATE.meetFrom||iso(addDays(nowPST(),-6)),STATE.meetTo||today());
+  const team=compute(a,b,'all');
+  const kp=el('div','kpis');
+  kp.innerHTML=`${kpiCard(team.totalCalls,'Total calls')}${kpiCard(team.reached,'Reached')}${kpiCard(team.booked,'Bookings','a')}${kpiCard(team.cross,'Cross-books','blue')}${kpiCard(pct(team.booked,team.reached),'Contact→bk')}${STATE.isAdmin?kpiCard(money(team.revenue),'Revenue','a'):kpiCard(team.followUp,'Follow-ups')}`;
+  app.appendChild(kp);
+
+  const sorts=[['bookings','Bookings'],['calls','Calls'],['reach','Reach %'],['conv','Conversion']];
+  const sortbar=el('div','meet-sort');
+  sortbar.appendChild(el('span','lbl','Sort by'));
+  sorts.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.meetSort===k?' on':''),l);b.onclick=()=>{STATE.meetSort=k;renderMeeting(app);};sortbar.appendChild(b);});
+  sortbar.appendChild(el('span','meet-avg',`${label} · team reach ${pct(team.reached,team.totalCalls)}`));
+  app.appendChild(sortbar);
+
+  const active=STATE.agents.filter(a=>a.active);
+  const rows=active.map(ag=>({ag,m:compute(a,b,ag.id)}));
+  const key={bookings:x=>x.m.booked,calls:x=>x.m.totalCalls,reach:x=>x.m.reachRate,conv:x=>x.m.contactToBooking}[STATE.meetSort];
+  rows.sort((x,y)=>key(y)-key(x));
+  const teamReachShare=team.reached/(team.totalCalls||1);
+
+  const list=el('div','meet-list');
+  if(!rows.length)list.appendChild(el('div','empty','No active agents. Add them in Admin.'));
+  rows.forEach((r,i)=>{
+    const m=r.m,tot=m.totalCalls||1;
+    const w1=100*m.reached/tot,w2=100*m.noAnswer/tot,w3=100*m.notInt/tot;
+    const conv=m.contactToBooking;
+    const convCls=conv>=.15?'tp-good':conv>=.08?'tp-mid':conv>0?'tp-bad':'tp-none';
+    const row=el('button','lb-row');
+    row.innerHTML=`
+      <span class="lb-rank">${i+1}</span>
+      <span class="lb-avatar">${initials(r.ag.name)}</span>
+      <span class="lb-main">
+        <span class="lb-name">${esc(r.ag.name)}</span>
+        <span class="mix-bar">
+          <span class="seg p1" style="left:0;width:${w1}%"></span>
+          <span class="seg p2" style="left:${w1}%;width:${w2}%"></span>
+          <span class="seg p3" style="left:${w1+w2}%;width:${w3}%"></span>
+          <span class="avg-tick" style="left:${Math.min(100,100*teamReachShare)}%"></span>
+        </span>
+        <span class="mix-legend">Reached ${m.reached} · No ans ${m.noAnswer} · Not int ${m.notInt}</span>
+      </span>
+      <span class="lb-stat calls"><span class="v">${m.totalCalls}</span><span class="l">Calls</span></span>
+      <span class="lb-stat bk"><span class="v" style="color:var(--accent)">${m.booked}</span><span class="l">Bookings</span></span>
+      <span class="lb-stat conv"><span class="v ${convCls}">${pct(m.booked,m.reached)}</span><span class="l">Contact→bk</span></span>
+      <span class="lb-go">→</span>`;
+    row.onclick=()=>openReport(rows,i,a,b,label);
+    list.appendChild(row);
+  });
+  app.appendChild(list);
+}
+function openReport(rows,idx,a,b,label){
+  const root=$('#repRoot');
+  function draw(i){
+    const r=rows[i],m=r.m,ag=r.ag;
+    const target=(ag.target_bookings*(STATE.meetPeriod==='last30'?4:1))||1;
+    const prog=Math.min(100,100*m.booked/target);
+    const recent=STATE.bookings.filter(x=>x.agent_id===ag.id&&inRange(x.report_date,a,b)).sort((x,y)=>y.report_date.localeCompare(x.report_date));
+    root.innerHTML=`<div class="rep">
+      <div class="rep-top">
+        <div class="rep-avatar" style="background:${colorFor(ag.name)}">${initials(ag.name)}</div>
+        <div class="rep-title"><div class="nm">${esc(ag.name)}</div><div class="dt">${label} · ${a} → ${b}</div></div>
+        <div class="rep-nav">
+          <button class="btn ghost" id="rp_prev">‹</button>
+          <button class="btn ghost" id="rp_next">›</button>
+          <button class="rep-close" id="rp_close">×</button>
+        </div>
+      </div>
+      <div class="rep-kpis">
+        <div class="rep-kpi"><div class="v">${m.totalCalls}</div><div class="l">Total calls</div></div>
+        <div class="rep-kpi"><div class="v">${m.reached}</div><div class="l">Reached (${pct(m.reached,m.totalCalls)})</div></div>
+        <div class="rep-kpi hi"><div class="v">${m.booked}</div><div class="l">Bookings</div></div>
+        <div class="rep-kpi blue"><div class="v">${m.cross}</div><div class="l">Cross-books</div></div>
+        <div class="rep-kpi"><div class="v">${pct(m.booked,m.reached)}</div><div class="l">Contact→bk</div></div>
+        <div class="rep-kpi hi"><div class="v">${m.soldN}</div><div class="l">Sold jobs</div></div>
+        <div class="rep-kpi hi"><div class="v">${money(m.revenue)}</div><div class="l">Revenue</div></div>
+        <div class="rep-kpi"><div class="v">${money(m.avt)}</div><div class="l">AVT</div></div>
+      </div>
+      <div class="rep-body">
+        <div class="hintrow"><span>Bookings vs target (${target})</span><span>${m.booked}/${target}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${prog}%"></div></div>
+        <h3>Bookings in period</h3>
+        ${recent.length?`<div class="twrap"><table><thead><tr><th>Date</th><th>Type</th><th>Job ref</th><th>Status</th><th>Amount</th></tr></thead><tbody>
+          ${recent.map(x=>`<tr><td>${x.report_date}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td>
+            <td class="jobref">${esc(x.job_ref)}</td><td><span class="badge ${x.status}">${x.status.replace('_',' ')}</span></td>
+            <td>${x.sale_amount!=null?money(x.sale_amount):'—'}</td></tr>`).join('')}
+        </tbody></table></div>`:'<div class="empty">No bookings in this period.</div>'}
+      </div>
+    </div>`;
+    root.classList.add('show');
+    $('#rp_close',root).onclick=close;
+    $('#rp_prev',root).onclick=()=>draw((i-1+rows.length)%rows.length);
+    $('#rp_next',root).onclick=()=>draw((i+1)%rows.length);
+  }
+  function close(){root.classList.remove('show');root.innerHTML='';document.removeEventListener('keydown',onKey);}
+  function onKey(e){if(e.key==='Escape')close();if(e.key==='ArrowLeft')$('#rp_prev',root)?.click();if(e.key==='ArrowRight')$('#rp_next',root)?.click();}
+  root.onclick=e=>{if(e.target===root)close();};
+  document.addEventListener('keydown',onKey);
+  draw(idx);
+}
+
+/* =========================================================================
+   VIEW: Scorecard
+   ========================================================================= */
+function renderScorecard(app){
+  app.innerHTML='';
+  head(app,'Performance','Scorecard','Filter by period and agent. Revenue metrics fill in once bookings are marked sold in Admin.');
+  const controls=el('div','bar');
+  const periods=[['yesterday','Yesterday'],['thisweek','This week'],['lastweek','Last week'],['thismonth','This month'],['lastmonth','Last month'],['last30','Last 30d'],['custom','Custom']];
+  const seg=el('div','');seg.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  periods.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.scPeriod===k?' on':''),l);b.onclick=()=>{STATE.scPeriod=k;renderScorecard(app);};seg.appendChild(b);});
+  const pf=el('div','fld');pf.innerHTML='<label>Period</label>';pf.appendChild(seg);controls.appendChild(pf);
+  if(STATE.scPeriod==='custom'){
+    const cf=el('div','fld');cf.innerHTML='<label>From</label>';const fi=el('input');fi.type='date';fi.value=STATE.scFrom||iso(addDays(nowPST(),-6));fi.max=today();
+    fi.onchange=()=>{STATE.scFrom=fi.value;renderScorecard(app);};cf.appendChild(fi);controls.appendChild(cf);
+    const ct=el('div','fld');ct.innerHTML='<label>To</label>';const ti=el('input');ti.type='date';ti.value=STATE.scTo||today();ti.max=today();
+    ti.onchange=()=>{STATE.scTo=ti.value;renderScorecard(app);};ct.appendChild(ti);controls.appendChild(ct);
+  }
+  const af=el('div','fld');af.innerHTML='<label>Agent</label>';
+  const asel=el('select');asel.innerHTML='<option value="all">All agents</option>'+STATE.agents.map(a=>`<option value="${a.id}" ${STATE.scAgent===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  asel.onchange=()=>{STATE.scAgent=asel.value;renderScorecard(app);};af.appendChild(asel);controls.appendChild(af);
+  app.appendChild(controls);
+
+  const[a,b,label]=periodRange(STATE.scPeriod,STATE.scFrom||iso(addDays(nowPST(),-6)),STATE.scTo||today()),m=compute(a,b,STATE.scAgent);
+  app.appendChild(el('div','count-note',`${label}: ${a} → ${b}`));
+
+  app.appendChild(scGroup('Activity',[
+    mt('Number of Agents',m.agentsN),mt('Total Calls',m.totalCalls),mt('Reached Contacts',m.reached,pct(m.reached,m.totalCalls)+' reach rate'),
+    mt('No Answer',m.noAnswer),mt('Not Interested',m.notInt),mt('Follow-Up Needed',m.followUp)]));
+  app.appendChild(scGroup('Lead conversion',[
+    mt('Contact→booking',pct(m.booked,m.reached),null,'a','Booked appointments ÷ reached contacts'),
+    mt('Call→booking',pct(m.booked,m.totalCalls),null,'a','Booked appointments ÷ total calls'),
+    mt('Booked Appointments',m.booked,null,'a'),mt('Cross-Bookings',m.cross,null,'blue')]));
+  app.appendChild(scGroup('Sales',[
+    mt('Sold jobs',m.soldN,null,'a'),mt('Revenue',money(m.revenue),null,'a'),mt('Revenue — cross-books',money(m.revenueCross),null,'a'),
+    mt('ADL',money(m.adl),null,null,'Revenue ÷ leads (bookings + cross-bookings)'),
+    mt('AVT',money(m.avt),null,null,'Revenue ÷ sold jobs (avg value per ticket)'),
+    mt('Revenue per call',m.totalCalls?('$'+round1(m.revPerCall)):'—',null,null,'Revenue ÷ total calls')]));
+  app.appendChild(scGroup('Operations',[
+    mt('Runs',m.runs,null,null,'Jobs that went out (sold + ran, not sold)'),mt('Sold jobs',m.soldN,null,'a'),mt('Cross-Bookings',m.cross,null,'blue'),
+    mt('Cancellations',m.cancelled,null,'c'),mt('Cancellation %',pct(m.cancelled,m.scheduled),null,'c','Cancelled ÷ jobs scheduled'),
+    mt('Jobs Scheduled',m.scheduled,null,null,'All appointments booked (bookings + cross)')]));
+
+  if(!STATE.isAdmin)app.appendChild(el('div','panel',`<div style="font-size:13px;color:var(--ink-2)">💡 Sale amounts, sold/cancelled status and Runs are set in <b>Admin</b> (unlock with PIN, top-right). Until then, revenue-based metrics read $0.</div>`));
+}
+function scGroup(lab,items){const g=el('div','sc-group');g.innerHTML=`<div class="lab">${esc(lab)}</div>`;const grid=el('div','kpis');grid.style.marginBottom='0';items.forEach(i=>grid.appendChild(i));g.appendChild(grid);return g;}
+function mt(lab,val,sub,cls,tip){
+  const m=el('div','kpi '+(cls||''));
+  m.innerHTML=`<div class="v">${val}</div><div class="l">${esc(lab)}${tip?`<span class="tip" data-tip="${esc(tip)}">?</span>`:''}</div>${sub?`<div class="count-note" style="margin-top:4px">${esc(sub)}</div>`:''}`;
+  return m;
+}
+
+/* =========================================================================
+   VIEW: Admin
+   ========================================================================= */
+function renderAdmin(app){
+  app.innerHTML='';
+  head(app,'Consolidated view','Admin','Sale amounts, job status, agents and connection settings.');
+  const s3=el('div','summary3');
+  [['yesterday','Yesterday'],['lastweek','Last week'],['lastmonth','Last month']].forEach(([k,l])=>{
+    const[a,b]=periodRange(k),m=compute(a,b,'all'),c=el('div','panel');c.style.margin='0';
+    c.innerHTML=`<div class="eyebrow">${esc(l)}</div><div style="font-family:var(--disp);font-size:34px;font-weight:700;letter-spacing:-1px">${m.totalCalls}<span style="font-size:14px;color:var(--ink-3);font-weight:600"> calls</span></div>
+      <div class="sumline"><span>Reached</span><b>${m.reached}</b></div>
+      <div class="sumline"><span>Bookings</span><b>${m.booked}</b></div>
+      <div class="sumline"><span>Cross-books</span><b>${m.cross}</b></div>
+      <div class="sumline"><span>Sold jobs</span><b>${m.soldN}</b></div>
+      <div class="sumline"><span>Revenue</span><b>${money(m.revenue)}</b></div>
+      <div class="sumline"><span>Cancellations</span><b>${m.cancelled}</b></div>`;
+    s3.appendChild(c);
+  });
+  app.appendChild(s3);
+  app.appendChild(renderAdminEntries(app));
+
+  const hd=el('div','section-head');hd.style.marginTop='22px';
+  hd.appendChild(el('div','',`<h2 style="font-size:19px">Bookings — sale amount & status</h2>`));
+  const filt=el('div','');filt.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  [['open','Needs review'],['all','All'],['sold','Sold'],['cancelled','Cancelled']].forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE._bkFilter===k?' on':''),l);b.onclick=()=>{STATE._bkFilter=k;renderAdmin(app);};filt.appendChild(b);});
+  hd.appendChild(filt);app.appendChild(hd);
+
+  let list=[...STATE.bookings].sort((x,y)=>y.report_date.localeCompare(x.report_date));
+  if(STATE._bkFilter==='open')list=list.filter(x=>x.status==='pending');
+  else if(STATE._bkFilter==='sold')list=list.filter(x=>x.status==='sold');
+  else if(STATE._bkFilter==='cancelled')list=list.filter(x=>x.status==='cancelled');
+  const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  const wrap=el('div','twrap');wrap.style.marginBottom='16px';
+  if(!list.length)wrap.appendChild(el('div','empty','Nothing here.'));
+  else{
+    const t=el('table');t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Type</th><th>Job ref</th><th>Status</th><th>Sale amount</th><th></th></tr></thead>`;
+    const tb=el('tbody');
+    list.slice(0,400).forEach(x=>{
+      const tr=el('tr');
+      tr.innerHTML=`<td>${x.report_date}</td><td>${esc(nameOf(x.agent_id))}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td><td class="jobref">${esc(x.job_ref)}</td>`;
+      const tdS=el('td'),sel=el('select','st-select');
+      ['pending','sold','ran_not_sold','cancelled'].forEach(s=>{const o=el('option',null,s.replace('_',' '));o.value=s;if(x.status===s)o.selected=true;sel.appendChild(o);});
+      sel.onchange=async()=>{await updateBooking(x.id,{status:sel.value,updated_at:new Date().toISOString()});toast('Status updated');};
+      tdS.appendChild(sel);tr.appendChild(tdS);
+      const tdA=el('td'),amt=el('input','amt-input');amt.type='number';amt.step='1';amt.placeholder='0';amt.value=x.sale_amount??'';
+      amt.onchange=async()=>{const v=amt.value===''?null:+amt.value;const patch={sale_amount:v,updated_at:new Date().toISOString()};if(v!=null&&x.status==='pending')patch.status='sold';await updateBooking(x.id,patch);toast('Amount saved');renderAdmin(app);};
+      tdA.appendChild(amt);tr.appendChild(tdA);
+      const tdD=el('td'),del=el('button','rm','✕');del.title='Delete this booking';
+      del.onclick=async()=>{if(!confirm('Delete booking '+x.job_ref+'? This also updates the booking count for that day.'))return;await deleteBooking(x);renderAdmin(app);toast('Booking deleted');};
+      tdD.appendChild(del);tr.appendChild(tdD);tb.appendChild(tr);
+    });
+    t.appendChild(tb);wrap.appendChild(t);
+  }
+  app.appendChild(wrap);
+  app.appendChild(renderAdminAgents(app));
+  app.appendChild(renderAdminSettings());
+}
+async function updateBooking(id,patch){const{error}=await sb.from('bookings').update(patch).eq('id',id);if(error){toast('Update failed: '+error.message,true);return;}Object.assign(STATE.bookings.find(x=>x.id===id),patch);}
+async function deleteBooking(x){
+  const{error}=await sb.from('bookings').delete().eq('id',x.id);
+  if(error){toast('Delete failed: '+error.message,true);return;}
+  const remaining=STATE.bookings.filter(b=>b.id!==x.id&&b.agent_id===x.agent_id&&b.report_date===x.report_date);
+  const nb=remaining.filter(b=>b.kind==='booking').length,nc=remaining.filter(b=>b.kind==='crossbooking').length;
+  await sb.from('daily_reports').update({booked_appointments:nb,cross_bookings:nc,updated_at:new Date().toISOString()}).eq('agent_id',x.agent_id).eq('report_date',x.report_date);
+  await loadAll();
+}
+async function deleteReport(r){
+  await sb.from('bookings').delete().eq('agent_id',r.agent_id).eq('report_date',r.report_date);
+  const{error}=await sb.from('daily_reports').delete().eq('id',r.id);
+  if(error){toast('Delete failed: '+error.message,true);return;}
+  await loadAll();
+}
+
+/* ---- Admin: edit/delete CSR daily entries ---- */
+function renderAdminEntries(app){
+  const box=el('div','panel');box.style.marginTop='22px';
+  const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Daily entries — edit / delete</h2><div class="sub" style="margin-bottom:14px">Fix or remove a report a CSR logged by mistake. Deleting a day also removes that day's bookings.</div>`;
+  const bar=el('div','bar');
+  const f=el('div','fld');f.innerHTML='<label>Agent</label>';
+  const asel=el('select');asel.innerHTML='<option value="all">All agents</option>'+STATE.agents.map(a=>`<option value="${a.id}" ${STATE._entAgent===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  asel.onchange=()=>{STATE._entAgent=asel.value;renderAdmin(app);};f.appendChild(asel);bar.appendChild(f);box.appendChild(bar);
+  let list=[...STATE.reports].sort((x,y)=>y.report_date.localeCompare(x.report_date));
+  if(STATE._entAgent&&STATE._entAgent!=='all')list=list.filter(r=>r.agent_id===STATE._entAgent);
+  const wrap=el('div','twrap');
+  if(!list.length)wrap.appendChild(el('div','empty','No entries yet.'));
+  else{
+    const t=el('table');
+    t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Calls</th><th>Reached</th><th>No ans</th><th>Not int</th><th>Follow</th><th>Bk</th><th>Cross</th><th></th></tr></thead>`;
+    const tb=el('tbody');
+    list.slice(0,300).forEach(r=>{
+      const tr=el('tr');
+      tr.innerHTML=`<td>${r.report_date}</td><td>${esc(nameOf(r.agent_id))}</td>
+        <td class="num">${r.total_calls}</td><td class="num">${r.reached_contacts}</td><td class="num">${r.no_answer}</td>
+        <td class="num">${r.not_interested}</td><td class="num">${r.follow_up_needed}</td>
+        <td class="num">${r.booked_appointments||0}</td><td class="num">${r.cross_bookings||0}</td>`;
+      const tdX=el('td');tdX.style.whiteSpace='nowrap';
+      const edit=el('button','btn ghost sm','Edit');edit.onclick=()=>openEntryEdit(r,app);
+      const del=el('button','btn danger sm','Delete');del.style.marginLeft='6px';
+      del.onclick=async()=>{if(!confirm('Delete the report for '+r.report_date+' ('+nameOf(r.agent_id)+')? This removes the day and its bookings.'))return;await deleteReport(r);renderAdmin(app);toast('Entry deleted');};
+      tdX.appendChild(edit);tdX.appendChild(del);tr.appendChild(tdX);tb.appendChild(tr);
+    });
+    t.appendChild(tb);wrap.appendChild(t);
+  }
+  box.appendChild(wrap);return box;
+}
+function openEntryEdit(r,app){
+  const root=$('#repRoot');const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
+  const fields=[['total_calls','Total Calls'],['reached_contacts','Reached'],['no_answer','No Answer'],['not_interested','Not Interested'],['follow_up_needed','Follow-Up'],['booked_appointments','Booked'],['cross_bookings','Cross']];
+  const hasRows=STATE.bookings.some(b=>b.agent_id===r.agent_id&&b.report_date===r.report_date);
+  root.innerHTML=`<div class="rep" style="width:min(620px,100%)">
+    <div class="rep-top"><div class="rep-title"><div class="nm" style="font-size:22px">Edit entry</div><div class="dt">${esc(nameOf(r.agent_id))} · ${r.report_date}</div></div>
+      <div class="rep-nav"><button class="rep-close" id="ee_close">×</button></div></div>
+    <div class="rep-body">
+      <div class="entry-grid">${fields.map(([k,l])=>`<div class="numwrap"><label>${l}</label><input inputmode="numeric" data-k="${k}" value="${r[k]??0}"></div>`).join('')}</div>
+      ${hasRows?`<div class="count-note" style="margin-top:10px;color:var(--amber)">⚠ This day has booking rows with job refs. Editing Booked/Cross here overrides the counts; delete individual bookings above to keep them in sync.</div>`:''}
+      <div class="fld" style="margin-top:14px"><label>Note</label><textarea id="ee_note" rows="2">${esc(r.note||'')}</textarea></div>
+      <div class="ef-actions" style="margin-top:16px"><button class="btn" id="ee_save">Save changes</button><button class="btn ghost" id="ee_cancel">Cancel</button></div>
+    </div></div>`;
+  root.classList.add('show');
+  const close=()=>{root.classList.remove('show');root.innerHTML='';};
+  $('#ee_close',root).onclick=close;$('#ee_cancel',root).onclick=close;
+  root.onclick=e=>{if(e.target===root)close();};
+  $('#ee_save',root).onclick=async()=>{
+    const patch={note:$('#ee_note',root).value||null,updated_at:new Date().toISOString()};
+    root.querySelectorAll('[data-k]').forEach(i=>patch[i.dataset.k]=+i.value||0);
+    const{error}=await sb.from('daily_reports').update(patch).eq('id',r.id);
+    if(error){toast('Save failed: '+error.message,true);return;}
+    await loadAll();close();renderAdmin(app);toast('Entry updated');
+  };
+}
+
+/* ---- WebAuthn (Touch ID / fingerprint) — optional quick-unlock after PIN ---- */
+const b64u={enc:buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec:s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0));}};
+async function getPasskeys(){try{const v=await getSetting('admin_passkeys');return v?JSON.parse(v):[];}catch(e){return[];}}
+function webauthnAvailable(){return !!(window.PublicKeyCredential&&navigator.credentials);}
+async function enrollPasskey(){
+  if(!webauthnAvailable()){toast('This device/browser has no passkey support',true);return;}
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:'ADC Outbound'},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'admin',displayName:'ADC Admin'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{userVerification:'required'},timeout:60000,attestation:'none'}});
+    const id=b64u.enc(cred.rawId);
+    const list=await getPasskeys();if(!list.includes(id))list.push(id);
+    await setSetting('admin_passkeys',JSON.stringify(list));
+    toast('Touch ID enabled on this device');
+  }catch(e){toast('Touch ID setup cancelled',true);}
+}
+async function unlockWithPasskey(){
+  const list=await getPasskeys();if(!list.length||!webauthnAvailable())return false;
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:list.map(id=>({type:'public-key',id:b64u.dec(id)})),
+      userVerification:'required',timeout:60000}});
+    return true;
+  }catch(e){return false;}
+}
+function renderAdminAgents(app){
+  const box=el('div','panel');
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Agents</h2><div class="sub" style="margin-bottom:14px">Add agents and set weekly targets.</div>`;
+  const wrap=el('div','twrap');const t=el('table');
+  t.innerHTML=`<thead><tr><th>Name</th><th>Active</th><th>Target bookings</th><th>Target cross</th><th></th></tr></thead>`;
+  const tb=el('tbody');
+  STATE.agents.forEach(a=>{
+    const tr=el('tr');tr.innerHTML=`<td><b>${esc(a.name)}</b></td>`;
+    const tdAct=el('td'),chk=el('input');chk.type='checkbox';chk.checked=a.active;chk.style.cssText='width:auto;padding:0';
+    chk.onchange=async()=>{await sb.from('agents').update({active:chk.checked}).eq('id',a.id);a.active=chk.checked;toast('Saved');};
+    tdAct.appendChild(chk);tr.appendChild(tdAct);
+    ['target_bookings','target_crossbookings'].forEach(k=>{const td=el('td'),inp=el('input','amt-input');inp.type='number';inp.value=a[k];inp.style.width='70px';
+      inp.onchange=async()=>{await sb.from('agents').update({[k]:+inp.value}).eq('id',a.id);a[k]=+inp.value;toast('Saved');};td.appendChild(inp);tr.appendChild(td);});
+    const tdX=el('td'),del=el('button','btn danger sm','Remove');
+    del.onclick=async()=>{if(!confirm('Remove '+a.name+'? Their reports & bookings are deleted.'))return;await sb.from('agents').delete().eq('id',a.id);await loadAll();renderAdmin(app);toast('Removed');};
+    tdX.appendChild(del);tr.appendChild(tdX);tb.appendChild(tr);
+  });
+  t.appendChild(tb);wrap.appendChild(t);box.appendChild(wrap);
+  const add=el('div','bar');add.style.marginTop='14px';
+  add.innerHTML=`<div class="fld"><label>New agent</label><input id="new_agent" placeholder="Name"></div>`;
+  const btn=el('button','btn','Add agent');
+  btn.onclick=async()=>{const n=$('#new_agent',box).value.trim();if(!n)return;const{error}=await sb.from('agents').insert({name:n,sort_order:STATE.agents.length+1});if(error){toast(error.message,true);return;}await loadAll();renderAdmin(app);toast('Agent added');};
+  add.appendChild(btn);box.appendChild(add);return box;
+}
+function renderAdminSettings(){
+  const box=el('div','panel');const c=loadConf()||{};
+  box.innerHTML=`<h2 style="font-size:19px;margin-bottom:2px">Connection & security</h2><div class="sub" style="margin-bottom:14px">Supabase project this board reads and writes.</div>
+    <div class="sumline" style="border-top:0"><span>Supabase URL</span><b>${esc(c.url||'—')}</b></div>
+    <div class="sumline"><span>Admin PIN</span><b>set</b></div>`;
+  const btns=el('div','bar');btns.style.marginTop='14px';
+  const b1=el('button','btn ghost','Change admin PIN');b1.onclick=changePinFlow;
+  const bFP=el('button','btn','👆 Enable Touch ID on this device');
+  bFP.onclick=async()=>{await enrollPasskey();renderAdmin($('#app'));};
+  const b2=el('button','btn danger','Lock admin');b2.onclick=adminButtonClick;
+  const b3=el('button','btn ghost','Change Supabase keys');b3.onclick=()=>renderSetup();
+  btns.appendChild(b1);btns.appendChild(bFP);btns.appendChild(b2);btns.appendChild(b3);box.appendChild(btns);
+  getPasskeys().then(list=>{
+    const note=el('div','count-note');note.style.marginTop='10px';
+    note.textContent=list.length?`Touch ID is enabled (${list.length} device passkey${list.length>1?'s':''}). Unlock tries Touch ID first, then falls back to the PIN.`:(webauthnAvailable()?'Touch ID not set up yet. Enable it above for one-tap unlock; the PIN always works as a fallback.':'This browser has no fingerprint/passkey support; use the PIN.');
+    box.appendChild(note);
+    if(list.length){const clr=el('button','btn ghost sm','Remove Touch ID from this project');clr.style.marginTop='10px';
+      clr.onclick=async()=>{if(!confirm('Remove all Touch ID passkeys?'))return;await setSetting('admin_passkeys','[]');toast('Touch ID removed');renderAdmin($('#app'));};box.appendChild(clr);}
+  });
+  return box;
+}
+async function changePinFlow(){
+  const cur=prompt('Enter current admin PIN:');if(cur==null)return;
+  const stored=await getSetting('admin_pin');if(stored&&await sha256(cur)!==stored){toast('Wrong PIN',true);return;}
+  const p1=prompt('New PIN (4–6 digits):');if(p1==null)return;if(!/^\d{4,6}$/.test(p1)){toast('PIN must be 4–6 digits',true);return;}
+  const p2=prompt('Confirm new PIN:');if(p2!==p1){toast('PINs did not match',true);return;}
+  await setSetting('admin_pin',await sha256(p1));toast('PIN updated');
+}
+
+/* =========================================================================
+   Setup
+   ========================================================================= */
+function renderSetup(errMsg){
+  setLoggedOut(true);
+  const app=$('#app');app.innerHTML='';const c=loadConf()||{};
+  const wrap=el('div','center-wrap'),g=el('div','gate');g.style.maxWidth='560px';
+  g.innerHTML=`<div class="lockbig">🔌</div><h2>Connect Supabase</h2>
+    <p>Paste your project URL and <b>anon public</b> key (Supabase → Project Settings → API). Stored on this device only.</p>
+    ${errMsg?`<div class="badge cancelled" style="display:block;padding:8px;margin-bottom:12px">${esc(errMsg)}</div>`:''}
+    <div style="text-align:left">
+      <div class="fld" style="margin-bottom:12px"><label>Project URL</label><input id="cf_url" placeholder="https://xxxx.supabase.co" value="${esc(c.url||'')}"></div>
+      <div class="fld" style="margin-bottom:16px"><label>Anon public key</label><input id="cf_key" placeholder="eyJhbGciOi…" value="${esc(c.key||'')}"></div></div>`;
+  const save=el('button','btn','Connect');save.style.width='100%';
+  save.onclick=async()=>{const url=$('#cf_url',g).value.trim().replace(/\/$/,''),key=$('#cf_key',g).value.trim();
+    if(!url||!key){toast('Both fields required',true);return;}saveConf({url,key});save.textContent='Connecting…';if(await connect())await boot();};
+  g.appendChild(save);
+  const det=el('details','');det.style.cssText='margin-top:18px;text-align:left';
+  det.innerHTML=`<summary style="cursor:pointer;font-size:13px;color:var(--ink-2)">Step 1 — run this SQL in Supabase first</summary><div class="codebox" style="margin-top:10px">${esc(SCHEMA_SQL)}</div>`;
+  g.appendChild(det);wrap.appendChild(g);app.appendChild(wrap);
+}
+
+/* =========================================================================
+   Boot
+   ========================================================================= */
+async function boot(){
+  if(sessionStorage.getItem(LS.adminSession)==='1'){STATE.isAdmin=true;document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';}
+  renderNav();await loadAll();render();
+}
+/* =========================================================================
+   WORKSPACE SWITCHER  (ADC Outbound  ·  Office Sales)
+   ========================================================================= */
+let WS='adc', salesBooted=false;
+async function salesGateOK(){
+  if(STATE.isAdmin)return true;                                   // platform admin bypasses
+  if(sessionStorage.getItem(LS.salesSession))return true;         // already unlocked this session
+  const pin=prompt('Enter your Office Sales PIN:');if(pin==null)return false;
+  const clean=pin.trim().toUpperCase();
+  try{
+    const{data,error}=await sb.from('salespersons').select('name,active').eq('pin',clean).limit(1);
+    if(error)throw error;
+    if(data&&data.length&&data[0].active!==false){sessionStorage.setItem(LS.salesSession,data[0].name);toast('Welcome, '+data[0].name);return true;}
+  }catch(e){toast('Could not verify PIN: '+(e.message||e),true);return false;}
+  toast('Incorrect PIN',true);return false;
+}
+async function setWorkspace(ws){
+  const target=(ws==='sales')?'sales':'adc';
+  if(target==='sales'){ const ok=await salesGateOK(); if(!ok){ $$('#wsMenu button').forEach(b=>b.classList.toggle('on',b.dataset.ws===WS)); return; } }
+  WS=target;
+  $('#wsLabel').textContent = WS==='sales' ? 'OFFICE SALES' : 'ADC OUTBOUND';
+  $$('#wsMenu button').forEach(b=>b.classList.toggle('on',b.dataset.ws===WS));
+  const sales = WS==='sales';
+  $('#nav').style.display      = sales ? 'none' : 'flex';
+  $('#navSales').style.display = sales ? 'flex' : 'none';
+  $('#app').style.display      = sales ? 'none' : 'block';
+  $('#salesRoot').style.display= sales ? 'block' : 'none';
+  $('#whoami').style.display   = sales ? 'none' : '';
+  if(sales) bootSales();
+}
+$('#wsBtn').addEventListener('click', e=>{ e.stopPropagation(); $('#wsMenu').classList.toggle('show'); });
+$('#wsMenu').addEventListener('click', e=>{ const b=e.target.closest('[data-ws]'); if(!b)return; $('#wsMenu').classList.remove('show'); setWorkspace(b.dataset.ws); });
+document.addEventListener('click', ()=>$('#wsMenu').classList.remove('show'));
+
+/* sales sub-nav tab switching (section show/hide) */
+function showSalesTab(name){
+  $$('#navSales button').forEach(x=>x.classList.toggle('on',x.dataset.tab===name));
+  $$('#salesRoot .tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
+  if(name==='sdash') renderSDash();
+  if(name==='sentry') renderSEntry();
+  if(name==='slog') renderSLog();
+  if(name==='speople') renderSPeople();
+  if(name==='ssop') renderSOPInto($('#ssopBody'));
+}
+$('#navSales').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) showSalesTab(b.dataset.tab); });
+async function bootSales(){
+  if(!salesBooted){
+    salesBooted=true;
+    const t=todayStr();
+    ['sentryDate','slDate'].forEach(id=>{const el=$('#'+id); if(el&&!el.value)el.value=t;});
+    await reloadSPs();
+  }
+  showSalesTab($$('#navSales button.on')[0]?.dataset.tab || 'sdash');
+}
+
+/* =========================================================================
+   OFFICE SALES  (ported from Job Efficiency Board)
+   ========================================================================= */
+/* ---- salespersons management ---- */
+async function reloadSPs(){
+  const {data,error}=await sb.from('salespersons').select('*').order('name');
+  if(error){toast('Reload failed: '+error.message,true);SP_ROWS=[];refreshSpSelects();return;}
+  SP_ROWS=data||[];
+  refreshSpSelects();
+}
+function genPin(){
+  const chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I/L
+  const used=new Set(SP_ROWS.map(d=>d.pin).filter(Boolean));
+  for(let tries=0;tries<200;tries++){
+    let p='';for(let i=0;i<6;i++)p+=chars[Math.floor(Math.random()*chars.length)];
+    if(!used.has(p))return p;
+  }
+  return 'SP'+Date.now().toString(36).slice(-4).toUpperCase();
+}
+function renderSPeople(){
+  const admin=STATE.isAdmin;
+  const addPanel=$('#spAddPanel'), note=$('#spAdminNote');
+  if(addPanel)addPanel.style.display=admin?'':'none';
+  if(note)note.style.display=admin?'none':'';
+  const cols = admin
+    ? '<th>Salesperson</th><th>Office Sales PIN</th><th>Status</th><th style="width:400px">Actions</th>'
+    : '<th>Salesperson</th><th>Status</th>';
+  let h='<thead><tr>'+cols+'</tr></thead><tbody>';
+  SP_ROWS.forEach(d=>{
+    const off=d.active===false;
+    const status=off?'<span class="badge gray">Inactive</span>':'<span class="badge yes">Active</span>';
+    if(admin){
+      h+=`<tr style="${off?'opacity:.55':''}">
+        <td><input type="text" style="width:190px;font-weight:600" data-sp-name value="${esc(d.name)}"></td>
+        <td><span class="jobref" style="font-size:14px;font-weight:600">${esc(d.pin||'—')}</span></td>
+        <td>${status}</td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" data-sp-rename="${esc(d.name)}">Rename</button>
+          <button class="btn ghost sm" data-sp-pin="${esc(d.name)}">New PIN</button>
+          <button class="btn ghost sm" data-sp-toggle="${esc(d.name)}">${off?'Activate':'Deactivate'}</button>
+          <button class="btn danger sm" data-sp-del="${esc(d.name)}">Delete</button>
+        </td></tr>`;
+    } else {
+      h+=`<tr style="${off?'opacity:.55':''}"><td><b>${esc(d.name)}</b></td><td>${status}</td></tr>`;
+    }
+  });
+  const span=admin?4:2;
+  $('#tblSPeople').innerHTML=h+'</tbody>'+(SP_ROWS.length?'':`<tbody><tr><td colspan="${span}" style="color:var(--ink-2)">No salespersons yet${admin?' — add one above':''}. (If this errors, run sales_schema.sql in Supabase first.)</td></tr></tbody>`);
+}
+$('#nspAdd').addEventListener('click', async ()=>{
+  if(!STATE.isAdmin){toast('Only an admin can add salespersons',true);return;}
+  const name=$('#nspName').value.trim();
+  if(!name){toast('Enter a salesperson name',true);return;}
+  if(SP_ROWS.some(d=>d.name.toLowerCase()===name.toLowerCase())){toast('That salesperson already exists',true);return;}
+  const pin=genPin();
+  const {error}=await sb.from('salespersons').insert({name, active:true, pin});
+  if(error){toast('Add failed: '+error.message,true);return;}
+  $('#nspName').value='';
+  await reloadSPs(); renderSPeople();
+  alert(`${name} added.\n\nOffice Sales PIN: ${pin}\n\nShare this PIN with ${name} — they'll use it to open the Office Sales workspace. You can see it again any time in this table, or issue a new one with "New PIN".`);
+  toast(`${name} added · PIN ${pin}`);
+});
+$('#tblSPeople').addEventListener('click', async e=>{
+  if(!STATE.isAdmin)return;
+  const pinBtn=e.target.closest('[data-sp-pin]');
+  if(pinBtn){
+    const name=pinBtn.dataset.spPin;
+    if(!confirm(`Issue a new Office Sales PIN for "${name}"? Their old PIN stops working immediately.`))return;
+    const pin=genPin();
+    const {error}=await sb.from('salespersons').update({pin}).eq('name',name);
+    if(error){toast('Failed: '+error.message,true);return;}
+    await reloadSPs(); renderSPeople();
+    alert(`New PIN for ${name}: ${pin}\n\nShare it with them; the previous PIN no longer works.`);
+    return;
+  }
+  const ren=e.target.closest('[data-sp-rename]');
+  if(ren){
+    const oldName=ren.dataset.spRename;
+    const newName=ren.closest('tr').querySelector('input[data-sp-name]').value.trim();
+    if(!newName||newName===oldName){toast('Type the new name in the field first',true);return;}
+    if(SP_ROWS.some(d=>d.name.toLowerCase()===newName.toLowerCase())){toast('A salesperson with that name already exists',true);return;}
+    if(!confirm(`Rename "${oldName}" to "${newName}"?\nThis also updates all their historical metrics and sales.`))return;
+    let r=await sb.from('salespersons').update({name:newName}).eq('name',oldName);
+    if(r.error){toast('Rename failed: '+r.error.message,true);return;}
+    await sb.from('sales_metrics').update({salesperson:newName}).eq('salesperson',oldName);
+    await sb.from('sales').update({salesperson:newName}).eq('salesperson',oldName);
+    await reloadSPs(); renderSPeople(); toast(`Renamed to ${newName}`);
+    return;
+  }
+  const tog=e.target.closest('[data-sp-toggle]');
+  if(tog){
+    const name=tog.dataset.spToggle;
+    const d=SP_ROWS.find(x=>x.name===name);
+    const next=d.active===false;
+    const {error}=await sb.from('salespersons').update({active:next}).eq('name',name);
+    if(error){toast('Save failed: '+error.message,true);return;}
+    await reloadSPs(); renderSPeople();
+    toast(`${name} ${next?'activated':'deactivated'}`);
+    return;
+  }
+  const del=e.target.closest('[data-sp-del]');
+  if(del){
+    const name=del.dataset.spDel;
+    if(!confirm(`Delete salesperson "${name}"?\nHistorical metrics and sales keep their name.\n\nTip: Deactivate is usually safer.`))return;
+    const {error}=await sb.from('salespersons').delete().eq('name',name);
+    if(error){toast('Delete failed: '+error.message,true);return;}
+    await reloadSPs(); renderSPeople(); toast(`${name} deleted`);
+  }
+});
+
+/* ---- daily metrics entry ---- */
+const M_FIELDS=[
+  ['total_potentials','Total potentials'],
+  ['promising_potentials','Promising'],
+  ['reach_attempts','Reach attempts'],
+  ['customers_reached','Reached'],
+  ['cancellations','Cancellations'],
+  ['estimates_amount','Estimates $']
+];
+let SENTRY_SOLD={n:{},s:{}};   // sold count / sold $ per salesperson for the loaded date
+async function renderSEntry(){
+  const date=$('#sentryDate').value||todayStr();
+  $('#tblSEntry').innerHTML='<tbody><tr><td class="loading">Loading…</td></tr></tbody>';
+  const [{data:mets,error:e1},{data:sales,error:e2}]=await Promise.all([
+    sb.from('sales_metrics').select('*').eq('date',date),
+    sb.from('sales').select('salesperson,amount').eq('date',date)
+  ]);
+  if(e1||e2){toast('Load failed: '+((e1||e2).message)+' — run sales_schema.sql first?',true);$('#tblSEntry').innerHTML='';return;}
+  const mMap={}; (mets||[]).forEach(m=>mMap[m.salesperson]=m);
+  const soldN={}, soldS={};
+  (sales||[]).forEach(s=>{soldN[s.salesperson]=(soldN[s.salesperson]||0)+1; soldS[s.salesperson]=(soldS[s.salesperson]||0)+Number(s.amount||0);});
+  SENTRY_SOLD={n:soldN,s:soldS};
+  let h='<thead><tr><th>Salesperson</th>'+M_FIELDS.map(f=>`<th>${f[1]}</th>`).join('')+
+    '<th>Reach rate</th><th>Sold #</th><th>Sold $</th><th>Closing ratio</th><th>ADL</th><th></th></tr></thead><tbody>';
+  SPS().forEach(p=>{
+    const m=mMap[p]||{};
+    h+=`<tr data-sp-row="${esc(p)}"><td><b>${esc(p)}</b></td>`+
+      M_FIELDS.map(([k])=>`<td><input type="number" min="0" step="${k==='estimates_amount'?'0.01':'1'}" style="width:${k==='estimates_amount'?'92':'74'}px" data-mf="${k}" data-mp="${esc(p)}" value="${m[k]??''}"></td>`).join('')+
+      `<td class="num" data-d="reach">—</td>
+       <td class="num" data-d="soldn"><b>0</b></td>
+       <td class="num" data-d="solds"><b>—</b></td>
+       <td class="num" data-d="closing">—</td>
+       <td class="num" data-d="adl">—</td>
+       <td class="num" data-d="status" style="width:26px;color:var(--accent)"></td></tr>`;
+  });
+  $('#tblSEntry').innerHTML=h+'</tbody>'+(SPS().length?'':'<tbody><tr><td colspan="13" style="color:var(--ink-2)">Add salespersons first (Salespersons tab).</td></tr></tbody>');
+  $$('#tblSEntry tr[data-sp-row]').forEach(recalcSRow);
+}
+/* recompute one row's derived cells from its own inputs — no re-render, no fetch */
+function recalcSRow(row){
+  if(!row)return;
+  const person=row.dataset.spRow;
+  const raw=k=>{const i=row.querySelector(`[data-mf="${k}"]`);return i?i.value.trim():'';};
+  const num=k=>{const v=raw(k);return v===''?null:Number(v);};
+  const att=num('reach_attempts'), rch=num('customers_reached'), tp=num('total_potentials');
+  const sn=SENTRY_SOLD.n[person]||0, ss=SENTRY_SOLD.s[person]||0;
+  const set=(d,html)=>{const c=row.querySelector(`[data-d="${d}"]`);if(c)c.innerHTML=html;};
+  // blank stays blank — only show a % once both numbers are actually entered
+  set('reach', (att!==null&&att>0&&rch!==null)?fmtPct(rch/att):'—');
+  set('soldn', `<b>${sn}</b>`);
+  set('solds', `<b>${sn?money(ss):'—'}</b>`);
+  set('closing', (tp!==null&&tp>0)?fmtPct(sn/tp):'—');
+  set('adl', sn>0?money2(ss/sn):'—');
+}
+function sRowStatus(row,txt,isErr){
+  const c=row&&row.querySelector('[data-d="status"]');if(!c)return;
+  c.style.color=isErr?'var(--red)':'var(--accent)';c.textContent=txt;
+  clearTimeout(c._t);if(txt==='✓')c._t=setTimeout(()=>{c.textContent='';},1400);
+}
+/* live recalc while typing (nothing saved yet) */
+$('#tblSEntry').addEventListener('input', e=>{
+  const el=e.target.closest('[data-mf]'); if(!el)return;
+  recalcSRow(el.closest('tr'));
+});
+/* save on blur — only the field that changed, so nothing else can be overwritten */
+$('#tblSEntry').addEventListener('change', async e=>{
+  const el=e.target.closest('[data-mf]'); if(!el)return;
+  const row=el.closest('tr');
+  const date=$('#sentryDate').value||todayStr();
+  const field=el.dataset.mf;
+  const rec={date, salesperson:el.dataset.mp, updated_at:new Date().toISOString()};
+  rec[field]= el.value.trim()===''?null:Number(el.value);
+  recalcSRow(row);
+  sRowStatus(row,'…');
+  const {error}=await sb.from('sales_metrics').upsert(rec,{onConflict:'date,salesperson'});
+  if(error){sRowStatus(row,'!',true);toast('Save failed: '+error.message,true);return;}
+  sRowStatus(row,'✓');
+});
+$('#sentryDate').addEventListener('change',renderSEntry);
+
+/* ---- sales log ---- */
+$('#slAdd').addEventListener('click', async ()=>{
+  const ref=$('#slRef').value.trim(), amt=Number($('#slAmount').value);
+  if(!$('#slDate').value){toast('Pick the date of sale',true);return;}
+  if(!$('#slPerson').value){toast('Pick a salesperson',true);return;}
+  if(!ref){toast('Enter the CRM job reference',true);return;}
+  if(!isFinite(amt)||amt<=0){toast('Enter the sale amount',true);return;}
+  const {error}=await sb.from('sales').insert({date:$('#slDate').value,salesperson:$('#slPerson').value,crm_ref:ref,amount:amt,notes:$('#slNotes').value||null});
+  if(error){toast('Save failed: '+error.message,true);return;}
+  $('#slRef').value='';$('#slAmount').value='';$('#slNotes').value='';
+  renderSLog(); toast('Sale logged');
+});
+function slQuery(){
+  let q=sb.from('sales').select('*',{count:'exact'});
+  const f=$('#slFrom').value,t=$('#slTo').value,p=$('#slFilterPerson').value,s=$('#slSearch').value.trim();
+  if(f)q=q.gte('date',f); if(t)q=q.lte('date',t);
+  if(p)q=q.eq('salesperson',p);
+  if(s)q=q.ilike('crm_ref',`%${s}%`);
+  return q;
+}
+async function renderSLog(){
+  $('#tblSLog').innerHTML='<tbody><tr><td class="loading">Loading…</td></tr></tbody>';
+  const {data:rows,count,error}=await slQuery().order('date',{ascending:false}).order('submitted_at',{ascending:false}).limit(500);
+  if(error){toast('Load failed: '+error.message+' — run sales_schema.sql first?',true);$('#tblSLog').innerHTML='';return;}
+  const total=rows.reduce((s,r)=>s+Number(r.amount||0),0);
+  $('#slCount').textContent=`${count||0} sales · ${money(total)} in current filter`;
+  let h='<thead><tr><th>Date</th><th>Salesperson</th><th>CRM ref</th><th>Amount</th><th>Notes</th><th>Logged</th><th></th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+=`<tr><td class="num" style="text-align:left">${esc(r.date)}</td><td>${esc(r.salesperson)}</td>
+      <td style="font-family:var(--mono);font-size:12.5px">${esc(r.crm_ref)}</td>
+      <td class="num"><b>${money2(Number(r.amount))}</b></td>
+      <td style="max-width:220px">${esc(r.notes||'')}</td>
+      <td class="num" style="text-align:left;font-size:11px">${esc((r.submitted_at||'').replace('T',' ').slice(0,16))}</td>
+      <td><button class="btn danger sm" data-sl-del="${esc(r.id)}">Del</button></td></tr>`;
+  });
+  $('#tblSLog').innerHTML=h+'</tbody>'+(rows.length?'':'<tbody><tr><td colspan="7" style="color:var(--ink-2)">No sales in this filter yet.</td></tr></tbody>');
+}
+$('#tblSLog').addEventListener('click', async e=>{
+  const d=e.target.closest('[data-sl-del]');
+  if(d&&confirm('Delete this sale for everyone?')){
+    const {error}=await sb.from('sales').delete().eq('id',d.dataset.slDel);
+    if(error){toast('Delete failed: '+error.message,true);return;}
+    renderSLog(); toast('Sale deleted');
+  }
+});
+['slFrom','slTo','slFilterPerson'].forEach(id=>$('#'+id).addEventListener('change',renderSLog));
+let slT; $('#slSearch').addEventListener('input',()=>{clearTimeout(slT);slT=setTimeout(renderSLog,350)});
+$('#slExport').addEventListener('click', async ()=>{
+  const {data:rows,error}=await slQuery().order('date',{ascending:true}).limit(20000);
+  if(error){toast('Export failed: '+error.message,true);return;}
+  const head=['date','salesperson','crm_ref','amount','notes','submitted_at'];
+  const cell=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv=[head.join(',')].concat(rows.map(r=>head.map(k=>cell(r[k])).join(','))).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='sales_export.csv'; a.click();
+});
+
+/* ---- sales dashboard ---- */
+function sdashRange(){
+  const p=$('#sdashPreset').value, t=todayStr();
+  if(p==='today') return [t,t];
+  if(p==='custom') return [$('#sdashFrom').value||'2000-01-01', $('#sdashTo').value||t];
+  const d=nowPST(); d.setDate(d.getDate()-(+p)+1);
+  return [iso(d), t];
+}
+async function renderSDash(){
+  const [from,to]=sdashRange(); const person=$('#sdashPerson').value;
+  $('#sdashNote').textContent='Loading…';
+  let qm=sb.from('sales_metrics').select('*').gte('date',from).lte('date',to).limit(20000);
+  let qs=sb.from('sales').select('*').gte('date',from).lte('date',to).limit(20000);
+  if(person){ qm=qm.eq('salesperson',person); qs=qs.eq('salesperson',person); }
+  const [{data:mets,error:e1},{data:sales,error:e2}]=await Promise.all([qm,qs]);
+  if(e1||e2){toast('Load failed: '+((e1||e2).message)+' — run sales_schema.sql first?',true);$('#sdashNote').textContent='';return;}
+  const N=k=>mets.reduce((s,m)=>s+(Number(m[k])||0),0);
+  const tp=N('total_potentials'), pp=N('promising_potentials'), att=N('reach_attempts'),
+        rch=N('customers_reached'), can=N('cancellations'), est=N('estimates_amount');
+  const sn=sales.length, ss=sales.reduce((s,r)=>s+Number(r.amount||0),0);
+  $('#sdashNote').textContent=`Data from ${from} → ${to}${person?' · '+person:''} · ${mets.length} metric rows · ${sn} sales`;
+  $('#sdashKpis').innerHTML=`
+    <div class="kpi"><div class="v">${tp}</div><div class="l">Total potentials</div></div>
+    <div class="kpi"><div class="v">${pp}</div><div class="l">Promising</div></div>
+    <div class="kpi"><div class="v">${att}</div><div class="l">Reach attempts</div></div>
+    <div class="kpi"><div class="v">${rch}</div><div class="l">Reached</div></div>
+    <div class="kpi a"><div class="v">${att?fmtPct(rch/att):'—'}</div><div class="l">Reach rate</div></div>
+    <div class="kpi c"><div class="v">${can}</div><div class="l">Cancellations</div></div>
+    <div class="kpi"><div class="v">${sn}</div><div class="l">Sold #</div></div>
+    <div class="kpi a"><div class="v">${money(ss)}</div><div class="l">Sold $</div></div>
+    <div class="kpi"><div class="v">${money(est)}</div><div class="l">Estimates $</div></div>
+    <div class="kpi a"><div class="v">${tp?fmtPct(sn/tp):'—'}</div><div class="l">Closing ratio</div></div>
+    <div class="kpi"><div class="v">${sn?money2(ss/sn):'—'}</div><div class="l">ADL</div></div>`;
+  const people = person ? [person] : SPS();
+  let h='<thead><tr><th>Salesperson</th><th>Potentials</th><th>Promising</th><th>Attempts</th><th>Reached</th><th>Reach rate</th><th>Cancels</th><th>Sold #</th><th>Sold $</th><th>Estimates $</th><th>Closing</th><th>ADL</th></tr></thead><tbody>';
+  people.forEach(p=>{
+    const mm=mets.filter(m=>m.salesperson===p);
+    const G=k=>mm.reduce((s,m)=>s+(Number(m[k])||0),0);
+    const _tp=G('total_potentials'), _att=G('reach_attempts'), _rch=G('customers_reached');
+    const _sales=sales.filter(s=>s.salesperson===p);
+    const _sn=_sales.length, _ss=_sales.reduce((s,r)=>s+Number(r.amount||0),0);
+    h+=`<tr><td><b>${esc(p)}</b></td>
+      <td class="num">${_tp}</td><td class="num">${G('promising_potentials')}</td>
+      <td class="num">${_att}</td><td class="num">${_rch}</td>
+      <td class="num">${_att?fmtPct(_rch/_att):'—'}</td>
+      <td class="num">${G('cancellations')}</td>
+      <td class="num"><b>${_sn}</b></td><td class="num"><b>${money(_ss)}</b></td>
+      <td class="num">${money(G('estimates_amount'))}</td>
+      <td class="num">${_tp?fmtPct(_sn/_tp):'—'}</td>
+      <td class="num">${_sn?money2(_ss/_sn):'—'}</td></tr>`;
+  });
+  $('#tblSPerf').innerHTML=h+'</tbody>';
+  const byDay={}; sales.forEach(s=>{byDay[s.date]=(byDay[s.date]||0)+Number(s.amount||0)});
+  const days=Object.entries(byDay).sort().slice(-21);
+  const dmax=Math.max(1,...days.map(x=>x[1]));
+  $('#sDayBars').innerHTML=days.map(([k,v])=>`<div class="bar-row"><div class="lbl">${k}</div><div class="trk"><div class="fill" style="width:${v/dmax*100}%"></div></div><div class="val">${Math.round(v/1000)}k</div></div>`).join('')||'<div class="sub">No sales in range.</div>';
+  const steps=[['Total potentials',tp],['Promising',pp],['Reach attempts',att],['Reached',rch],['Sold',sn]];
+  const fmax=Math.max(1,...steps.map(s=>s[1]));
+  $('#sFunnel').innerHTML=steps.map(([k,v])=>`<div class="bar-row"><div class="lbl">${k}</div><div class="trk"><div class="fill alt" style="width:${v/fmax*100}%"></div></div><div class="val">${v}</div></div>`).join('');
+}
+['sdashPreset','sdashFrom','sdashTo','sdashPerson'].forEach(id=>$('#'+id).addEventListener('change',()=>{
+  if(id==='sdashFrom'||id==='sdashTo')$('#sdashPreset').value='custom';
+  renderSDash();
+}));
+
+(function init(){
+  applyTheme(localStorage.getItem(LS.theme)||'light');
+  $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+  $('#adminBtn').onclick=adminButtonClick;
+  $('#logoutBtn').onclick=logout;
+  setLoggedOut(true);
+  renderNav();
+  connect().then(ok=>{if(ok)boot();});
+})();
+</script>
+</body>
+</html>
