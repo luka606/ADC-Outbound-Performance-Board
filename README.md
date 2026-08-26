@@ -5,24 +5,26 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 
 ## What's in the box
 - `index.html` — the entire app (one self-contained file, no build step)
-- `schema.sql` — database tables + security policies + agent seed + seeded admin PIN
+- `schema.sql` — core Outbound tables (agents, daily reports, bookings, settings, weekly
+  history) + security policies + agent seed
 - `sales_schema.sql` — tables for the **Office Sales** workspace (salespersons, daily metrics, sales log)
-- `import_daily.sql` — loads the full per-agent DAILY history (May 4 – Jul 21) into `daily_reports`,
-  so every period filter (Meeting / Scorecard / Admin) shows real data as if agents had used
-  the app from the start
+- `jobs_schema.sql` — tables for the **Job Assignment** workspace (technicians, job assignments)
+- `adc_db_schema.sql` — the `adc_database` customer contact list behind the **Database** tab
+
+The four SQL files do not overlap, and each is idempotent — safe to re-run at any time.
 
 ## Setup (about 10 minutes)
 
 ### 1. Create / update the database
 1. Go to [supabase.com](https://supabase.com) → **New project** (free tier is fine).
 2. Open **SQL Editor → New query**, paste all of `schema.sql`, click **Run**.
-   This creates the tables, seeds your six agents (Shiena, Levi, Reagan, Jane, Felicia, Toni),
-   and seeds the **admin PIN = 4271**.
+   This creates the tables and seeds your six agents (Shiena, Levi, Reagan, Jane, Felicia, Toni).
+   No admin PIN is seeded — the first person to open the Admin view is prompted to set one.
    - **Already have a database from an earlier version?** Just run `schema.sql` again — it's
      safe to re-run and includes the migrations that add the new `booked_appointments`,
      `cross_bookings`, and `weekly_history` structures.
-3. Run `import_daily.sql` to load the per-agent daily history. Idempotent — it never
-   overwrites entries agents have already made in the app (existing agent+date rows are kept).
+3. Run `sales_schema.sql` and `jobs_schema.sql` if you want the Office Sales and Job Assignment
+   workspaces, and `adc_db_schema.sql` for the Calling Database tab.
 4. Open **Project Settings → API** and copy two things:
    - **Project URL** (e.g. `https://abcd.supabase.co`)
    - **anon public** key
@@ -53,9 +55,10 @@ Vercel serves it over HTTPS automatically — required for Touch ID to work.
 - **Scorecard** — full metric set filtered by period (Yesterday / This week / Last week /
   This month / Last month / Last 30d) and by agent. Groups (Activity / Lead Conversion / Sales /
   Operations) now have bold, clearly separated headers.
-- **Admin** — unlocked with the **PIN (4271)** via the **Admin button in the top-right header**
+- **Admin** — unlocked with the **admin PIN** via the **Admin button in the top-right header**
   (shows "Admin ✓" when on; click again to lock). Only admins should know the PIN — it's
-  pre-set, so agents never see a setup prompt. Admin lets you:
+  pre-set on an existing database; on a fresh one the first person to open Admin sets it.
+  Admin lets you:
   - Set **sale amount** + **status** (sold / ran, not sold / cancelled) on each booking, and
     **delete** an individual booking (which also corrects that day's booking count).
   - **Edit or delete a CSR's daily entry** under *Daily entries* — fix a mistyped number or
@@ -68,7 +71,8 @@ Vercel serves it over HTTPS automatically — required for Touch ID to work.
 - **Dark / light theme** — the ◐/☀ toggle in the header; remembered on the device.
 
 ## Historical data — what's included
-`import_daily.sql` carries every agent's daily **call activity and booking/cross-booking counts**
+A one-time backfill (already applied to the live database) carried every agent's daily
+**call activity and booking/cross-booking counts**
 (validated against the source sheet's own weekly totals). Two honest limitations of the source:
 - **No job references or sale amounts per booking** — the sheet never tracked them daily, so
   historical bookings appear as counts (Meeting/Scorecard work fully) but not as rows in the
@@ -120,7 +124,7 @@ Click the **ADC OUTBOUND ▾** name in the top-left to switch workspaces:
   screen and the dark/light toggle. All nav bars, the workspace switcher, and Admin stay hidden.
 - **Log out** — a **Log out** button (top-right) returns to the login screen so you can enter or
   re-enter keys / switch projects. It clears the admin and Office Sales sessions for the browser.
-- **Admin is platform-wide** — unlocking Admin (PIN 4271) applies to *both* workspaces. In ADC
+- **Admin is platform-wide** — unlocking Admin applies to *both* workspaces. In ADC
   Outbound it reveals the Admin tab; in Office Sales it reveals salesperson management + PINs.
 - **Everything runs on PST** — "today", period ranges, and all date logic use
   America/Los_Angeles regardless of the viewer's device timezone.
@@ -175,8 +179,11 @@ Imported from the **ADC Calling List** spreadsheet (tabs *ADC Res*, *ADC Commerc
 
 **Setup — two steps, in order:**
 1. Run **`adc_db_schema.sql`** in Supabase → SQL Editor (creates `adc_database`).
-2. Import **`adc_database.csv`** — Supabase → Table Editor → `adc_database` → Insert →
-   *Import data from CSV*. (11,335 rows; a CSV import is far more reliable than a giant SQL file.)
+2. Import your contact list as CSV — Supabase → Table Editor → `adc_database` → Insert →
+   *Import data from CSV*. A CSV import is far more reliable than a giant SQL file.
+   The CSV is **not** in this repo and must not be: it holds customer names, phone numbers,
+   emails, and addresses, and this repository is public. Export it from the ADC Calling List
+   spreadsheet when you need it.
 
 **The Database tab shows:**
 - **Overview** — records, still callable, booked, do-not-call, never called, contact rate.

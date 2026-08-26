@@ -541,9 +541,9 @@ drop policy if exists anon_all on bookings;
 create policy anon_all on bookings for all using(true) with check(true);
 drop policy if exists anon_all on app_settings;
 create policy anon_all on app_settings for all using(true) with check(true);
--- admin PIN (4271) stored as sha256 hash:
-insert into app_settings(key,value) values('admin_pin','0b94cd5e95afb17f118c0ed090fa2621bae55c692e2f7b13948c7d805985974e')
- on conflict(key) do nothing;
+-- Admin PIN: not seeded here on purpose. A hash of a 4-digit PIN in a public
+-- repo is a 10,000-entry search space. Leave this out and the app prompts you
+-- to choose a PIN the first time you open the Admin view.
 insert into agents(name,sort_order) values
  ('Shiena',1),('Levi',2),('Reagan',3),('Jane',4),('Felicia',5),('Toni',6)
  on conflict(name) do nothing;`;
@@ -929,11 +929,11 @@ function renderDatabase(app){
     app.appendChild(box);
     dbLoadAll(n=>{const s=$('#dbLoadNote');if(s)s.textContent=`Loading records… ${n.toLocaleString()}`;})
       .then(rows=>{DB_ROWS=rows;DB_LOADED_AT=new Date().toISOString();if(STATE.view==='database')renderDatabase($('#app'));})
-      .catch(e=>{box.innerHTML=`<div class="empty">Couldn't load the database.<br><br><b>${esc(e.message||e)}</b><br><br>Run <b>adc_db_schema.sql</b> in Supabase, then import <b>adc_database.csv</b>.</div>`;});
+      .catch(e=>{box.innerHTML=`<div class="empty">Couldn't load the database.<br><br><b>${esc(e.message||e)}</b><br><br>Run <b>adc_db_schema.sql</b> in Supabase, then import your contact CSV.</div>`;});
     return;
   }
   const a=dbAnalyse(DB_ROWS);
-  if(!a.N){app.appendChild(el('div','panel','<div class="empty">The table exists but is empty — import <b>adc_database.csv</b> in Supabase (Table Editor → adc_database → Insert → Import data from CSV).</div>'));return;}
+  if(!a.N){app.appendChild(el('div','panel','<div class="empty">The table exists but is empty — import your contact CSV in Supabase (Table Editor → adc_database → Insert → Import data from CSV).</div>'));return;}
 
   /* ---- freshness / refresh / sync ---- */
   app.appendChild(renderDbFreshness(app));
@@ -1065,11 +1065,11 @@ function renderDatabase(app){
         <td>${esc(r.customer||'—')}</td><td class="jobref">${esc(fmtPhone(r.phone))}</td><td class="jobref">${esc(r.job_ref||'—')}</td>
         <td class="num">${+r.attempts||0}</td>
         <td>${r.id==null
-          ? `<span class="badge gray" title="This table has no id column — run fix_adc_database_pk.sql to enable editing">${esc(r.disposition||'(never called)')}</span>`
+          ? `<span class="badge gray" title="This table has no id column — re-run adc_db_schema.sql to enable editing">${esc(r.disposition||'(never called)')}</span>`
           : `<select class="st-select" data-dbid="${r.id}">${DISPS.map(d=>`<option value="${esc(d)}" ${((r.disposition||'')===d)?'selected':''}>${d===''?'(never called)':esc(d)}</option>`).join('')}</select>`}</td></tr>`).join('')
     }</tbody></table>`;
     if(list.some(r=>r.id==null))
-      note.textContent+=' · dispositions are read-only until a primary key exists (run fix_adc_database_pk.sql)';
+      note.textContent+=' · dispositions are read-only until a primary key exists (re-run adc_db_schema.sql)';
     wrap.querySelectorAll('[data-dbid]').forEach(sel=>{
       sel.onchange=async()=>{
         const id=+sel.dataset.dbid, v=sel.value;
