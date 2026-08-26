@@ -40,7 +40,10 @@ Option B — Git: push the folder to GitHub and import it in Vercel. No framewor
 Vercel serves it over HTTPS automatically — required for Touch ID to work.
 
 ### 3. First run
-1. Open your Vercel URL. It asks for the **Supabase URL** and **anon key** — paste them
+
+**Live:** https://adc-outbound-performance-board-omega.vercel.app
+
+1. Open the URL above. It asks for the **Supabase URL** and **anon key** — paste them
    (stored only in that browser's local storage).
 2. Each agent opens the same URL, picks their name once on the **Report** tab — the device remembers it.
 
