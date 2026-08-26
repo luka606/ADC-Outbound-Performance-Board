@@ -118,6 +118,13 @@ tbody tr:hover td{background:var(--panel-2)}
 .badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
 .badge.sold{background:var(--accent-soft);color:var(--accent)}
 .badge.cancelled{background:var(--red-soft);color:var(--red)}
+/* CRM job status, written by scripts/crm-sync.mjs */
+.crm-b{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.crm-b.ok{background:var(--accent-soft);color:var(--accent-deep)}
+.crm-b.bad{background:var(--red-soft);color:var(--red)}
+.crm-b.blue{background:var(--blue-soft);color:var(--blue)}
+.crm-b.gray{background:var(--panel-2);color:var(--ink-2)}
+.crm-b.none{background:transparent;color:var(--ink-3)}
 .badge.ran_not_sold{background:var(--amber-soft);color:var(--amber)}
 .badge.pending{background:var(--line-2);color:var(--ink-2)}
 .jobref{font-family:var(--mono);letter-spacing:.14em}
@@ -151,7 +158,7 @@ tbody tr:hover td{background:var(--panel-2)}
 .meet-avg{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
 .meet-list{display:flex;flex-direction:column;gap:8px}
 .lb-row{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;text-align:left;color:var(--ink);
-  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
+  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 78px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
 .lb-row:hover{border-color:var(--accent);transform:translateY(-1px)}
 .lb-rank{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:center}
 .lb-avatar{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;background:var(--accent-soft);color:var(--accent)}
@@ -159,20 +166,29 @@ tbody tr:hover td{background:var(--panel-2)}
 .lb-row:nth-child(3) .lb-avatar{background:var(--amber-soft);color:var(--amber)}
 .lb-row:nth-child(4) .lb-avatar{background:var(--red-soft);color:var(--red)}
 .lb-main{min-width:0}
+/* These children are spans, so without this they flow inline: the agent name
+   runs into the legend and .mix-bar collapses to zero width, taking the whole
+   reached/no-answer/not-interested visualisation with it. Pre-existing; the
+   bar has never been visible. */
+.lb-main>span{display:block}
 .lb-name{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.1px}
 .mix-bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:var(--line-2);margin-top:7px;max-width:430px}
 .mix-bar .seg{position:absolute;top:0;bottom:0}
 .mix-bar .p1{background:var(--accent-hi)} .mix-bar .p2{background:var(--blue)} .mix-bar .p3{background:var(--red)}
 .mix-bar .avg-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;z-index:2}
 .mix-legend{font-size:11px;color:var(--ink-3);margin-top:4px;font-family:var(--mono)}
+/* attainment against the prorated weekly target: bookings + cross-books, after cancellations */
+.tgt-bar{position:relative;display:block;height:4px;border-radius:3px;overflow:hidden;background:var(--line-2);margin-top:6px;max-width:430px}
+.tgt-fill{display:block;height:100%;background:var(--ink-3);transition:width .2s}
+.tgt-fill.hit{background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
 .lb-stat{text-align:right}
 .lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
 .lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
 .tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
 .lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
 .lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
-@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 26px}.lb-row .lb-stat.conv{display:none}.mix-bar{max-width:none}}
-@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 64px 26px}.lb-rank,.lb-row .lb-stat.bk{display:none}}
+@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 78px 26px}.lb-row .lb-stat.conv,.lb-row .lb-stat.bk{display:none}.mix-bar,.tgt-bar{max-width:none}}
+@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 78px 26px}.lb-rank,.lb-row .lb-stat.calls{display:none}}
 
 /* ============ report modal ============ */
 .rep-backdrop{position:fixed;inset:0;background:rgba(8,12,10,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:80;display:none;align-items:center;justify-content:center;padding:26px}
@@ -655,13 +671,64 @@ function compute(a,b,agentId){
   const sold=bs.filter(x=>x.status==='sold'),soldN=sold.length;
   const runs=bs.filter(x=>x.status==='sold'||x.status==='ran_not_sold').length;
   const cancelled=bs.filter(x=>x.status==='cancelled').length;
+  // Cancellations netted out of the booking counts, split by kind so a cancelled
+  // cross-book comes off the cross total and not the booking total.
+  const cancelledBk=bs.filter(x=>x.status==='cancelled'&&x.kind!=='crossbooking').length;
+  const cancelledCross=bs.filter(x=>x.status==='cancelled'&&x.kind==='crossbooking').length;
+  // Netting is only possible where booking ROWS exist. Reports from the one-time
+  // historical backfill carry a booking count with no rows behind it, so which of
+  // those were cancelled is unknowable — say so rather than imply a net figure.
+  const netKnown=!rs.some(r=>((+r.booked_appointments||0)+(+r.cross_bookings||0))>0
+    && !bs.some(x=>x.agent_id===r.agent_id&&x.report_date===r.report_date));
+  const bookedNet=Math.max(0,booked-cancelledBk),crossNet=Math.max(0,cross-cancelledCross);
   const revenue=sold.reduce((t,x)=>t+(+x.sale_amount||0),0);
   const revenueCross=sold.filter(x=>x.kind==='crossbooking').reduce((t,x)=>t+(+x.sale_amount||0),0);
   const leads=booked+cross;
   return{agentsN:new Set(rs.map(r=>r.agent_id)).size,totalCalls,reached,noAnswer,notInt,followUp,
     booked,cross,scheduled,soldN,runs,cancelled,revenue,revenueCross,leads,
+    cancelledBk,cancelledCross,bookedNet,crossNet,netKnown,attained:bookedNet+crossNet,
     reachRate:reached/(totalCalls||1),contactToBooking:booked/(reached||1),callToBooking:booked/(totalCalls||1),
     adl:revenue/(leads||1),avt:revenue/(soldN||1),revPerCall:revenue/(totalCalls||1),cancelPct:cancelled/(scheduled||1)};
+}
+
+/* ---------- weekly targets ----------
+ * `target_bookings` and `target_crossbookings` are both WEEKLY numbers set in
+ * Admin. Crossbookings count toward the same goal, so the two are added and the
+ * total is prorated across whatever period Meeting is showing.
+ *
+ * A period that includes today counts only the days elapsed so far, so an agent
+ * on pace reads 100% on a Tuesday instead of looking two-thirds behind.
+ */
+function daysInRange(a,b){return Math.max(1,Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/864e5)+1);}
+function effectiveDays(a,b){
+  const t=today();
+  // Clip the window at today: future dates in the range are not owed yet.
+  return b>t ? (t<a ? 1 : daysInRange(a,t)) : daysInRange(a,b);
+}
+function targetFor(ag,a,b){
+  const weekly=(+ag.target_bookings||0)+(+ag.target_crossbookings||0);
+  return Math.max(1,Math.round(weekly*effectiveDays(a,b)/7));
+}
+function teamTarget(agents,a,b){return agents.reduce((t,ag)=>t+targetFor(ag,a,b),0);}
+
+/* ---------- CRM job status ----------
+ * Written by scripts/crm-sync.mjs, which matches each booking's job reference
+ * against the CRM. Always compare the CODE: the CRM spells it "Canceled" with
+ * one L while this app uses "cancelled" with two, so string matching silently
+ * misses every cancellation.
+ */
+const CRM_CANCELED=40;
+const CRM_TONE={1:'gray',2:'blue',3:'ok',5:'ok',7:'ok',40:'bad'};
+// Finished jobs sort to the top of Needs review — they are the ones that can
+// actually be answered now. Still-running jobs can wait.
+const CRM_RANK={5:4,7:4,3:3,2:2,1:1};
+const crmRank=x=>CRM_RANK[x.crm_status_code]||0;
+function crmBadge(x){
+  if(x.crm_conflict)return `<span class="crm-b bad" title="${esc(x.crm_conflict)}">${esc(x.crm_status||'conflict')} !</span>`;
+  if(x.crm_status_code==null)return `<span class="crm-b none" title="No CRM job matched this reference yet">—</span>`;
+  const t=CRM_TONE[x.crm_status_code]||'gray';
+  const when=x.crm_scheduled_date?` · scheduled ${x.crm_scheduled_date}`:'';
+  return `<span class="crm-b ${t}" title="CRM status ${x.crm_status_code}${when}">${esc(x.crm_status)}</span>`;
 }
 
 /* ---------- shell ---------- */
@@ -1538,11 +1605,18 @@ function renderMeeting(app){
 
   const[a,b,label]=periodRange(STATE.meetPeriod,STATE.meetFrom||iso(addDays(nowPST(),-6)),STATE.meetTo||today());
   const team=compute(a,b,'all');
+  const activeAll=STATE.agents.filter(x=>x.active);
+  const tTarget=teamTarget(activeAll,a,b);
+  // Bookings and Cross-books are shown NET of cancellations. `netKnown` is false
+  // for periods that reach back before booking rows existed, where the cancelled
+  // share of the count is unknowable — the card says so rather than guessing.
+  const netNote=team.netKnown?'':' *';
   const kp=el('div','kpis');
-  kp.innerHTML=`${kpiCard(team.totalCalls,'Total calls')}${kpiCard(team.reached,'Reached')}${kpiCard(team.booked,'Bookings','a')}${kpiCard(team.cross,'Cross-books','blue')}${kpiCard(pct(team.booked,team.reached),'Contact→bk')}${STATE.isAdmin?kpiCard(money(team.revenue),'Revenue','a'):kpiCard(team.followUp,'Follow-ups')}`;
+  kp.innerHTML=`${kpiCard(team.totalCalls,'Total calls')}${kpiCard(team.reached,'Reached')}${kpiCard(team.bookedNet,'Bookings'+netNote,'a')}${kpiCard(team.crossNet,'Cross-books'+netNote,'blue')}${kpiCard(`${team.attained}/${tTarget}`,'Vs target',team.attained>=tTarget?'a':'')}${STATE.isAdmin?kpiCard(money(team.revenue),'Revenue','a'):kpiCard(team.followUp,'Follow-ups')}`;
   app.appendChild(kp);
+  if(!team.netKnown)app.appendChild(el('div','count-note','* Bookings and cross-books are shown after cancellations. This period reaches back before individual bookings were recorded, so those older days are counted gross — the true net is lower.'));
 
-  const sorts=[['bookings','Bookings'],['calls','Calls'],['reach','Reach %'],['conv','Conversion']];
+  const sorts=[['bookings','Bookings'],['ontarget','Vs target'],['calls','Calls'],['reach','Reach %'],['conv','Conversion']];
   const sortbar=el('div','meet-sort');
   sortbar.appendChild(el('span','lbl','Sort by'));
   sorts.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE.meetSort===k?' on':''),l);b.onclick=()=>{STATE.meetSort=k;renderMeeting(app);};sortbar.appendChild(b);});
@@ -1550,8 +1624,8 @@ function renderMeeting(app){
   app.appendChild(sortbar);
 
   const active=STATE.agents.filter(a=>a.active);
-  const rows=active.map(ag=>({ag,m:compute(a,b,ag.id)}));
-  const key={bookings:x=>x.m.booked,calls:x=>x.m.totalCalls,reach:x=>x.m.reachRate,conv:x=>x.m.contactToBooking}[STATE.meetSort];
+  const rows=active.map(ag=>({ag,m:compute(a,b,ag.id),tgt:targetFor(ag,a,b)}));
+  const key={bookings:x=>x.m.attained,ontarget:x=>x.m.attained/x.tgt,calls:x=>x.m.totalCalls,reach:x=>x.m.reachRate,conv:x=>x.m.contactToBooking}[STATE.meetSort];
   rows.sort((x,y)=>key(y)-key(x));
   const teamReachShare=team.reached/(team.totalCalls||1);
 
@@ -1560,6 +1634,7 @@ function renderMeeting(app){
   rows.forEach((r,i)=>{
     const m=r.m,tot=m.totalCalls||1;
     const w1=100*m.reached/tot,w2=100*m.noAnswer/tot,w3=100*m.notInt/tot;
+    const hit=m.attained>=r.tgt;
     const conv=m.contactToBooking;
     const convCls=conv>=.15?'tp-good':conv>=.08?'tp-mid':conv>0?'tp-bad':'tp-none';
     const row=el('button','lb-row');
@@ -1574,10 +1649,12 @@ function renderMeeting(app){
           <span class="seg p3" style="left:${w1+w2}%;width:${w3}%"></span>
           <span class="avg-tick" style="left:${Math.min(100,100*teamReachShare)}%"></span>
         </span>
-        <span class="mix-legend">Reached ${m.reached} · No ans ${m.noAnswer} · Not int ${m.notInt}</span>
+        <span class="mix-legend">Reached ${m.reached} · No ans ${m.noAnswer} · Not int ${m.notInt}${m.cancelled?` · <b>${m.cancelled} cancelled</b>`:''}</span>
+        <span class="tgt-bar" title="Bookings + cross-books after cancellations, against ${r.tgt} for this period"><span class="tgt-fill${hit?' hit':''}" style="width:${Math.min(100,100*m.attained/r.tgt)}%"></span></span>
       </span>
       <span class="lb-stat calls"><span class="v">${m.totalCalls}</span><span class="l">Calls</span></span>
-      <span class="lb-stat bk"><span class="v" style="color:var(--accent)">${m.booked}</span><span class="l">Bookings</span></span>
+      <span class="lb-stat bk"><span class="v" style="color:var(--accent)">${m.bookedNet}${m.crossNet?`<span style="color:var(--blue);font-size:.72em"> +${m.crossNet}</span>`:''}</span><span class="l">Booked${m.netKnown?'':' *'}</span></span>
+      <span class="lb-stat tgt"><span class="v ${hit?'tp-good':m.attained>=r.tgt*.6?'tp-mid':m.attained?'tp-bad':'tp-none'}">${m.attained}/${r.tgt}</span><span class="l">Vs target</span></span>
       <span class="lb-stat conv"><span class="v ${convCls}">${pct(m.booked,m.reached)}</span><span class="l">Contact→bk</span></span>
       <span class="lb-go">→</span>`;
     row.onclick=()=>openReport(rows,i,a,b,label);
@@ -1589,8 +1666,10 @@ function openReport(rows,idx,a,b,label){
   const root=$('#repRoot');
   function draw(i){
     const r=rows[i],m=r.m,ag=r.ag;
-    const target=(ag.target_bookings*(STATE.meetPeriod==='last30'?4:1))||1;
-    const prog=Math.min(100,100*m.booked/target);
+    // Weekly target (bookings + cross-books) prorated across the shown period,
+    // measured against attainment after cancellations.
+    const target=r.tgt!=null?r.tgt:targetFor(ag,a,b);
+    const prog=Math.min(100,100*m.attained/target);
     const recent=STATE.bookings.filter(x=>x.agent_id===ag.id&&inRange(x.report_date,a,b)).sort((x,y)=>y.report_date.localeCompare(x.report_date));
     root.innerHTML=`<div class="rep">
       <div class="rep-top">
@@ -1605,20 +1684,21 @@ function openReport(rows,idx,a,b,label){
       <div class="rep-kpis">
         <div class="rep-kpi"><div class="v">${m.totalCalls}</div><div class="l">Total calls</div></div>
         <div class="rep-kpi"><div class="v">${m.reached}</div><div class="l">Reached (${pct(m.reached,m.totalCalls)})</div></div>
-        <div class="rep-kpi hi"><div class="v">${m.booked}</div><div class="l">Bookings</div></div>
-        <div class="rep-kpi blue"><div class="v">${m.cross}</div><div class="l">Cross-books</div></div>
+        <div class="rep-kpi hi"><div class="v">${m.bookedNet}</div><div class="l">Bookings${m.cancelledBk?` (−${m.cancelledBk})`:''}</div></div>
+        <div class="rep-kpi blue"><div class="v">${m.crossNet}</div><div class="l">Cross-books${m.cancelledCross?` (−${m.cancelledCross})`:''}</div></div>
         <div class="rep-kpi"><div class="v">${pct(m.booked,m.reached)}</div><div class="l">Contact→bk</div></div>
         <div class="rep-kpi hi"><div class="v">${m.soldN}</div><div class="l">Sold jobs</div></div>
         <div class="rep-kpi hi"><div class="v">${money(m.revenue)}</div><div class="l">Revenue</div></div>
         <div class="rep-kpi"><div class="v">${money(m.avt)}</div><div class="l">AVT</div></div>
       </div>
       <div class="rep-body">
-        <div class="hintrow"><span>Bookings vs target (${target})</span><span>${m.booked}/${target}</span></div>
+        <div class="hintrow"><span>Booked + cross vs target, after cancellations</span><span>${m.attained}/${target}</span></div>
         <div class="bar-track"><div class="bar-fill" style="width:${prog}%"></div></div>
+        <div class="count-note">Weekly target ${(+ag.target_bookings||0)}+${(+ag.target_crossbookings||0)} prorated over ${effectiveDays(a,b)} day${effectiveDays(a,b)===1?'':'s'}${m.netKnown?'':' · older days counted gross, see Meeting note'}</div>
         <h3>Bookings in period</h3>
-        ${recent.length?`<div class="twrap"><table><thead><tr><th>Date</th><th>Type</th><th>Job ref</th><th>Status</th><th>Amount</th></tr></thead><tbody>
+        ${recent.length?`<div class="twrap"><table><thead><tr><th>Date</th><th>Type</th><th>Job ref</th><th>CRM</th><th>Status</th><th>Amount</th></tr></thead><tbody>
           ${recent.map(x=>`<tr><td>${x.report_date}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td>
-            <td class="jobref">${esc(x.job_ref)}</td><td><span class="badge ${x.status}">${x.status.replace('_',' ')}</span></td>
+            <td class="jobref">${esc(x.job_ref)}</td><td>${crmBadge(x)}</td><td><span class="badge ${x.status}">${x.status.replace('_',' ')}</span></td>
             <td>${x.sale_amount!=null?money(x.sale_amount):'—'}</td></tr>`).join('')}
         </tbody></table></div>`:'<div class="empty">No bookings in this period.</div>'}
       </div>
@@ -1709,23 +1789,36 @@ function renderAdmin(app){
 
   const hd=el('div','section-head');hd.style.marginTop='22px';
   hd.appendChild(el('div','',`<h2 style="font-size:19px">Bookings — sale amount & status</h2>`));
+  // Needs review = the CRM does not call it cancelled AND nobody has recorded an
+  // outcome yet. Marking a sale or closing without one drops the row out of here.
+  const needsReview=x=>x.status==='pending'&&x.crm_status_code!==CRM_CANCELED;
+  const nReview=STATE.bookings.filter(needsReview).length;
+  const nConflict=STATE.bookings.filter(x=>x.crm_conflict).length;
   const filt=el('div','');filt.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
-  [['open','Needs review'],['all','All'],['sold','Sold'],['cancelled','Cancelled']].forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE._bkFilter===k?' on':''),l);b.onclick=()=>{STATE._bkFilter=k;renderAdmin(app);};filt.appendChild(b);});
+  const pills=[['open',`Needs review${nReview?` (${nReview})`:''}`],['all','All'],['sold','Sold'],['cancelled','Cancelled']];
+  if(nConflict)pills.push(['conflict',`Conflicts (${nConflict})`]);
+  pills.forEach(([k,l])=>{const b=el('button','sort-pill'+(STATE._bkFilter===k?' on':''),l);b.onclick=()=>{STATE._bkFilter=k;renderAdmin(app);};filt.appendChild(b);});
   hd.appendChild(filt);app.appendChild(hd);
 
   let list=[...STATE.bookings].sort((x,y)=>y.report_date.localeCompare(x.report_date));
-  if(STATE._bkFilter==='open')list=list.filter(x=>x.status==='pending');
+  if(STATE._bkFilter==='open'){
+    list=list.filter(needsReview);
+    // Jobs the CRM has finished are the ones actually answerable right now, so
+    // float them up; the rest are still running and can wait.
+    list.sort((x,y)=>(crmRank(y)-crmRank(x))||y.report_date.localeCompare(x.report_date));
+  }
   else if(STATE._bkFilter==='sold')list=list.filter(x=>x.status==='sold');
   else if(STATE._bkFilter==='cancelled')list=list.filter(x=>x.status==='cancelled');
+  else if(STATE._bkFilter==='conflict')list=list.filter(x=>x.crm_conflict);
   const nameOf=id=>{const a=STATE.agents.find(x=>x.id===id);return a?a.name:'—';};
   const wrap=el('div','twrap');wrap.style.marginBottom='16px';
   if(!list.length)wrap.appendChild(el('div','empty','Nothing here.'));
   else{
-    const t=el('table');t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Type</th><th>Job ref</th><th>Status</th><th>Sale amount</th><th></th></tr></thead>`;
+    const t=el('table');t.innerHTML=`<thead><tr><th>Date</th><th>Agent</th><th>Type</th><th>Job ref</th><th>CRM</th><th>Status</th><th>Sale amount</th><th></th></tr></thead>`;
     const tb=el('tbody');
     list.slice(0,400).forEach(x=>{
       const tr=el('tr');
-      tr.innerHTML=`<td>${x.report_date}</td><td>${esc(nameOf(x.agent_id))}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td><td class="jobref">${esc(x.job_ref)}</td>`;
+      tr.innerHTML=`<td>${x.report_date}</td><td>${esc(nameOf(x.agent_id))}</td><td><span class="badge ${x.kind}">${x.kind==='crossbooking'?'Cross':'Booking'}</span></td><td class="jobref">${esc(x.job_ref)}</td><td>${crmBadge(x)}</td>`;
       const tdS=el('td'),sel=el('select','st-select');
       ['pending','sold','ran_not_sold','cancelled'].forEach(s=>{const o=el('option',null,s.replace('_',' '));o.value=s;if(x.status===s)o.selected=true;sel.appendChild(o);});
       sel.onchange=async()=>{await updateBooking(x.id,{status:sel.value,updated_at:new Date().toISOString()});toast('Status updated');};

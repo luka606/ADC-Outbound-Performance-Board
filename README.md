@@ -10,8 +10,10 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 - `sales_schema.sql` — tables for the **Office Sales** workspace (salespersons, daily metrics, sales log)
 - `jobs_schema.sql` — tables for the **Job Assignment** workspace (technicians, job assignments)
 - `adc_db_schema.sql` — the `adc_database` customer contact list behind the **Database** tab
+- `crm_sync_schema.sql` — the `crm_*` columns on `bookings` that the CRM sync writes
+- `scripts/crm-sync.mjs` — reconciles each booking's job reference against the CRM
 
-The four SQL files do not overlap, and each is idempotent — safe to re-run at any time.
+The SQL files do not overlap, and each is idempotent — safe to re-run at any time.
 
 ## Setup (about 10 minutes)
 
@@ -143,6 +145,79 @@ Click the **ADC OUTBOUND ▾** name in the top-left to switch workspaces:
 ## Booking references
 Booking and cross-booking references are now **6 characters, letters + numbers** (e.g. `X32RT7`),
 entered uppercase and required-unique before a report can be submitted.
+
+Note the uniqueness check is **client-side only** — there is no unique constraint in the
+database, so a direct API write or two simultaneous submits could still create a duplicate.
+
+## CRM status sync
+
+`scripts/crm-sync.mjs` matches every booking's job reference against the Apollo CRM and records
+what the CRM says about that job, so **Cancelled** and **Needs review** reflect reality instead
+of what someone remembered to update.
+
+```bash
+node scripts/crm-sync.mjs --dry-run    # print every intended change, write nothing
+node scripts/crm-sync.mjs              # apply
+```
+
+Run `crm_sync_schema.sql` once first. Credentials are read from `~/.claude/secrets/apollo.env`
+and `~/.config/adc/supabase.env` — **never** from this repo. The sync runs server-side on
+purpose: this app is a single public static file, so a token placed in it would be world-readable.
+
+**What it does with each answer:**
+
+| CRM says | booking is `pending` | booking is `sold` / `ran not sold` |
+|---|---|---|
+| `Canceled` (40) | → `cancelled` | left alone, flagged under **Conflicts** |
+| anything else | stays in **Needs review** | left alone |
+
+It never reverts a recorded sale and never un-cancels. Both of those reverse a decision a person
+made, so they are surfaced as conflicts rather than applied.
+
+**Needs review** is therefore *the CRM does not call it cancelled, and nobody has recorded an
+outcome yet*. Adding a sale amount or marking "ran, not sold" drops the row out of the queue.
+Jobs the CRM has already **Closed** sort to the top — those are the ones you can actually answer.
+
+**Things worth knowing about the CRM API:**
+- The CRM spells it **"Canceled"** with one L; this app uses `cancelled` with two. The sync
+  matches on the status *code* (40). Any string comparison silently misses every cancellation.
+- Its window is capped at **7 days** and filters on `updated_at`, not the job date — so it is a
+  change feed, and an old job reappears whenever its status moves. The sync walks backwards a
+  window at a time until every reference resolves.
+- A reference the sync cannot find is **left unsynced and reported**, never guessed at. Jobs
+  cancelled before a technician was ever assigned appear to be absent from the log entirely.
+- `Closed` is an accounting status, not a sale. That is exactly why those land in Needs review
+  rather than being counted as revenue.
+
+## Targets in Meeting
+
+The two weekly numbers you set per agent in Admin — **Target bookings** and **Target
+cross-bookings** — are **added together** into one goal, because a cross-booking counts toward
+target just like a booking. Defaults are 5 + 3, so 8 a week.
+
+That weekly figure is then **prorated across whatever period Meeting is showing**:
+
+```
+target   = (target_bookings + target_crossbookings) × days ÷ 7
+attained = (bookings − cancelled) + (cross-books − cancelled)
+```
+
+A period that includes today counts only the **days elapsed so far**, so an agent who is on pace
+reads 100% on a Tuesday instead of looking two-thirds behind. "Yesterday" is one seventh of the
+weekly target, not the whole thing — which is what it used to show.
+
+Attainment appears on every leaderboard row, as a team KPI, and as the bar in the agent
+drill-down. **Vs target** is also a sort option.
+
+**Booked is net of cancellations everywhere.** A cancelled cross-booking comes off the
+cross-booking total, not the booking total.
+
+> **Periods before 2026-07-22 are counted gross.** Individual bookings only start being recorded
+> on that date; the 151 daily reports before it carry a booking *count* with no rows behind it,
+> from the one-time historical backfill. Which of those were cancelled is unknowable, so any
+> period reaching back that far marks the affected figures with `*` and says so, rather than
+> printing a net number it cannot actually compute. From 2026-07-22 onward the counts and the
+> rows agree exactly.
 
 ## Custom date ranges
 Both **Meeting** and **Scorecard** now include a **Custom** period with From/To date pickers, in
