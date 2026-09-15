@@ -11,6 +11,8 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 - `jobs_schema.sql` — tables for the **Job Assignment** workspace (technicians, job assignments)
 - `adc_db_schema.sql` — the `adc_database` customer contact list behind the **Database** tab
 - `crm_sync_schema.sql` — the `crm_*` columns on `bookings` that the CRM sync writes
+- `coverage_schema.sql` — the **Coverage** tab: `coverage_log`, `coverage_days`, and the approved-list
+  fields on `technicians` (run after `jobs_schema.sql`)
 - `scripts/crm-sync.mjs` — reconciles each booking's job reference against the CRM
 
 The SQL files do not overlap, and each is idempotent — safe to re-run at any time.
@@ -234,7 +236,8 @@ available for printing or sharing outside the app.
 
 ## Job Assignment workspace
 Third workspace in the brand dropdown (**Job Assignment**). Run **`jobs_schema.sql`** once in
-Supabase to create its two tables (`technicians`, `job_assignments`). Three tabs:
+Supabase to create its two tables (`technicians`, `job_assignments`), then **`coverage_schema.sql`**
+for the Coverage tab. Four tabs:
 
 1. **Today's Assignment** — pick a date, choose **job type (ADC / DVC)**, technician, and the
    number of jobs, then Assign. Assigning the same technician + type for that date updates the
@@ -246,7 +249,20 @@ Supabase to create its two tables (`technicians`, `job_assignments`). Three tabs
    full assignment list, and CSV export.
 3. **Technicians** — add, rename, deactivate, or delete technicians. **Open to DSRs — no admin
    needed.** Deactivating hides someone from the dropdown but keeps their history; deleting
-   removes them from the list while past assignments keep the name.
+   removes them from the list while past assignments keep the name. **Approved** is separate
+   and admin-only: it marks who is on the frozen approved-technician list, with their areas,
+   job types (estimate / install / both), availability and contact method. A newly added
+   technician is *not* approved until an admin approves them.
+4. **Coverage** — the coverage log (Rock *ADC Ironclad Coverage*, milestone 1 · SOP ADC-DSR-001).
+   No ADC job is rejected until every **approved, active** technician who matches the area and
+   job type has been offered it, and every offer is written down. One row per offer or status
+   change — a job moves through **Uncovered · Reassigned · Rejected · Potentially lost ·
+   Confirmed lost** and each is a new row, never an overwrite. Per day: owner, backup and
+   review times; totals computed from each job's latest row; jobs still open from earlier days
+   carried over automatically; a seven-point end-of-day review that closes the day. Three rules
+   are enforced by the database, not just the form: **Rejected needs at least one technician
+   offered**, **Confirmed lost needs a reason**, **Reassigned needs a final assignee** — and every
+   offered name must be approved and active at the time. Nothing in the log can be deleted.
 
 All dates follow PST like the rest of the platform.
 

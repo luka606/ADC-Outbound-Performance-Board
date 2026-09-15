@@ -304,6 +304,25 @@ body.admin-on .admin-only{display:block}
 .sop-preview-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
 #sopFrame{width:100%;height:70vh;border:0;background:#fff;display:block}
 @media(max-width:720px){.sop-cards{grid-template-columns:1fr}#sopFrame{height:60vh}}
+
+/* ============ coverage tab (Job Assignment) ============ */
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:flex-end}
+.cv-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;min-height:32px}
+.cv-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;transition:.15s}
+.cv-chip:hover{border-color:var(--ink-3)}
+.cv-chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+.cv-chip .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.cv-chip.on .meta{color:var(--accent)}
+.badge.uncovered{background:var(--amber-soft);color:var(--amber)}
+.badge.reassigned{background:var(--accent-soft);color:var(--accent)}
+.badge.rejected{background:var(--line-2);color:var(--ink-2)}
+.badge.potentially_lost{background:var(--red-soft);color:var(--red)}
+.badge.confirmed_lost{background:var(--red);color:var(--on-accent)}
+.badge.approved{background:var(--accent-soft);color:var(--accent-deep)}
+.cv-eod{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.cv-eod label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 10px;border:1px solid var(--line-2);border-radius:var(--r-xs);cursor:pointer}
+.cv-eod label:hover{background:var(--panel-2)}
+.cv-eod input{margin-top:3px}
 </style>
 </head>
 <body>
@@ -331,6 +350,7 @@ body.admin-on .admin-only{display:block}
     <button data-tab="jtoday" class="on">Today's Assignment</button>
     <button data-tab="jbreak">Breakdown</button>
     <button data-tab="jtech">Technicians</button>
+    <button data-tab="jcover">Coverage</button>
   </nav>
   <div class="hdr-right">
     <span id="whoami"></span>
@@ -489,7 +509,7 @@ body.admin-on .admin-only{display:block}
 <!-- ================= JOBS: TECHNICIANS ================= -->
 <section class="tab" id="tab-jtech">
   <h2>Technicians</h2>
-  <div class="sub">Add technicians so they appear in the assignment dropdown. <b>Deactivate</b> hides someone from the dropdown but keeps their history; <b>Delete</b> removes them from the list (past assignments keep the name).</div>
+  <div class="sub">Add technicians so they appear in the assignment dropdown. <b>Deactivate</b> hides someone from the dropdown but keeps their history; <b>Delete</b> removes them from the list (past assignments keep the name). <b>Approved</b> is separate and admin-only: it marks who is on the frozen approved-technician list and counts as a coverage option on the <b>Coverage</b> tab.</div>
   <div class="panel">
     <h3 class="pt">Add technician</h3>
     <div class="bar tight">
@@ -497,9 +517,81 @@ body.admin-on .admin-only{display:block}
       <div class="fld"><label>Default type</label><select id="ntType"><option value="">— none —</option><option value="ADC">ADC</option><option value="DVC">DVC</option></select></div>
       <button class="btn" id="ntAdd">Add technician</button>
     </div>
-    <div class="count-note" style="margin-top:8px">DSRs can add technicians — no admin needed.</div>
+    <div class="count-note" style="margin-top:8px">DSRs can add technicians — no admin needed. A new technician is <b>not approved</b> until an admin approves them below.</div>
   </div>
   <div class="panel"><div class="twrap"><table id="tblJTechs"></table></div></div>
+</section>
+
+<!-- ================= JOBS: COVERAGE ================= -->
+<section class="tab" id="tab-jcover">
+  <h2>Coverage log</h2>
+  <div class="sub">No ADC job is rejected until every <b>approved, active</b> technician who matches the area and job type has been offered it — and every offer is written down here. One row per offer or status change: a job can move through several statuses, and each is a new row, never an overwrite.</div>
+
+  <div class="panel">
+    <div class="bar tight">
+      <div class="fld"><label>Day</label><input type="date" id="cvDate"></div>
+      <div class="fld"><label>Daily owner</label><input type="text" id="cvOwner" placeholder="Who owns today"></div>
+      <div class="fld"><label>Backup</label><input type="text" id="cvBackup" placeholder="Backup owner"></div>
+      <div class="fld"><label>Review times (PT)</label><input type="text" id="cvReview" placeholder="10:00, 14:00, 17:00" style="width:170px"></div>
+      <span class="count-note" id="cvDayNote"></span>
+    </div>
+  </div>
+
+  <div class="kpis" id="cvKpis"></div>
+
+  <div class="panel" id="cvCarryPanel" style="display:none">
+    <h3 class="pt">Carried over — still open from earlier days</h3>
+    <div class="count-note" style="margin-bottom:10px">Jobs whose latest row is Uncovered or Potentially lost and that have no row yet today. Log today's status on each before the first review.</div>
+    <div class="twrap"><table id="tblCvCarry"></table></div>
+  </div>
+
+  <div class="panel">
+    <h3 class="pt" id="cvFormTitle">Log a job</h3>
+    <div class="count-note" id="cvApprovedNote" style="margin-bottom:10px"></div>
+    <div class="cv-grid">
+      <div class="fld"><label>Time (PT)</label><input type="text" id="cvTime" placeholder="HH:MM" style="width:90px"></div>
+      <div class="fld"><label>Lead / job ID</label><input type="text" id="cvLead" placeholder="e.g. AB12CD" class="jobref" style="text-transform:uppercase"></div>
+      <div class="fld"><label>Area</label><input type="text" id="cvArea" placeholder="LA / OC / SD …"></div>
+      <div class="fld"><label>Job date</label><input type="date" id="cvJobDate"></div>
+      <div class="fld"><label>Value ($)</label><input type="number" id="cvValue" min="0" step="1" style="width:110px"></div>
+      <div class="fld"><label>Original assignee</label><input type="text" id="cvOrig" list="cvTechList"></div>
+      <div class="fld"><label>Issue</label><select id="cvIssue">
+        <option value="">— pick —</option>
+        <option>Usual technician unavailable</option><option>Declined</option><option>Over capacity</option><option>Out of area</option><option>No technician for this area</option><option>Customer reschedule</option><option>Other</option></select></div>
+      <div class="fld"><label>Offer sent by</label><select id="cvMethod"><option value="">—</option><option value="call">Call</option><option value="text">Text</option><option value="crm">CRM</option></select></div>
+    </div>
+    <div class="fld" style="margin-top:12px"><label>Technicians offered <span class="count-note">— approved &amp; active only; tick each one you offered it to</span></label>
+      <div class="cv-chips" id="cvOffered"></div></div>
+    <div class="cv-grid" style="margin-top:12px">
+      <div class="fld" style="grid-column:span 2"><label>Responses</label><input type="text" id="cvResp" placeholder="Sagi: no answer 10:40 · Jordan: declined · Jimmy: accepted 11:05"></div>
+      <div class="fld"><label>Final assignee</label><input type="text" id="cvFinal" list="cvTechList"></div>
+      <div class="fld"><label>Outcome</label><select id="cvOutcome">
+        <option value="">— pick —</option>
+        <option value="uncovered">Uncovered</option><option value="reassigned">Reassigned</option><option value="rejected">Rejected</option><option value="potentially_lost">Potentially lost</option><option value="confirmed_lost">Confirmed lost</option></select></div>
+      <div class="fld" style="grid-column:span 2"><label>Lost reason</label><input type="text" id="cvLost" placeholder="Required for Confirmed lost"></div>
+      <div class="fld" style="grid-column:span 2"><label>Next action</label><input type="text" id="cvNext"></div>
+      <div class="fld"><label>Owner</label><input type="text" id="cvRowOwner"></div>
+    </div>
+    <datalist id="cvTechList"></datalist>
+    <div class="bar tight" style="margin-top:14px">
+      <button class="btn" id="cvSave">Add to log</button>
+      <button class="btn ghost" id="cvCancel" style="display:none">Cancel</button>
+      <span class="count-note">Rejected needs at least one technician offered · Confirmed lost needs a reason · Reassigned needs a final assignee</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-head" style="margin-bottom:12px"><h3 class="pt" style="margin:0">Log for this day</h3><span class="count-note" id="cvCountNote"></span></div>
+    <div class="twrap" style="max-height:60vh"><table id="tblCv"></table></div>
+    <div class="bar tight" style="margin-top:10px"><button class="btn ghost sm" id="cvExport">Export CSV (last 30 days)</button></div>
+  </div>
+
+  <div class="panel">
+    <h3 class="pt">End-of-day review</h3>
+    <div class="cv-eod" id="cvEod"></div>
+    <div class="fld" style="margin-top:10px"><label>Note for the next owner</label><input type="text" id="cvEodNote" placeholder="Anything tomorrow's owner must know"></div>
+    <div class="bar tight" style="margin-top:12px"><button class="btn" id="cvClose">Close the day</button><span class="count-note" id="cvClosedNote"></span></div>
+  </div>
 </section>
 </main></div>
 <div class="rep-backdrop" id="repRoot"></div>
@@ -1454,6 +1546,7 @@ function renderSOPInto(container){
 async function adminButtonClick(){
   if(STATE.isAdmin){STATE.isAdmin=false;sessionStorage.removeItem(LS.adminSession);document.body.classList.remove('admin-on');$('#adminBtn').textContent='Admin';
     if(WS==='sales'){showSalesTab($$('#navSales button.on')[0]?.dataset.tab||'sdash');}
+    else if(WS==='jobs'){showJobsTab($$('#navJobs button.on')[0]?.dataset.tab||'jtoday');}
     else if(STATE.view==='admin'){go('scorecard');} else {renderNav();}
     toast('Admin locked');return;}
   // Touch ID / fingerprint first when enrolled on this device, else fall back to PIN
@@ -1471,6 +1564,7 @@ async function adminButtonClick(){
 function unlockAdmin(){
   STATE.isAdmin=true;sessionStorage.setItem(LS.adminSession,'1');document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';
   if(WS==='sales'){showSalesTab($$('#navSales button.on')[0]?.dataset.tab||'sdash');}
+  else if(WS==='jobs'){showJobsTab($$('#navJobs button.on')[0]?.dataset.tab||'jtoday');}
   else{go('admin');}
 }
 
@@ -2098,6 +2192,7 @@ function showJobsTab(name){
   if(name==='jtoday') renderJToday();
   if(name==='jbreak') renderJBreak();
   if(name==='jtech')  renderJTechs();
+  if(name==='jcover') renderJCover();
 }
 $('#navJobs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) showJobsTab(b.dataset.tab); });
 async function bootJobs(){
@@ -2256,14 +2351,28 @@ $('#jbExport').addEventListener('click', async ()=>{
 
 /* ---- Tab 3: technician control (open to DSRs) ---- */
 function renderJTechs(){
-  let h='<thead><tr><th>Technician</th><th>Default type</th><th>Status</th><th style="width:330px">Actions</th></tr></thead><tbody>';
+  const adm=STATE.isAdmin;
+  const JT=[['','—'],['estimate','Estimate'],['install','Install'],['both','Both']], CM=[['','—'],['call','Call'],['text','Text'],['crm','CRM']];
+  // Admins see inputs for the approved-list fields; everyone else sees the values.
+  const fld=(k,val,ph,opts)=>{
+    if(!adm){ if(!val) return '<span style="color:var(--ink-3)">—</span>'; return esc(opts?(Object.fromEntries(opts)[val]||val):val); }
+    if(opts) return `<select data-tf="${k}">${opts.map(([v,l])=>`<option value="${v}"${(val||'')===v?' selected':''}>${l}</option>`).join('')}</select>`;
+    return `<input type="text" data-tf="${k}" value="${esc(val||'')}" placeholder="${ph}" style="width:${k==='areas'?110:140}px">`;
+  };
+  let h=`<thead><tr><th>Technician</th><th>Approved</th><th>Areas</th><th>Job types</th><th>Contact</th><th>Availability</th><th>Default type</th><th>Status</th><th style="width:${adm?440:330}px">Actions</th></tr></thead><tbody>`;
   TECHS.forEach(t=>{
-    const off=t.active===false;
+    const off=t.active===false, ap=t.approved===true;
     h+=`<tr style="${off?'opacity:.55':''}">
-      <td><input type="text" style="width:180px;font-weight:600" data-tn value="${esc(t.name)}"></td>
+      <td><input type="text" style="width:160px;font-weight:600" data-tn value="${esc(t.name)}"></td>
+      <td>${ap?`<span class="badge approved" title="${esc(t.approved_at?'since '+String(t.approved_at).slice(0,10):'')}">Approved</span>`:'<span class="badge gray">Not approved</span>'}</td>
+      <td>${fld('areas',t.areas,'LA, OC')}</td>
+      <td>${fld('job_types',t.job_types,'',JT)}</td>
+      <td>${fld('contact_method',t.contact_method,'',CM)}</td>
+      <td>${fld('availability',t.availability,'Mon–Sat 8–6')}</td>
       <td>${t.default_type?`<span class="badge ${t.default_type==='DVC'?'crossbooking':'booking'}">${esc(t.default_type)}</span>`:'<span class="badge gray">—</span>'}</td>
       <td>${off?'<span class="badge gray">Inactive</span>':'<span class="badge yes">Active</span>'}</td>
       <td style="display:flex;gap:8px;flex-wrap:wrap">
+        ${adm?`<button class="btn sm" data-tsave="${esc(t.name)}">Save</button><button class="btn ghost sm" data-tapprove="${esc(t.name)}">${ap?'Revoke approval':'Approve'}</button>`:''}
         <button class="btn ghost sm" data-trename="${esc(t.name)}">Rename</button>
         <button class="btn ghost sm" data-ttoggle="${esc(t.name)}">${off?'Activate':'Deactivate'}</button>
         <button class="btn danger sm" data-tdel="${esc(t.name)}">Delete</button>
@@ -2281,6 +2390,25 @@ $('#ntAdd').addEventListener('click', async ()=>{
   await reloadTechs();renderJTechs();toast(`${name} added`);
 });
 $('#tblJTechs').addEventListener('click', async e=>{
+  // Approved-list fields and the Approve / Revoke toggle — admin only (client-side gate, like every gate here).
+  const sv=e.target.closest('[data-tsave]');
+  if(sv){
+    if(!STATE.isAdmin){toast('Admin only',true);return;}
+    const patch={};sv.closest('tr').querySelectorAll('[data-tf]').forEach(i=>patch[i.dataset.tf]=i.value.trim()||null);
+    const {error}=await sb.from('technicians').update(patch).eq('name',sv.dataset.tsave);
+    if(error){toast(friendlyErr(error,'coverage_schema.sql'),true);return;}
+    await reloadTechs();renderJTechs();toast(`${sv.dataset.tsave} saved`);return;
+  }
+  const apv=e.target.closest('[data-tapprove]');
+  if(apv){
+    if(!STATE.isAdmin){toast('Admin only',true);return;}
+    const name=apv.dataset.tapprove, t=TECHS.find(x=>x.name===name), next=t.approved!==true;
+    if(next&&!confirm(`Approve "${name}" as an ADC coverage option?\nOnly approved, active technicians count when deciding whether every option was exhausted.`))return;
+    if(!next&&!confirm(`Revoke approval for "${name}"?\nThey stop counting as a coverage option from now. Past log rows are untouched.`))return;
+    const {error}=await sb.from('technicians').update({approved:next,approved_at:next?new Date().toISOString():null,approved_by:next?'Admin (board)':null}).eq('name',name);
+    if(error){toast(friendlyErr(error,'coverage_schema.sql'),true);return;}
+    await reloadTechs();renderJTechs();toast(`${name} ${next?'approved':'— approval revoked'}`);return;
+  }
   const ren=e.target.closest('[data-trename]');
   if(ren){
     const oldName=ren.dataset.trename;
@@ -2310,6 +2438,201 @@ $('#tblJTechs').addEventListener('click', async e=>{
     if(error){toast('Delete failed: '+error.message,true);return;}
     await reloadTechs();renderJTechs();toast(`${name} deleted`);
   }
+});
+
+/* ---- Tab 4: coverage log ----
+ * Rock "ADC Ironclad Coverage", milestone 1 · SOP ADC-DSR-001.
+ * No ADC job is rejected until every APPROVED, ACTIVE technician who could
+ * take it has been offered it, and every offer is on record. One row per
+ * offer or status change; a job's current state is its latest row.
+ * The database enforces the hard rules too (coverage_schema.sql): Rejected
+ * needs >= 1 offered, Confirmed lost needs a reason, Reassigned needs a final
+ * assignee, offered names must be approved + active. The checks below only
+ * make the message friendlier and save a round trip.
+ */
+const CV_OUTCOMES={uncovered:'Uncovered',reassigned:'Reassigned',rejected:'Rejected',potentially_lost:'Potentially lost',confirmed_lost:'Confirmed lost'};
+const CV_OPEN=new Set(['uncovered','potentially_lost']);
+const CV_EOD=[
+  ['owner_next','Every uncovered job has an owner and next action.'],
+  ['all_considered','Every eligible approved technician was considered before rejection.'],
+  ['reassign_confirmed','All reassignments were confirmed.'],
+  ['escalated','Potential losses were escalated.'],
+  ['lost_reason','Confirmed losses include a reason.'],
+  ['tomorrow','Tomorrow’s urgent jobs were reviewed.'],
+  ['handover','Unresolved jobs handed to tomorrow’s owner explicitly.']];
+let CV_ALL=[],CV_ROWS=[],CV_CARRY=[],CV_DAY=null,CV_EDIT=null,CV_SEL=new Set();
+const cvApproved=()=>TECHS.filter(t=>t.approved===true&&t.active!==false);
+const cvDate=()=>$('#cvDate').value||todayStr();
+function cvNowHHMM(){const d=nowPST();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+const cvKey=r=>`${r.log_date} ${r.time_local||''} ${r.created_at||''}`;
+const cvSort=(a,b)=>cvKey(a).localeCompare(cvKey(b));
+function cvLatestByLead(rows){const m=new Map();[...rows].sort(cvSort).forEach(r=>m.set(r.lead_ref,r));return m;}
+function cvPT(ts){return new Date(ts).toLocaleTimeString('en-US',{timeZone:PST_TZ,hour:'2-digit',minute:'2-digit',hour12:false});}
+function cvErr(e){
+  const m=(e&&e.message)||String(e||'');
+  if(/rejected_needs_offer/.test(m))return 'Rejected needs at least one approved technician offered — that is the rule.';
+  if(/lost_needs_reason/.test(m))return 'Confirmed lost needs a reason.';
+  if(/reassigned_needs_final/.test(m))return 'Reassigned needs the final assignee.';
+  if(/Not an approved, active technician/.test(m))return m;
+  return friendlyErr(e,'coverage_schema.sql');
+}
+async function renderJCover(){
+  if(!$('#cvDate').value)$('#cvDate').value=todayStr();
+  const d=cvDate();
+  $('#cvDayNote').textContent='Loading…';
+  const since=iso(addDays(new Date(d+'T12:00:00'),-30));
+  const [rows,day,prev]=await Promise.all([
+    sb.from('coverage_log').select('*').gte('log_date',since).lte('log_date',d).order('log_date').order('created_at'),
+    sb.from('coverage_days').select('*').eq('log_date',d).maybeSingle(),
+    sb.from('coverage_days').select('owner,backup,review_times').lt('log_date',d).order('log_date',{ascending:false}).limit(1)]);
+  if(rows.error){toast(friendlyErr(rows.error,'coverage_schema.sql'),true);$('#cvDayNote').textContent='Run coverage_schema.sql in Supabase to create the coverage tables, then reload.';return;}
+  CV_ALL=(rows.data||[]).sort(cvSort);
+  CV_ROWS=CV_ALL.filter(r=>r.log_date===d);
+  const todayLeads=new Set(CV_ROWS.map(r=>r.lead_ref));
+  CV_CARRY=[...cvLatestByLead(CV_ALL.filter(r=>r.log_date<d)).values()].filter(r=>CV_OPEN.has(r.outcome)&&!todayLeads.has(r.lead_ref));
+  CV_DAY=day.data||null;
+  cvRenderDay((prev.data&&prev.data[0])||{});cvRenderKpis();cvRenderCarry();cvRenderForm();cvRenderTable();cvRenderEod();
+}
+function cvRenderDay(dflt){
+  const d=CV_DAY||{};
+  $('#cvOwner').value=d.owner||dflt.owner||'';
+  $('#cvBackup').value=d.backup||dflt.backup||'';
+  $('#cvReview').value=d.review_times||dflt.review_times||'10:00, 14:00, 17:00';
+  $('#cvDayNote').textContent=CV_DAY?(CV_DAY.closed_at?`Day closed ${cvPT(CV_DAY.closed_at)} PT by ${CV_DAY.closed_by||'—'}`:'Day open'):(dflt.owner?'Owner carried from the last logged day — change it if that is wrong':'Name the daily owner before the first offer');
+  if(!$('#cvRowOwner').value)$('#cvRowOwner').value=$('#cvOwner').value;
+}
+function cvRenderKpis(){
+  // Totals count each job once, by its latest row — the same rule as the Rock's daily totals.
+  const latest=[...cvLatestByLead(CV_ROWS).values()];
+  const n=k=>latest.filter(r=>r.outcome===k).length;
+  const openRows=latest.filter(r=>CV_OPEN.has(r.outcome));
+  const risk=openRows.reduce((s,r)=>s+(+r.value||0),0);
+  $('#cvKpis').innerHTML=`
+    <div class="kpi ${n('uncovered')?'b':''}"><div class="v">${n('uncovered')}</div><div class="l">Uncovered</div></div>
+    <div class="kpi a"><div class="v">${n('reassigned')}</div><div class="l">Reassigned</div></div>
+    <div class="kpi"><div class="v">${n('rejected')}</div><div class="l">Rejected</div></div>
+    <div class="kpi ${n('potentially_lost')?'c':''}"><div class="v">${n('potentially_lost')}</div><div class="l">Potentially lost</div></div>
+    <div class="kpi ${n('confirmed_lost')?'c':''}"><div class="v">${n('confirmed_lost')}</div><div class="l">Confirmed lost</div></div>
+    <div class="kpi ${risk?'c':''}"><div class="v">${money(risk)}</div><div class="l">Revenue at risk</div></div>
+    <div class="kpi ${openRows.length+CV_CARRY.length?'b':''}"><div class="v">${openRows.length+CV_CARRY.length}</div><div class="l">Still open${CV_CARRY.length?` · ${CV_CARRY.length} carried`:''}</div></div>`;
+}
+function cvRenderCarry(){
+  const p=$('#cvCarryPanel');
+  if(!CV_CARRY.length){p.style.display='none';$('#tblCvCarry').innerHTML='';return;}
+  p.style.display='';
+  let h='<thead><tr><th>Lead / job</th><th>Area</th><th>Job date</th><th>Value</th><th>Last outcome</th><th>Last logged</th><th>Next action</th><th>Owner</th><th></th></tr></thead><tbody>';
+  CV_CARRY.forEach(r=>{h+=`<tr><td class="jobref"><b>${esc(r.lead_ref)}</b></td><td>${esc(r.area||'—')}</td><td>${esc(r.job_date||'—')}</td><td class="num">${r.value!=null?money(r.value):'—'}</td><td><span class="badge ${esc(r.outcome)}">${CV_OUTCOMES[r.outcome]||esc(r.outcome)}</span></td><td class="num" style="text-align:left">${esc(r.log_date)} ${esc(r.time_local||'')}</td><td>${esc(r.next_action||'—')}</td><td>${esc(r.owner||'—')}</td><td><button class="btn sm" data-cvmore="${esc(r.id)}">Log today</button></td></tr>`;});
+  $('#tblCvCarry').innerHTML=h+'</tbody>';
+}
+function cvRenderForm(){
+  const ap=cvApproved();
+  $('#cvOffered').innerHTML=ap.length?ap.map(t=>`<span class="cv-chip${CV_SEL.has(t.name)?' on':''}" data-cvchip="${esc(t.name)}">${esc(t.name)}<span class="meta">${esc([t.areas,t.job_types].filter(Boolean).join(' · ')||'—')}</span></span>`).join(''):'<span class="count-note">No approved technicians yet.</span>';
+  $('#cvApprovedNote').innerHTML=ap.length?`${ap.length} approved &amp; active technician${ap.length===1?'':'s'} count as coverage options. Approval is admin-only, on the <b>Technicians</b> tab.`:'<b>No technician is approved yet.</b> An admin approves them on the <b>Technicians</b> tab. Until then a job cannot be recorded as Rejected — the database refuses it.';
+  $('#cvTechList').innerHTML=TECHS.filter(t=>t.active!==false).map(t=>`<option value="${esc(t.name)}">`).join('');
+  if(!$('#cvTime').value)$('#cvTime').value=cvNowHHMM();
+}
+function cvRenderTable(){
+  $('#cvCountNote').textContent=`${cvDate()} · ${CV_ROWS.length} row${CV_ROWS.length===1?'':'s'} · totals count each job once, by its latest row`;
+  if(!CV_ROWS.length){$('#tblCv').innerHTML='<tbody><tr><td style="color:var(--ink-2)">Nothing logged for this day. Only jobs that could not follow normal assignment belong here.</td></tr></tbody>';return;}
+  let h='<thead><tr><th>Time</th><th>Lead / job</th><th>Area</th><th>Job date</th><th>Value</th><th>Original</th><th>Issue</th><th>Offered</th><th>Responses</th><th>Final</th><th>Outcome</th><th>Lost reason</th><th>Next action</th><th>Owner</th><th></th></tr></thead><tbody>';
+  [...CV_ROWS].sort(cvSort).reverse().forEach(r=>{
+    const off=r.offered_names||[];
+    h+=`<tr><td class="num" style="text-align:left">${esc(r.time_local||'')}</td><td class="jobref"><b>${esc(r.lead_ref)}</b></td><td>${esc(r.area||'')}</td><td>${esc(r.job_date||'')}</td><td class="num">${r.value!=null?money(r.value):''}</td><td>${esc(r.original_assignee||'')}</td><td>${esc(r.issue||'')}</td>
+      <td>${off.length?`<span class="badge booking">${off.length}</span> ${esc(off.join(', '))}${r.offered_method?` <span class="count-note">via ${esc(r.offered_method)}</span>`:''}`:'<span class="badge gray">none</span>'}</td>
+      <td>${esc(r.responses||'')}</td><td>${esc(r.final_assignee||'')}</td><td><span class="badge ${esc(r.outcome)}">${CV_OUTCOMES[r.outcome]||esc(r.outcome)}</span></td><td>${esc(r.lost_reason||'')}</td><td>${esc(r.next_action||'')}</td><td>${esc(r.owner||'')}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-cvmore="${esc(r.id)}" title="Log the next status for this job">+ status</button> <button class="btn ghost sm" data-cvedit="${esc(r.id)}">Edit</button></td></tr>`;
+  });
+  $('#tblCv').innerHTML=h+'</tbody>';
+}
+function cvRenderEod(){
+  const eod=(CV_DAY&&CV_DAY.eod)||{};
+  $('#cvEod').innerHTML=CV_EOD.map(([k,l])=>`<label><input type="checkbox" data-cveod="${k}"${eod[k]?' checked':''}> <span>${l}</span></label>`).join('');
+  $('#cvEodNote').value=(CV_DAY&&CV_DAY.eod_note)||'';
+  const closed=!!(CV_DAY&&CV_DAY.closed_at);
+  $('#cvClose').textContent=closed?'Reopen the day':'Close the day';
+  $('#cvClosedNote').textContent=closed?`Closed ${cvPT(CV_DAY.closed_at)} PT by ${CV_DAY.closed_by||'—'}`:'All seven boxes ticked, and every open job owned with a next action.';
+}
+function cvFill(r,asNew){
+  CV_EDIT=asNew?null:r.id;
+  $('#cvFormTitle').textContent=asNew?`Log next status — ${r.lead_ref}`:`Edit row — ${r.lead_ref}`;
+  $('#cvTime').value=asNew?cvNowHHMM():(r.time_local||'');
+  $('#cvLead').value=r.lead_ref||'';$('#cvArea').value=r.area||'';$('#cvJobDate').value=r.job_date||'';$('#cvValue').value=r.value!=null?r.value:'';
+  $('#cvOrig').value=r.original_assignee||'';$('#cvIssue').value=r.issue||'';$('#cvMethod').value=asNew?'':(r.offered_method||'');
+  CV_SEL=new Set(asNew?[]:(r.offered_names||[]));
+  $('#cvResp').value=asNew?'':(r.responses||'');$('#cvFinal').value=r.final_assignee||'';
+  $('#cvOutcome').value=asNew?'':(r.outcome||'');$('#cvLost').value=asNew?'':(r.lost_reason||'');
+  $('#cvNext').value=asNew?'':(r.next_action||'');$('#cvRowOwner').value=r.owner||$('#cvOwner').value||'';
+  $('#cvSave').textContent=asNew?'Add to log':'Save changes';$('#cvCancel').style.display='';
+  cvRenderForm();$('#cvLead').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cvResetForm(){
+  CV_EDIT=null;CV_SEL=new Set();
+  ['cvLead','cvArea','cvJobDate','cvValue','cvOrig','cvResp','cvFinal','cvLost','cvNext'].forEach(id=>$('#'+id).value='');
+  $('#cvIssue').value='';$('#cvMethod').value='';$('#cvOutcome').value='';
+  $('#cvTime').value=cvNowHHMM();$('#cvRowOwner').value=$('#cvOwner').value||'';
+  $('#cvFormTitle').textContent='Log a job';$('#cvSave').textContent='Add to log';$('#cvCancel').style.display='none';
+  cvRenderForm();
+}
+async function cvUpsertDay(patch){
+  const d=cvDate();
+  const {error}=await sb.from('coverage_days').upsert({log_date:d,...patch,updated_at:new Date().toISOString()},{onConflict:'log_date'});
+  if(error){toast(friendlyErr(error,'coverage_schema.sql'),true);return false;}
+  const {data}=await sb.from('coverage_days').select('*').eq('log_date',d).maybeSingle();
+  CV_DAY=data||CV_DAY;return true;
+}
+$('#cvDate').addEventListener('change',()=>{cvResetForm();renderJCover();});
+['cvOwner','cvBackup','cvReview'].forEach(id=>$('#'+id).addEventListener('change',async()=>{
+  const ok=await cvUpsertDay({owner:$('#cvOwner').value.trim()||null,backup:$('#cvBackup').value.trim()||null,review_times:$('#cvReview').value.trim()||'10:00, 14:00, 17:00'});
+  if(ok){toast('Day owner saved');cvRenderDay({});}
+}));
+$('#cvOffered').addEventListener('click',e=>{const c=e.target.closest('[data-cvchip]');if(!c)return;const n=c.dataset.cvchip;if(CV_SEL.has(n))CV_SEL.delete(n);else CV_SEL.add(n);c.classList.toggle('on',CV_SEL.has(n));});
+$('#cvSave').addEventListener('click',async()=>{
+  const d=cvDate(), lead=$('#cvLead').value.trim().toUpperCase(), outcome=$('#cvOutcome').value, offered=[...CV_SEL];
+  const lost=$('#cvLost').value.trim(), fin=$('#cvFinal').value.trim();
+  if(!lead){toast('Lead / job ID is required',true);return;}
+  if(!outcome){toast('Pick an outcome',true);return;}
+  if(outcome==='rejected'&&!offered.length){toast('Rejected needs at least one approved technician offered — that is the rule.',true);return;}
+  if(outcome==='confirmed_lost'&&!lost){toast('Confirmed lost needs a reason.',true);return;}
+  if(outcome==='reassigned'&&!fin){toast('Reassigned needs the final assignee.',true);return;}
+  const v=$('#cvValue').value.trim();
+  const row={log_date:d,time_local:$('#cvTime').value.trim()||cvNowHHMM(),lead_ref:lead,area:$('#cvArea').value.trim()||null,job_date:$('#cvJobDate').value||null,
+    value:v===''?null:Number(v),original_assignee:$('#cvOrig').value.trim()||null,issue:$('#cvIssue').value||null,
+    offered_names:offered,offered_method:$('#cvMethod').value||null,responses:$('#cvResp').value.trim()||null,final_assignee:fin||null,
+    outcome,lost_reason:lost||null,next_action:$('#cvNext').value.trim()||null,owner:$('#cvRowOwner').value.trim()||$('#cvOwner').value.trim()||null,
+    created_by:localStorage.getItem(LS.agent)||sessionStorage.getItem(LS.salesSession)||null,updated_at:new Date().toISOString()};
+  const {error}=CV_EDIT?await sb.from('coverage_log').update(row).eq('id',CV_EDIT):await sb.from('coverage_log').insert(row);
+  if(error){toast(cvErr(error),true);return;}
+  toast(CV_EDIT?`${lead} updated`:`${lead} · ${CV_OUTCOMES[outcome]} logged`);
+  cvResetForm();renderJCover();
+});
+$('#cvCancel').addEventListener('click',cvResetForm);
+function cvRowById(id){return CV_ALL.find(r=>r.id===id);}
+[$('#tblCv'),$('#tblCvCarry')].forEach(t=>t.addEventListener('click',e=>{
+  const m=e.target.closest('[data-cvmore]');if(m){const r=cvRowById(m.dataset.cvmore);if(r)cvFill(r,true);return;}
+  const ed=e.target.closest('[data-cvedit]');if(ed){const r=cvRowById(ed.dataset.cvedit);if(r)cvFill(r,false);}
+}));
+$('#cvEod').addEventListener('change',async e=>{
+  const cb=e.target.closest('[data-cveod]');if(!cb)return;
+  const eod={...((CV_DAY&&CV_DAY.eod)||{})};eod[cb.dataset.cveod]=cb.checked;
+  await cvUpsertDay({eod});
+});
+$('#cvEodNote').addEventListener('change',async()=>{await cvUpsertDay({eod_note:$('#cvEodNote').value.trim()||null});});
+$('#cvClose').addEventListener('click',async()=>{
+  const closed=!!(CV_DAY&&CV_DAY.closed_at);
+  if(closed){if(!confirm('Reopen this day?'))return;if(await cvUpsertDay({closed_at:null,closed_by:null})){toast('Day reopened');cvRenderEod();cvRenderDay({});}return;}
+  const eod=(CV_DAY&&CV_DAY.eod)||{};
+  const missing=CV_EOD.filter(([k])=>!eod[k]).map(([,l])=>l);
+  if(missing.length){toast(`Not yet — ${missing.length} unticked: ${missing[0]}${missing.length>1?' …':''}`,true);return;}
+  // Item 1 is checked against the data, not just the box.
+  const unowned=[...cvLatestByLead(CV_ROWS).values()].filter(r=>CV_OPEN.has(r.outcome)&&!(r.next_action&&r.owner));
+  if(unowned.length){toast(`${unowned[0].lead_ref} is still open without an owner and next action.`,true);return;}
+  if(await cvUpsertDay({closed_at:new Date().toISOString(),closed_by:$('#cvOwner').value.trim()||null})){toast('Day closed');cvRenderEod();cvRenderDay({});}
+});
+$('#cvExport').addEventListener('click',()=>{
+  const head=['log_date','time_local','lead_ref','area','job_date','value','original_assignee','issue','offered_names','offered_method','responses','final_assignee','outcome','lost_reason','next_action','owner'];
+  const cell=v=>{v=Array.isArray(v)?v.join('; '):String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const csv=[head.join(',')].concat(CV_ALL.map(r=>head.map(k=>cell(r[k])).join(','))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`coverage_log_${cvDate()}.csv`;a.click();
 });
 
 /* =========================================================================
