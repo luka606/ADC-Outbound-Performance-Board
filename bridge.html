@@ -360,6 +360,31 @@ body.admin-on .admin-only{display:block}
 .br-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:860px){.br-two{grid-template-columns:1fr}.br-ind{grid-template-columns:auto 1fr}.br-cost,.br-scope{grid-template-columns:1fr 1fr}}
 
+
+/* ============ m2 bridge · purpose strip + SOP ============ */
+.br-why{max-width:1420px;margin:14px auto 0;padding:12px 18px;border:1px solid var(--accent-soft);background:linear-gradient(135deg,var(--accent-soft),transparent 70%);border-radius:var(--r-sm);font-size:13.5px;color:var(--ink);line-height:1.55}
+.br-why .br-why-k{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-deep);font-weight:700;margin-right:8px}
+.br-why a{color:var(--accent-deep);font-weight:600;white-space:nowrap}
+.br-sop{max-width:860px}
+.br-sop p,.br-sop li{font-size:14.5px;line-height:1.6}
+.br-sop .panel p{margin:8px 0}
+.br-sop h2{font-size:26px;margin:6px 0 8px;letter-spacing:-.3px}
+.br-sop h3.pt{font-size:17px}
+.br-sop ul.clean{list-style:none;padding:0;margin:8px 0}
+.br-sop ul.clean li{position:relative;padding-left:18px;margin:5px 0}
+.br-sop ul.clean li::before{content:"";position:absolute;left:0;top:10px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.br-sop ol.br-steps{padding-left:0;list-style:none;counter-reset:s}
+.br-sop ol.br-steps li{counter-increment:s;position:relative;padding-left:44px;margin:12px 0}
+.br-sop ol.br-steps li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent-deep);font-family:var(--disp);font-weight:700;display:flex;align-items:center;justify-content:center}
+.br-sop .br-refuse>div,.br-sop .br-terms>div{display:grid;grid-template-columns:minmax(160px,.9fr) 2fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+.br-sop .br-refuse>div:last-child,.br-sop .br-terms>div:last-child{border-bottom:none}
+.br-sop .br-refuse b{color:var(--red)}
+.br-sop .br-terms b{font-family:var(--mono);color:var(--accent-deep)}
+.br-sop .br-refuse span,.br-sop .br-terms span{color:var(--ink-2)}
+.br-sop .faq .q{padding:10px 0;border-bottom:1px solid var(--line-2)}.br-sop .faq .q:last-child{border-bottom:none}
+.br-sop .faq .q b{display:block;margin-bottom:3px}.br-sop .faq .q p{color:var(--ink-2);margin:0}
+.br-sop .ui{font-family:var(--mono);font-size:.86em;background:var(--line-2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap}
+@media(max-width:720px){.br-sop .br-refuse>div,.br-sop .br-terms>div{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -375,6 +400,7 @@ body.admin-on .admin-only{display:block}
     <button data-tab="bscore">Scorecard</button>
     <button data-tab="bcover">Coverage register</button>
     <button data-tab="bset">Settings</button>
+    <button data-tab="bsop">SOP</button>
   </nav>
   <div class="hdr-right">
     <span id="brWho" class="count-note"></span>
@@ -383,6 +409,7 @@ body.admin-on .admin-only{display:block}
     <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
   </div>
 </header>
+<div class="br-why"><span class="br-why-k">Why the Bridge exists</span> While a key technician is away, ADC still receives its most valuable leads — big properties, returning customers, multi-service jobs. The Bridge makes sure every one of them is <b>offered to an approved team</b>, <b>priced before anyone is dispatched</b>, and <b>released only with a written approval</b> — so we protect the sale <em>and</em> the gross margin. It runs until 1 January 2027 and never counts as permanent coverage. <a href="#" id="brWhySop">Read the SOP →</a></div>
 
 <main id="bridgeRoot">
 <div id="brSetup" class="panel" style="display:none;max-width:520px;margin:40px auto">
@@ -441,6 +468,85 @@ body.admin-on .admin-only{display:block}
     <div class="sub">Every business value with the brief's own status — <b>confirmed</b> (Luka said so), <b>proposed</b> (a recommendation, not policy), <b>unresolved</b> (empty, and it blocks what depends on it). Nothing is defaulted silently.</div>
     <div id="brSet"></div>
   </section>
+  <section class="tab" id="tab-bsop"><div class="br-sop">
+    <div class="eyebrow">SOP · M2 Bridge · for the dispatcher</div>
+    <h2>How to run a high-value job through the Bridge</h2>
+    <p class="sub">This page is the whole procedure. Read it once end to end; after that, the <b>Glossary</b> and <b>When a button refuses</b> sections are the ones you come back to. If something here and the screen disagree, tell Luka — the screen wins until the SOP is corrected.</p>
+
+    <div class="panel"><h3 class="pt">1 · Why we are doing this</h3>
+      <p>A key technician's removal showed two weaknesses at once: we could lose valuable sales because nobody covered the area, and we could win them at a margin that costs the company money. The Bridge is the temporary fix while permanent teams are built (the Rock <b>ADC Ironclad Coverage</b>). It does three things, every time, without exception:</p>
+      <ul class="clean"><li><b>Offer</b> — a high-value job goes to an approved team, never to whoever happens to be free.</li><li><b>Price</b> — revenue, compensation and company costs are written down <em>before</em> anyone drives to the job, and the margin is checked against a floor.</li><li><b>Release</b> — work starts only after Luka's written approval in this system. A text, a call or a nod is not a release.</li></ul>
+      <p>Bridge jobs are tracked separately (<span class="ui">program = M2 bridge</span>) and never count as permanent coverage. The bridge ends on <b>1 January 2027</b>; nothing closes automatically on that date.</p></div>
+
+    <div class="panel"><h3 class="pt">2 · What counts as high-value</h3>
+      <p>A lead is <b>high-value</b> when it has <b>one or more</b> of these indicators. Tick each one that applies and write the evidence beside it (a prior job number, what the customer said, the Zillow figure, your own note) with its date.</p>
+      <div class="br-two"><div><b>Customer</b><ul class="clean"><li>Returning customer who bought additional work last visit</li><li>Expensive area or neighbourhood (Malibu, for example)</li><li>Interest in HVAC — <em>only</em> if the HVAC department has <b>not</b> booked its own check</li><li>Several service needs at once (ducts + asbestos removal)</li></ul></div>
+      <div><b>Property</b><ul class="clean"><li>Value of $2 million or more (Zillow)</li><li>3,000 sq ft or more</li><li>Multiple stories</li><li>Expensive older property — replacement or insulation potential</li><li>Commercial property</li></ul></div></div>
+      <p>A high-value lead becomes a <b>qualified opportunity</b> when the expected revenue is <b>$5,000 or more</b> and you can say where that number comes from. If you cannot, tick <span class="ui">Expected revenue unknown</span> — the job can still proceed, but only through an estimate visit. Never invent a $5,000 figure from the property alone.</p>
+      <p><b>Record every lead you consider</b> — including the ones we decline or lose. The scorecard needs the misses as much as the wins.</p></div>
+
+    <div class="panel"><h3 class="pt">3 · Your flow, step by step</h3>
+      <ol class="br-steps">
+        <li><b>Record the lead.</b> <span class="ui">Queue</span> → <span class="ui">Show form</span>. Customer, property, job ID, territory (LA or OC), route, salesperson, expected revenue and its basis, HVAC status, the indicators with evidence. <span class="ui">Record lead</span>. The job opens on its own page as <b>B-1, B-2…</b></li>
+        <li><b>Choose the route and staff it.</b> On the job page → <b>Assignment</b> → <em>New assignment version</em>.<br><b>Combined technician</b>: one approved technician who sells <em>and</em> installs. Only names on the approved list are accepted. Helpers may be listed, with who pays them.<br><b>Sagi</b>: Sagi sells; name the installer he intends to use, their capability and availability. That installer must be <b>approved by Luka</b> before the job can be released — Sagi choosing them is not approval. This route only appears once Luka has switched it on in Settings.</li>
+        <li><b>Ask for the estimate visit.</b> If someone has to go and look, press <span class="ui">Request estimate-visit approval</span>. Luka approves in writing; the job shows <b>Visit authorized</b>. A returning customer who has already agreed a price may skip this and go straight to pricing.</li>
+        <li><b>Save the estimate.</b> After the inspection: <b>Estimates</b> → <em>New estimate version</em>. One line per service (installation, cleaning…) with its price; discounts; payment terms; any previous price the customer expects. <span class="ui">Save estimate v1</span>. If the price or scope changes later, save <b>v2</b> — a version is never edited.<br>When the customer says yes, press <span class="ui">Record acceptance</span> on that version. Customer acceptance is <b>not</b> permission to start work.</li>
+        <li><b>Enter the costs and compose the economics.</b> <b>Economics</b> → pick the estimate version → pick the compensation agreement (or, for Sagi, enter the all-inclusive job-level amount and a note saying what it covers and who pays what) → <span class="ui">+ cost</span> for every company cost: materials, company-paid helpers, travel, disposal… For each cost: amount, who pays, whether it is <em>estimated</em>, <em>actual</em> or <em>unknown</em>, and a reference. <b>Unknown is not zero</b> — an unknown cost blocks release until it is known. Watch the six figures and the gate label update as you type. <span class="ui">Save as economics v1 (draft)</span>.</li>
+        <li><b>Request the release.</b> Once Luka has approved the economics version (it shows <b>approved</b>), press <span class="ui">Request work release for v1</span>. The one-hour clock starts.</li>
+        <li><b>Wait for “Work released”.</b> Nobody starts until the job page shows the green <b>Work released</b> pill with the version and date. If the hour passes, chase Luka — the clock is measured.</li>
+        <li><b>After the job.</b> <span class="ui">Mark completed</span> with the completion evidence, then on <span class="ui">Reconciliation</span> enter the final revenue, the actual costs, the final compensation and the payment status. Luka reconciles.</li>
+      </ol></div>
+
+    <div class="panel"><h3 class="pt">4 · Urgent jobs and the one-hour clock</h3>
+      <p>Luka must decide — <b>approve, hold, or reject</b> — within <b>one hour</b> of your request. The clock starts at your <em>first</em> submission and does not restart if he asks for more information and you resubmit. Requests past the hour turn red on the <span class="ui">Approvals</span> tab and count as misses on the scorecard.</p>
+      <p>For a same-day job or a customer about to walk, tick <b>Urgent</b> on the lead (or press <span class="ui">Mark urgent</span> on the job page) and message Luka directly. Urgent requests sort to the top. Nothing is ever approved automatically when the timer runs out — an unanswered request is a hold, not a yes.</p></div>
+
+    <div class="panel"><h3 class="pt">5 · What Luka does (so you know what you are waiting for)</h3>
+      <ul class="clean"><li>Approves the estimate visit, and approves each <b>economics version</b> after checking the margin.</li><li>Approves Sagi's installer, and Sagi's job-level amount, per job.</li><li><b>Releases</b> the work — the only approval that lets anyone start.</li><li>If the margin is below its floor, records <b>Sardor's exception</b> on Sardor's behalf, with how Sardor confirmed (text or call) and a reference. Sardor's exception alone does not release the job; Luka's release alone cannot release a below-floor job. Both are needed.</li><li>Reconciles completed jobs and reviews the weekly scorecard.</li></ul></div>
+
+    <div class="panel"><h3 class="pt">6 · When a button refuses — what it means</h3>
+      <div class="br-refuse">
+        <div><b>“Rejected / Reassigned / Confirmed lost needs …”</b><span>Statuses carry requirements: a final assignee for Reassigned, a reason for a loss. Fill it in.</span></div>
+        <div><b>“That technician is not approved + active”</b><span>Only technicians approved on the board's Technicians tab can staff a combined-route job. Ask Luka to approve them, or choose another.</span></div>
+        <div><b>“Economics version … is not approved”</b><span>You asked for release before Luka approved the pricing. Wait for the approved pill, then request.</span></div>
+        <div><b>“The customer has not accepted estimate v…”</b><span>Press Record acceptance on the estimate version the economics used. Acceptance and release are two different things; both are required.</span></div>
+        <div><b>“Cost … is unknown — unknown is not zero”</b><span>Find the number or an agreed maximum with its basis, edit the cost, save a new economics version.</span></div>
+        <div><b>“Service … has no margin rule”</b><span>HVAC, removal and “other” have no floor set yet. Ask Luka to set the rule in Settings before that service can be released.</span></div>
+        <div><b>“Sagi compensation is unresolved — “50%+10+%” is not calculable”</b><span>Sagi's terms are not agreed as a formula. Enter the explicitly approved all-inclusive amount for this job with its note; Luka approves it.</span></div>
+        <div><b>“Sagi-route installer is not approved”</b><span>Luka has not yet approved the installer named on the assignment. Ask him to.</span></div>
+        <div><b>“Margin is below its floor — record Sardor's exception first”</b><span>Installation below 35 % or cleaning below 45 % needs Sardor. Either renegotiate price or costs and save a new version, or Luka records Sardor's exception.</span></div>
+        <div><b>“An approved economics version is immutable”</b><span>Approved means frozen. Save a new version; the old one stays as history and the job goes back to review.</span></div>
+        <div><b>“work_released is reached only through an approval”</b><span>Nobody can set a job to released by hand — not you, not Luka. Only an approval does it.</span></div>
+      </div></div>
+
+    <div class="panel"><h3 class="pt">7 · Glossary</h3>
+      <div class="br-terms">
+        <div><b>R</b><span>Revenue — the customer price after discounts (before sales tax).</span></div>
+        <div><b>D</b><span>Deductions — the costs the compensation agreement says come off before commission. Only Luka's approved agreement decides what is in D.</span></div>
+        <div><b>C</b><span>Compensation — what the company owes the technician or Sagi. Combined route: 50 % of (R − D). Sagi: the approved all-inclusive amount, covering his installers too.</span></div>
+        <div><b>K</b><span>Company costs — everything the company pays: materials, company-paid helpers, travel, disposal, permits. A cost inside someone else's payment (Sagi's installers) is not counted again.</span></div>
+        <div><b>Gross profit</b><span>R − K − C.</span></div>
+        <div><b>Margin</b><span>Gross profit ÷ R. Compared exactly — 34.99 % is below a 35 % floor.</span></div>
+        <div><b>Floor / target</b><span>Installation: target 40 %, floor 35 %. Cleaning: floor 45 %. Above floor but below target: Luka may release. Below floor: Sardor's exception.</span></div>
+        <div><b>Gate</b><span>The label on an economics version: Meets target · Below target — above floor · Below floor · Not computable.</span></div>
+        <div><b>Version</b><span>Estimates and economics are saved as v1, v2… Nothing is edited; a change is a new version.</span></div>
+        <div><b>Uncovered · Reassigned · Rejected · Potentially lost · Confirmed lost</b><span>The five outcomes a job can carry; each is a new row, never an overwrite.</span></div>
+      </div></div>
+
+    <div class="panel"><h3 class="pt">8 · Five rules that do not bend</h3>
+      <ol class="br-steps"><li><b>Nobody drives before “Work released”.</b></li><li><b>Unknown is not zero.</b> A cost you do not know is a hold, not a guess.</li><li><b>Never edit an old version — save a new one.</b> History is evidence.</li><li><b>Only approved names.</b> Technicians on the approved list; installers approved by Luka; Sagi's route only when switched on.</li><li><b>If it is not in the Bridge, it did not happen.</b> Log the lead, the offer, the price, the release, the actuals — here, not in a text thread.</li></ol></div>
+
+    <div class="panel"><h3 class="pt">9 · Questions that come up</h3>
+      <div class="faq">
+        <div class="q"><b>The Bridge is down and the customer is waiting.</b><p>Write everything down — time, lead, who you offered, price, costs — keep working the job by phone with Luka, and enter every row here the moment it is back. Luka's written release still has to appear here before work starts.</p></div>
+        <div class="q"><b>The customer changed the scope after Luka approved.</b><p>Save a new estimate version and a new economics version. The job goes back to review automatically and needs a fresh release. Both versions stay.</p></div>
+        <div class="q"><b>The hour passed and I have heard nothing.</b><p>Call Luka. The clock keeps counting and the scorecard records the miss; nothing gets approved by silence.</p></div>
+        <div class="q"><b>Sagi says his installer is fine — can I release?</b><p>No. Sagi's choice is not company approval. Luka approves the installer on the assignment; until then the release button refuses.</p></div>
+        <div class="q"><b>Where do I see everything that happened to a job?</b><p>The <b>History</b> section at the bottom of the job page — every status change, request and approval, with who and when. It cannot be edited.</p></div>
+        <div class="q"><b>The scorecard shows N/A.</b><p>N/A means the denominator is zero — nothing to measure yet, not 100 %. It fills in as jobs are reconciled.</p></div>
+      </div></div>
+    <div class="count-note" style="margin-top:14px">SOP M2-BRIDGE-001 · v1.0 · effective 18 Sep 2026 · owner Luka Morchiladze · this page is the dispatcher copy; the vault note is the source of truth.</div>
+  </div></section>
 </div>
 </main>
 
@@ -646,6 +752,7 @@ function showBridgeTab(name){
   $$('#navBridge button').forEach(x=>x.classList.toggle('on',x.dataset.tab===name));
   $$('#bridgeRoot .tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
   clearInterval(BR._tick);BR._tick=null;
+  if(name==='bsop')return;   // static; readable even before data loads
   if(!BR.loaded)return;
   if(name==='bqueue')brRenderQueue();
   if(name==='bopp')brRenderOpp();
@@ -654,8 +761,10 @@ function showBridgeTab(name){
   if(name==='bscore')brRenderScore();
   if(name==='bcover')brRenderCover();
   if(name==='bset')brRenderSet();
+  // bsop is static content — nothing to render
 }
 $('#navBridge').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showBridgeTab(b.dataset.tab);});
+$('#brWhySop').addEventListener('click',e=>{e.preventDefault();if(BR.role)showBridgeTab('bsop');else toast('Sign in first — the SOP is on the SOP tab.');});
 function brOpen(id){BR.sel=id;showBridgeTab('bopp');history.replaceState(null,'',location.pathname+'?bridge='+encodeURIComponent(id));}
 
 /* ---------- shared widgets ---------- */

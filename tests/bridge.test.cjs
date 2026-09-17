@@ -50,11 +50,14 @@ const signIn=email=>{fake.auth.__set({user:{id:'u',email}});};
 
   console.log('— page: gate, roles, flows —');
   T('no session → sign-in gate shown, body hidden',vis('#brGate')&&!vis('#brBody'));
+  T('the why-strip is visible on the gate, before sign-in',/Why the Bridge exists/.test($('.br-why').textContent)&&/gross margin/.test($('.br-why').textContent));
   signIn('someone@homealliance.com'); await tick(80);
   T('signed in but not a member → told so, body hidden',vis('#brNotMember')&&!vis('#brBody'));
   signIn('luka.m@homealliance.com'); await tick(120);
   T('manager signed in → body shown, identity displayed',vis('#brBody')&&/luka\.m@homealliance\.com · manager/.test($('#brWho').textContent),$('#brWho').textContent);
   T('Queue renders with KPIs',$$('#bqKpis .kpi').length===5);
+  w.showBridgeTab('bsop'); await tick(20); T('SOP tab renders the dispatcher guide with the why, the flow, the refusals and the glossary',$('#tab-bsop').classList.contains('on')&&/Why we are doing this/.test($('#tab-bsop').textContent)&&/Your flow, step by step/.test($('#tab-bsop').textContent)&&/When a button refuses/.test($('#tab-bsop').textContent)&&$$('#tab-bsop .br-terms>div').length===10);
+  $('#brWhySop').click(); await tick(20); T('“Read the SOP” link opens the SOP tab',$('#tab-bsop').classList.contains('on')); w.showBridgeTab('bqueue'); await tick(40);
   // intake
   $('#brNewToggle').click(); await tick(20);
   setv('#bi_customer','Malibu returning'); setv('#bi_job','HV0001'); setv('#bi_terr','LA'); setv('#bi_route','combined'); setv('#bi_sales','Jordan'); setv('#bi_rev','7500'); setv('#bi_basis','prior job $6,800 + attic ducts');
