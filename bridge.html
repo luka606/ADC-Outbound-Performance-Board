@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M2 Bridge · ADC Outbound · Home Alliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* bridge.html carries a copy of index.html's design tokens and components so the Bridge reads as part of the
+   board. Kept in sync by hand for now; when a third page appears, move this to a shared stylesheet. */
+/* ============ design tokens (matched to Job Efficiency Board) ============ */
+:root{
+  --bg:#F6F7F5; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.07), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#F3F5F2; --glass:rgba(255,255,255,.75);
+  --ink:#101614; --ink-2:#5B6862; --ink-3:#94A099; --line:#E4E8E2; --line-2:#EEF1EC;
+  --accent:#0E9F6E; --accent-hi:#10B981; --accent-deep:#047857; --accent-soft:#E4F5EE; --on-accent:#FFFFFF;
+  --amber:#B45309; --amber-soft:#FCF0DC;
+  --red:#C0392B; --red-soft:#FAE5E1;
+  --blue:#2563EB; --blue-soft:#E5EDFB;
+  --lux:#7C3AED; --lux-soft:#F1EAFD;
+  --shadow:0 1px 2px rgba(16,24,20,.04),0 6px 20px rgba(16,24,20,.05);
+  --shadow-lg:0 12px 40px rgba(16,24,20,.16);
+  --focus:0 0 0 3px rgba(16,185,129,.25);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --disp:'Space Grotesk',var(--sans);
+  --r:16px; --r-sm:10px; --r-xs:8px;
+  /* aliases so shared component code reads naturally */
+  --brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--accent); --green-soft:var(--accent-soft); --radius:var(--r); --radius-sm:var(--r-sm);
+}
+[data-theme="dark"]{
+  --bg:#0B0F0D; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.08), transparent 60%);
+  --panel:#141A17; --panel-2:#1B2320; --glass:rgba(20,26,23,.8);
+  --ink:#E8EEEA; --ink-2:#9DABA2; --ink-3:#69766E; --line:#26302B; --line-2:#1F2823;
+  --accent:#10B981; --accent-hi:#34D399; --accent-deep:#059669; --accent-soft:#132B21; --on-accent:#06130D;
+  --amber:#E9A23B; --amber-soft:#2E230F;
+  --red:#E0705F; --red-soft:#361D18;
+  --blue:#7CA9F5; --blue-soft:#16233A;
+  --lux:#B79CF7; --lux-soft:#241B38;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 22px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.55);
+  --focus:0 0 0 3px rgba(52,211,153,.3);
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
+body{background:var(--bg);background-image:var(--bg-grad);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xs);padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s,background .3s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:var(--focus)}
+input::placeholder{color:var(--ink-3)}
+::selection{background:var(--accent-soft)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+a{color:var(--accent)}
+.hidden{display:none!important}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
+
+/* ============ header ============ */
+header{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:62px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);transition:.3s}
+.brand .dot.live{background:var(--accent-hi);box-shadow:0 0 10px var(--accent-hi)}
+.brand small{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.5px;color:var(--ink-3)}
+nav{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:12.5px;letter-spacing:.2px;padding:7px 15px;border-radius:99px;white-space:nowrap;transition:.18s}
+nav button:hover{color:var(--ink)}
+nav button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
+.hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.admin-on #adminBtn{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+#themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+.eyebrow{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.sub{color:var(--ink-2);font-size:13.5px;margin-bottom:20px;max-width:860px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+
+/* ============ panels / buttons ============ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(16,185,129,.3);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,.4)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.5;cursor:default;transform:none;filter:none;box-shadow:none}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.ghost:hover{border-color:var(--ink-3);background:var(--panel-2);box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#E05545,#B03A2B);color:#fff;box-shadow:0 2px 10px rgba(192,57,43,.3)}
+.btn.sm{padding:5px 12px;font-size:12px}
+.sort-pill{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;transition:.15s}
+.sort-pill:hover{border-color:var(--ink-3);color:var(--ink)}
+.sort-pill.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+/* ============ KPI cards ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px}
+.kpi.a .v{color:var(--accent)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
+
+/* ============ tables / badges ============ */
+.twrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);text-align:left;padding:11px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--panel-2)}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 9px;border-radius:99px;line-height:1.5}
+.badge.booking{background:var(--accent-soft);color:var(--accent)}
+.badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
+.badge.sold{background:var(--accent-soft);color:var(--accent)}
+.badge.cancelled{background:var(--red-soft);color:var(--red)}
+/* CRM job status, written by scripts/crm-sync.mjs */
+.crm-b{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.crm-b.ok{background:var(--accent-soft);color:var(--accent-deep)}
+.crm-b.bad{background:var(--red-soft);color:var(--red)}
+.crm-b.blue{background:var(--blue-soft);color:var(--blue)}
+.crm-b.gray{background:var(--panel-2);color:var(--ink-2)}
+.crm-b.none{background:transparent;color:var(--ink-3)}
+.badge.ran_not_sold{background:var(--amber-soft);color:var(--amber)}
+.badge.pending{background:var(--line-2);color:var(--ink-2)}
+.jobref{font-family:var(--mono);letter-spacing:.14em}
+.count-note{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+
+/* ============ report entry ============ */
+.entry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.numwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+.numwrap label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2);margin-bottom:7px}
+.numwrap input{width:100%;border:0;background:transparent;font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ink);padding:0}
+.numwrap input:focus{box-shadow:none}
+.numwrap.derived{background:var(--accent-soft);border-color:var(--accent)}
+.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--accent)}
+.numwrap.derived.cross{background:var(--blue-soft);border-color:var(--blue)}
+.numwrap.derived.cross .val{color:var(--blue)}
+.bookblock{border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px;margin-top:12px;background:var(--panel-2)}
+.bookblock.cross{background:var(--blue-soft);border-color:var(--blue)}
+.bookblock h4{font-family:var(--disp);font-size:14px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.bookblock .hint{font-size:12px;color:var(--ink-2);margin-bottom:10px}
+.refrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.refrow .idx{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:20px;text-align:center;flex:0 0 auto}
+.refrow input{flex:1;letter-spacing:.28em;font-family:var(--mono);text-align:center}
+.refrow .state{width:150px;font-size:11.5px}
+.refrow .state.ok{color:var(--accent);font-weight:700}
+.refrow .state.warn{color:var(--red)}
+.refrow input.bad{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+
+/* ============ meeting leaderboard ============ */
+.meet-sort{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.meet-sort .lbl{font-size:12px;color:var(--ink-2);margin-right:2px}
+.meet-avg{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.meet-list{display:flex;flex-direction:column;gap:8px}
+.lb-row{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;text-align:left;color:var(--ink);
+  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 78px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
+.lb-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.lb-rank{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:center}
+.lb-avatar{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;background:var(--accent-soft);color:var(--accent)}
+.lb-row:nth-child(2) .lb-avatar{background:var(--blue-soft);color:var(--blue)}
+.lb-row:nth-child(3) .lb-avatar{background:var(--amber-soft);color:var(--amber)}
+.lb-row:nth-child(4) .lb-avatar{background:var(--red-soft);color:var(--red)}
+.lb-main{min-width:0}
+/* These children are spans, so without this they flow inline: the agent name
+   runs into the legend and .mix-bar collapses to zero width, taking the whole
+   reached/no-answer/not-interested visualisation with it. Pre-existing; the
+   bar has never been visible. */
+.lb-main>span{display:block}
+.lb-name{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.1px}
+.mix-bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:var(--line-2);margin-top:7px;max-width:430px}
+.mix-bar .seg{position:absolute;top:0;bottom:0}
+.mix-bar .p1{background:var(--accent-hi)} .mix-bar .p2{background:var(--blue)} .mix-bar .p3{background:var(--red)}
+.mix-bar .avg-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;z-index:2}
+.mix-legend{font-size:11px;color:var(--ink-3);margin-top:4px;font-family:var(--mono)}
+/* attainment against the prorated weekly target: bookings + cross-books, after cancellations */
+.tgt-bar{position:relative;display:block;height:4px;border-radius:3px;overflow:hidden;background:var(--line-2);margin-top:6px;max-width:430px}
+.tgt-fill{display:block;height:100%;background:var(--ink-3);transition:width .2s}
+.tgt-fill.hit{background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.lb-stat{text-align:right}
+.lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
+.lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
+.tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
+.lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
+.lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
+@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 78px 26px}.lb-row .lb-stat.conv,.lb-row .lb-stat.bk{display:none}.mix-bar,.tgt-bar{max-width:none}}
+@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 78px 26px}.lb-rank,.lb-row .lb-stat.calls{display:none}}
+
+/* ============ report modal ============ */
+.rep-backdrop{position:fixed;inset:0;background:rgba(8,12,10,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:80;display:none;align-items:center;justify-content:center;padding:26px}
+.rep-backdrop.show{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rep{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow-lg);width:min(1000px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:repIn .24s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes repIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rep-top{display:flex;align-items:center;gap:18px;padding:24px 28px 20px;border-bottom:1px solid var(--line)}
+.rep-avatar{width:58px;height:58px;border-radius:16px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;flex-shrink:0}
+.rep-title{min-width:0}
+.rep-title .nm{font-family:var(--disp);font-weight:700;font-size:28px;letter-spacing:-.4px;line-height:1.1}
+.rep-title .dt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.rep-nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rep-nav .btn.ghost{padding:8px 14px;font-size:15px;line-height:1}
+.rep-close{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:16px;line-height:1;transition:.15s}
+.rep-close:hover{color:var(--ink);border-color:var(--ink-3)}
+.rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;padding:20px 28px 6px}
+.rep-kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;text-align:center}
+.rep-kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.rep-kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px}
+.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}
+.rep-body{overflow:auto;padding:16px 28px 26px}
+.rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
+.bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.hintrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+@media(max-width:760px){.rep-kpis{grid-template-columns:repeat(2,1fr)}.rep-title .nm{font-size:22px}}
+
+/* ============ scorecard ============ */
+.sc-group{margin-top:26px}
+.sc-group>.lab{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--ink);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:10px}
+.sc-group>.lab::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-deep));flex:0 0 auto}
+.sc-group>.lab .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+.sc-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.tip{position:relative;color:var(--ink-3);cursor:help;font-size:11px;border:1px solid var(--line);border-radius:50%;width:15px;height:15px;display:inline-grid;place-items:center;line-height:1}
+.tip:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);font-size:11px;font-weight:500;padding:7px 9px;border-radius:8px;width:190px;z-index:5;box-shadow:var(--shadow-lg)}
+
+/* ============ admin summary ============ */
+.summary3{display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+.sumline{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line-2);color:var(--ink-2)}
+.sumline b{color:var(--ink);font-weight:600}
+.amt-input{width:96px;padding:6px 8px;font-size:13px}
+.st-select{padding:6px 8px;font-size:12.5px}
+
+/* ============ toast / gate ============ */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:14px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px) scale(.97);transition:.25s cubic-bezier(.2,.9,.3,1.2);pointer-events:none;z-index:99;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--red);color:#fff}
+.center-wrap{min-height:70vh;display:grid;place-items:center;padding:24px}
+.gate{max-width:460px;width:100%;text-align:center}
+.gate .lockbig{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:28px}
+.gate h2{font-size:23px}.gate p{color:var(--ink-2);font-size:14px;margin:8px 0 20px}
+.pin-in{letter-spacing:.5em;text-align:center;font-family:var(--mono);font-size:22px;width:100%}
+.codebox{background:#0B0F0D;color:#cfe0d6;border-radius:12px;padding:14px;font-family:var(--mono);font-size:12px;text-align:left;white-space:pre-wrap;overflow:auto;max-height:260px}
+.empty{text-align:center;color:var(--ink-3);padding:40px 20px;font-size:14px}
+@media(max-width:720px){.summary3{grid-template-columns:1fr}header{gap:12px;padding:0 14px}}
+/* ============ workspace switcher ============ */
+#wsBtn{cursor:pointer;display:flex;align-items:center;gap:10px}
+.ws-caret{color:var(--ink-3);font-size:11px;transition:.15s}
+#wsBtn:hover .ws-caret{color:var(--ink)}
+.ws-menu{position:absolute;top:calc(100% + 10px);left:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;display:none;min-width:230px;z-index:60}
+.ws-menu.show{display:block;animation:fadeIn .15s ease}
+.ws-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink);font-weight:600;font-size:13.5px;padding:11px 14px;border-radius:9px;transition:.12s}
+.ws-menu button:hover{background:var(--panel-2)}
+.ws-menu button.on{background:var(--accent-soft);color:var(--accent)}
+
+/* ============ office sales workspace ============ */
+.tab{display:none}.tab.on{display:block;animation:fadeIn .22s ease}
+#salesRoot main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+#salesRoot h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+h3.pt{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin-bottom:12px}
+.bar.tight{margin-bottom:0}
+td.num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.loading{color:var(--ink-2);font-size:13px;padding:20px;text-align:center;font-family:var(--mono)}
+.badge.yes{background:var(--accent-soft);color:var(--accent)}
+.badge.gray{background:var(--line-2);color:var(--ink-2)}
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:980px){.dash-cols{grid-template-columns:1fr}}
+.bar-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.bar-row .lbl{width:130px;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .trk{flex:1;height:18px;background:var(--line-2);border-radius:6px;overflow:hidden}
+.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep));border-radius:6px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.bar-row .fill.alt{background:linear-gradient(90deg,#60A5FA,var(--blue))}
+.bar-row .val{font-family:var(--mono);font-size:11px;width:44px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ============ login gate + admin-only ============ */
+body.logged-out #wsBtn,body.logged-out #nav,body.logged-out #navSales,body.logged-out #navJobs,body.logged-out #whoami,body.logged-out #adminBtn,body.logged-out #logoutBtn{display:none!important}
+.admin-only{display:none}
+body.admin-on .admin-only{display:block}
+
+/* ============ database tab ============ */
+.db-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.db-grid{grid-template-columns:1fr}}
+.qbar{height:9px;border-radius:5px;background:var(--line-2);overflow:hidden;display:flex;margin-top:6px}
+.qbar i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.runway{background:linear-gradient(135deg,var(--accent-soft),transparent);border:1px solid var(--accent);border-radius:var(--r);padding:18px 20px}
+.runway .big{font-family:var(--disp);font-size:44px;font-weight:700;color:var(--accent-deep);line-height:1;letter-spacing:-1px}
+.runway .u{font-size:14px;color:var(--ink-2);font-weight:600}
+.assump{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.assump input{width:78px}
+.dbload{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+/* ============ SOP tab ============ */
+.sop-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0 18px}
+.sop-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.sop-ic{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;margin-bottom:12px}
+.sop-card h3{font-family:var(--disp);font-size:18px;font-weight:700;margin-bottom:4px}
+.sop-card p{font-size:14px;color:var(--ink-2);flex:1}
+.sop-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.sop-preview{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.sop-preview-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+#sopFrame{width:100%;height:70vh;border:0;background:#fff;display:block}
+@media(max-width:720px){.sop-cards{grid-template-columns:1fr}#sopFrame{height:60vh}}
+
+/* ============ coverage tab (Job Assignment) ============ */
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:flex-end}
+.cv-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;min-height:32px}
+.cv-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;transition:.15s}
+.cv-chip:hover{border-color:var(--ink-3)}
+.cv-chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+.cv-chip .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.cv-chip.on .meta{color:var(--accent)}
+.badge.uncovered{background:var(--amber-soft);color:var(--amber)}
+.badge.reassigned{background:var(--accent-soft);color:var(--accent)}
+.badge.rejected{background:var(--line-2);color:var(--ink-2)}
+.badge.potentially_lost{background:var(--red-soft);color:var(--red)}
+.badge.confirmed_lost{background:var(--red);color:var(--on-accent)}
+.badge.approved{background:var(--accent-soft);color:var(--accent-deep)}
+.cv-eod{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.cv-eod label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 10px;border:1px solid var(--line-2);border-radius:var(--r-xs);cursor:pointer}
+.cv-eod label:hover{background:var(--panel-2)}
+.cv-eod input{margin-top:3px}
+
+/* ============ m2 bridge ============ */
+.br-pill{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);white-space:nowrap}
+.br-pill.ok{background:var(--accent-soft);color:var(--accent-deep);border-color:transparent}
+.br-pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.br-pill.bad{background:var(--red-soft);color:var(--red);border-color:transparent}
+.br-pill.blue{background:var(--blue-soft);color:var(--blue);border-color:transparent}
+.br-pill.gray{background:var(--line-2);color:var(--ink-2);border-color:transparent}
+.br-status.confirmed{background:var(--accent-soft);color:var(--accent-deep)}
+.br-status.proposed{background:var(--blue-soft);color:var(--blue)}
+.br-status.unresolved{background:var(--red-soft);color:var(--red)}
+.br-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:flex-end}
+.br-grid .wide{grid-column:span 2}
+.br-sec{margin-top:18px}
+.br-sec h3.pt{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.br-ind{display:grid;grid-template-columns:auto 1fr 150px 150px;gap:8px 10px;align-items:center;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.br-ind:last-child{border-bottom:none}
+.br-ind input[type=text],.br-ind input[type=date]{width:100%}
+.br-econ{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.br-econ .k{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.br-econ .k .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.br-econ .k .v{font-family:var(--disp);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;margin-top:2px}
+.br-issues{background:var(--red-soft);border-radius:var(--r-sm);padding:10px 14px;font-size:13.5px;color:var(--red);margin:8px 0}
+.br-issues li{margin:3px 0}
+.br-timer{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+.br-timer.over{color:var(--red)}
+.br-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);margin-bottom:8px}
+.br-row.urgent{border-color:var(--red)}
+.br-ev{font-size:13px;padding:6px 0;border-bottom:1px solid var(--line-2);display:grid;grid-template-columns:150px 1fr;gap:10px}
+.br-ev .t{font-family:var(--mono);color:var(--ink-3);font-size:11.5px}
+.br-cost{display:grid;grid-template-columns:1.2fr 1fr .9fr .9fr 1fr auto auto auto;gap:6px;align-items:center;padding:4px 0}
+.br-cost .cn{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.br-scope{display:grid;grid-template-columns:1fr 2fr 1fr auto;gap:6px;align-items:center;padding:4px 0}
+.br-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.br-two{grid-template-columns:1fr}.br-ind{grid-template-columns:auto 1fr}.br-cost,.br-scope{grid-template-columns:1fr 1fr}}
+
+</style>
+</head>
+<body>
+<header>
+  <div style="position:relative">
+    <a class="brand" href="index.html" title="Back to the board" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><span class="dot live" id="connDot"></span><span>M2 BRIDGE</span><span class="ws-caret">← board</span></a>
+  </div>
+  <nav id="navBridge">
+    <button data-tab="bqueue" class="on">Queue</button>
+    <button data-tab="bopp">Opportunity</button>
+    <button data-tab="bappr">Approvals</button>
+    <button data-tab="brecon">Reconciliation</button>
+    <button data-tab="bscore">Scorecard</button>
+    <button data-tab="bcover">Coverage register</button>
+    <button data-tab="bset">Settings</button>
+  </nav>
+  <div class="hdr-right">
+    <span id="brWho" class="count-note"></span>
+    <span id="brEndBanner" class="count-note"></span>
+    <button class="hdr-btn" id="brSignOut" title="Sign out of the Bridge only">Sign out</button>
+    <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
+  </div>
+</header>
+
+<main id="bridgeRoot">
+<div id="brSetup" class="panel" style="display:none;max-width:520px;margin:40px auto">
+  <div class="eyebrow">M2 Bridge</div><h2 style="font-size:22px;margin:6px 0 10px">Connect to the board's database</h2>
+  <div class="sub" style="margin-bottom:14px">This page uses the same Supabase project as the board. If you have already connected the board on this device, this step is skipped.</div>
+  <div class="fld"><label>Project URL</label><input type="text" id="brCfgUrl" placeholder="https://xxxx.supabase.co"></div>
+  <div class="fld" style="margin-top:8px"><label>Anon public key</label><input type="text" id="brCfgKey" placeholder="eyJhbGciOi…"></div>
+  <div class="bar tight" style="margin-top:12px"><button class="btn" id="brConnect">Connect</button></div>
+</div>
+<!-- ================= M2 BRIDGE ================= -->
+<div id="brGate" class="panel" style="max-width:520px;margin:40px auto">
+  <div class="eyebrow">M2 Bridge</div>
+  <h2 style="font-size:22px;margin:6px 0 10px">Sign in to the Bridge</h2>
+  <div class="sub" style="margin-bottom:14px">Approvals here are evidence, so the Bridge knows who you are. Enter your work email and we send a one-time sign-in link. Only listed members get in — the rest of the board is unaffected.</div>
+  <div class="bar tight"><div class="fld" style="min-width:260px"><label>Email</label><input type="email" id="brEmail" placeholder="you@homealliance.com" autocomplete="email"></div><button class="btn" id="brSend">Send sign-in link</button></div>
+  <div class="count-note" id="brGateNote" style="margin-top:10px"></div>
+  <div id="brNotMember" style="display:none;margin-top:12px" class="count-note">Signed in as <b id="brWhoNM"></b>, but this account is not a Bridge member. Ask the manager to grant a role. <button class="btn ghost sm" id="brSignOutNM">Sign out</button></div>
+</div>
+<div id="brBody" style="display:none">
+
+  <section class="tab on" id="tab-bqueue"><h2>Queue</h2>
+    <div class="sub">Every high-value lead considered — including the ones we decline or lose — so conversion and lost-opportunity measures are not biased toward successes. A lead is <b>high-value</b> with one or more indicators; it is a <b>qualified opportunity</b> with a supported expected revenue of $5,000 or more. Unknown revenue stays unknown and proceeds only through an estimate visit.</div>
+    <div class="panel"><div class="section-head" style="margin-bottom:10px"><h3 class="pt" style="margin:0">New lead</h3><button class="btn ghost sm" id="brNewToggle">Show form</button></div><div id="brIntake" style="display:none"></div></div>
+    <div class="bar"><div class="fld"><label>Territory</label><select id="bqTerr"><option value="">All</option><option>LA</option><option>OC</option></select></div>
+      <div class="fld"><label>Route</label><select id="bqRoute"><option value="">All</option><option value="combined">Combined</option><option value="sagi">Sagi</option></select></div>
+      <div class="fld"><label>Status</label><select id="bqStatus"><option value="">Open</option><option value="all">All</option></select></div>
+      <div class="fld" style="min-width:200px"><label>Search</label><input type="text" id="bqSearch" placeholder="ref, customer, job, person"></div></div>
+    <div class="kpis" id="bqKpis"></div>
+    <div class="panel"><div class="twrap" style="max-height:60vh"><table id="tblBq"></table></div></div>
+  </section>
+
+  <section class="tab" id="tab-bopp"><div id="brOpp"></div></section>
+
+  <section class="tab" id="tab-bappr"><h2>Approvals</h2>
+    <div class="sub">Requests waiting for a decision — urgent first. The clock starts at the <b>first</b> submission and does not restart on resubmission. A decision means approve, hold (with what is missing) or reject; the brief requires one within an hour. Nothing here auto-approves.</div>
+    <div id="brAppr"></div>
+  </section>
+
+  <section class="tab" id="tab-brecon"><h2>Reconciliation</h2>
+    <div class="sub">Completed jobs with final revenue, actual costs, final compensation and payment status, against the approved projection. An unknown cost is unknown, not zero; a job is reconciled only when the manager says so.</div>
+    <div id="brRecon"></div>
+  </section>
+
+  <section class="tab" id="tab-bscore"><h2>Weekly scorecard</h2>
+    <div class="sub">Numerator, denominator and sample size on every rate; <b>N/A</b> when the denominator is zero. No targets are fabricated — where the brief says "establish baseline", the baseline is what you see. Sagi and combined routes are shown separately.</div>
+    <div class="bar"><div class="fld"><label>Week (Mon–Sun, PT)</label><input type="date" id="bsWeek"></div><div class="fld"><label>Territory</label><select id="bsTerr"><option value="">Both</option><option>LA</option><option>OC</option></select></div><div class="fld"><label>Route</label><select id="bsRoute"><option value="">Both</option><option value="combined">Combined</option><option value="sagi">Sagi</option></select></div></div>
+    <div id="brScore"></div>
+  </section>
+
+  <section class="tab" id="tab-bcover"><h2>Coverage register</h2>
+    <div class="sub">For every required territory × service: an approved primary and an <b>independent</b> backup able to both sell and perform the work. Bridge jobs never count here. Two backups sharing one indispensable installer are not independent capacity.</div>
+    <div id="brCover"></div>
+  </section>
+
+  <section class="tab" id="tab-bset"><h2>Settings</h2>
+    <div class="sub">Every business value with the brief's own status — <b>confirmed</b> (Luka said so), <b>proposed</b> (a recommendation, not policy), <b>unresolved</b> (empty, and it blocks what depends on it). Nothing is defaulted silently.</div>
+    <div id="brSet"></div>
+  </section>
+</div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ---------- shared helpers (mirrors index.html; kept in sync by hand — a shared script file is the next step if more pages appear) ---------- */
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme'};
+let sb=null;
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className='toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',isErr?4200:2600);}
+function friendlyErr(e,file){const m=(e&&e.message)?e.message:String(e||'');if(/schema cache|does not exist|Could not find the table/i.test(m))return `Setup step missing — run ${file} in Supabase (SQL Editor), then reload.`;return m;}
+const PST_TZ='America/Los_Angeles';
+function nowPST(){return new Date(new Date().toLocaleString('en-US',{timeZone:PST_TZ}));}
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>iso(nowPST()); const todayStr=today;
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');if(b){b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';}localStorage.setItem(LS.theme,t);}
+function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
+function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
+const WS='bridge';
+let TECHS=[];
+async function reloadTechs(){if(!sb)return;const {data,error}=await sb.from('technicians').select('*').order('name');if(error){TECHS=[];return;}TECHS=data||[];}
+
+
+/* =========================================================================
+   M2 BRIDGE workspace
+   Rock "ADC Ironclad Coverage", milestone 2 · brief "ADL — M2 High-Value-Job Bridge" (2026-09-18; ADL = this board).
+   Protect valuable sales during the transition while preserving gross margin: every high-value lead recorded
+   with indicators and evidence, staffed by route (combined technician | Sagi), estimated in versions, priced in an
+   ECONOMICS VERSION (R, D, C, K, gross profit, margin, gate), released only through two written approvals.
+
+   IDENTITY. The brief requires approvals that are evidence, so this workspace — alone in the board — has real
+   sign-in. `sbb` is a SECOND supabase-js client with its own storage key: signing in here never changes the
+   principal the other three workspaces use (`sb` is created with persistSession:false). Roles come from
+   bridge_roles via rpc('bridge_role'): manager (Luka) or dispatcher (Vasyl). The database stamps actor_email
+   from the JWT; nothing this page sends about "who" is trusted.
+
+   GATES live in bridge_schema.sql triggers; the checks repeated here only make the message friendlier.
+   Sardor does not sign in: a margin exception is recorded by the manager ON HIS BEHALF with how he confirmed.
+   MONEY is integer cents; margins compare with integer arithmetic (gp*100 < floor*revenue), never rounded.
+   STATUS of every business value is the brief's own: confirmed | proposed | unresolved. Unresolved = null and
+   blocks whatever depends on it. Nothing is defaulted silently.
+   ========================================================================= */
+let sbb=null;
+const BR={session:null,email:null,role:null,cfg:{},agr:[],opps:[],asg:[],est:[],eco:[],req:[],appr:[],act:[],cov:[],ev:[],roles:[],sel:null,tab:'bqueue',loaded:false,_wired:false,_tick:null,_draft:{}};
+const BR_STATUS={intake:'Intake',visit_approval_pending:'Visit approval pending',visit_authorized:'Visit authorized',inspected:'Inspected / estimated',customer_decision_pending:'Customer decision pending',economics_review:'Economics review',on_hold:'On hold',work_released:'Work released',in_progress:'In progress',completed:'Completed',actuals_reconciled:'Actuals reconciled',declined:'Declined',cancelled:'Cancelled',lost:'Lost'};
+const BR_TONE={intake:'gray',visit_approval_pending:'warn',visit_authorized:'blue',inspected:'blue',customer_decision_pending:'blue',economics_review:'warn',on_hold:'warn',work_released:'ok',in_progress:'ok',completed:'ok',actuals_reconciled:'ok',declined:'gray',cancelled:'gray',lost:'bad'};
+const BR_END=new Set(['actuals_reconciled','declined','cancelled','lost']);
+const BR_MANUAL=['inspected','customer_decision_pending','in_progress','declined','cancelled','lost'];   // stages a dispatcher may set; the gated ones come only through approvals
+const BR_GATE={meets_target:['ok','Meets target'],below_target_above_floor:['warn','Below target — above floor; the manager may release'],below_floor:['bad','Below floor — needs Sardor’s exception'],invalid:['bad','Not computable']};
+const cents=v=>{const n=Number(String(v==null?'':v).replace(/[$,\s]/g,''));return isFinite(n)?Math.round(n*100):null;};
+const usd=c=>(c==null||isNaN(c))?'—':(c<0?'-':'')+'$'+(Math.abs(c)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const pctOf=m=>m==null?'—':(m*100).toFixed(2)+'%';
+const ratio=(num,den,dp=1)=>den>0?`${(100*num/den).toFixed(dp)}% (${num}/${den})`:'N/A (0)';
+const cfgv=(k,d)=>{const r=BR.cfg[k];return (r&&r.value!=null)?r.value:d;};
+const brMgr=()=>BR.role==='manager';
+const brRef=o=>o?`B-${o.seq}`:'—';
+const brPill=(cls,txt)=>`<span class="br-pill ${cls}">${esc(txt)}</span>`;
+const brStatusPill=s=>brPill(BR_TONE[s]||'gray',BR_STATUS[s]||s);
+
+/* ---------- pure logic: qualification, economics, SLA, end date (tested in jsdom against brief §10) ---------- */
+function brFlags(o){
+  const inds=(o.indicators||[]).filter(x=>x&&x.code);
+  const hvacExcluded=inds.some(x=>x.code==='hvac_interest')&&o.hvac_check_booked===true&&cfgv('hvac_indicator_requires_no_hvac_check',true)===true;
+  const eff=hvacExcluded?inds.filter(x=>x.code!=='hvac_interest'):inds;
+  const lead=eff.length>0;
+  const min=+cfgv('min_expected_revenue_cents',500000);
+  const qualified=lead&&!o.expected_revenue_unknown&&o.expected_revenue_cents!=null&&+o.expected_revenue_cents>=min&&!!String(o.expected_revenue_basis||'').trim();
+  return {lead,qualified,hvacExcluded,indicatorCount:eff.length};
+}
+function bridgeCompute(i){
+  const issues=[]; const costs=(i.costs||[]).filter(c=>c);
+  const R=(+i.customer_price_cents||0)-(+i.discounts_cents||0);
+  if(!(R>0))issues.push('Revenue must be positive — zero revenue gives no valid margin.');
+  costs.forEach((c,n)=>{if(c.status==='unknown')issues.push(`Cost #${n+1} (${c.category||'?'}) is unknown — unknown is not zero.`);else if(!(+c.amount_cents>=0))issues.push(`Cost #${n+1} has no amount.`);});
+  const K=costs.filter(c=>c.payer==='company'&&!c.included_in_other_payment&&c.status!=='unknown').reduce((s,c)=>s+(+c.amount_cents||0),0);
+  let D=0,C=null;
+  const a=i.agreement||null;
+  if(i.job_level_comp_cents!=null&&i.job_level_comp_cents!==''){
+    C=+i.job_level_comp_cents;
+    if(!(C>=0))issues.push('Job-level compensation must be zero or more.');
+    if(!String(i.job_level_note||'').trim())issues.push('A job-level amount needs a note stating inclusions, payer and scope.');
+  }else if(i.route==='sagi'){
+    if(a&&a.status==='approved'&&a.route==='sagi'){const rate=(a.components||[]).find(x=>x.rate_pct!=null);const ded=new Set(a.deduction_categories||[]);D=costs.filter(c=>c.status!=='unknown'&&ded.has(c.category)).reduce((s,c)=>s+(+c.amount_cents||0),0);C=rate?Math.round((R-D)*rate.rate_pct/100):null;if(C==null)issues.push('Sagi agreement has no computable component.');}
+    else issues.push('Sagi compensation is unresolved — “50%+10+%” is not calculable. An explicitly approved job-level amount is required before release.');
+  }else{
+    if(!a)issues.push('No compensation agreement selected.');
+    else if(a.deduction_categories==null)issues.push('The combined-route deduction list is unresolved — the commission base cannot be computed (brief §9.1).');
+    else{
+      const ded=new Set(a.deduction_categories);
+      D=costs.filter(c=>c.status!=='unknown'&&ded.has(c.category)).reduce((s,c)=>s+(+c.amount_cents||0),0);
+      const comp=(a.components||[]).find(x=>x.rate_pct!=null);const rate=comp?+comp.rate_pct:+(i.commission_pct??cfgv('combined_commission_pct',50));
+      const base=R-D;
+      if(base<0)issues.push(`Commission base is negative (${usd(base)}) — not clamped; correct the terms.`);
+      C=Math.round(base*rate/100);
+    }
+  }
+  const scope=(i.scope||[]).filter(s=>s&&s.service);
+  const svcs=[...new Set(scope.map(s=>s.service))];
+  if(!scope.length)issues.push('Estimate scope is empty — classify at least one service.');
+  const rules=i.rules||cfgv('service_rules',{})||{};
+  svcs.forEach(s=>{if(s==='other'||!rules[s])issues.push(`Service “${s}” has no margin rule — classify it or set a rule in Settings before release.`);});
+  const GP=(C==null)?null:R-K-C;
+  const per=[];
+  if(!issues.length){
+    let split=null;
+    if(svcs.length===1)split=[{service:svcs[0],revenue_cents:R,direct_cost_cents:K}];
+    else if(i.service_split&&i.service_split.length)split=i.service_split.map(x=>({service:x.service,revenue_cents:+x.revenue_cents||0,direct_cost_cents:+x.direct_cost_cents||0}));
+    else issues.push('Mixed job: allocate revenue and direct costs to each service explicitly — a below-floor service must not hide inside a profitable bundle.');
+    if(split){
+      const sumR=split.reduce((s,x)=>s+x.revenue_cents,0),sumK=split.reduce((s,x)=>s+x.direct_cost_cents,0);
+      if(sumR!==R)issues.push(`Service revenue split (${usd(sumR)}) does not equal revenue (${usd(R)}).`);
+      if(sumK!==K)issues.push(`Direct-cost allocation (${usd(sumK)}) does not equal company costs (${usd(K)}) — shared costs must be allocated explicitly.`);
+      split.forEach(x=>{
+        const rv=x.revenue_cents,ck=x.direct_cost_cents,cc=R>0?Math.round(C*rv/R):0,gp=rv-ck-cc,rule=rules[x.service]||{};
+        const floor=rule.floor_pct==null?null:+rule.floor_pct,target=rule.target_pct==null?null:+rule.target_pct;
+        per.push({service:x.service,revenue_cents:rv,direct_cost_cents:ck,comp_cents:cc,gross_profit_cents:gp,margin:rv>0?gp/rv:null,floor_pct:floor,target_pct:target,
+          below_floor:floor!=null&&rv>0&&gp*100<floor*rv,below_target:target!=null&&rv>0&&gp*100<target*rv});
+      });
+    }
+  }
+  const gate=issues.length?'invalid':(per.some(p=>p.below_floor)?'below_floor':per.some(p=>p.below_target)?'below_target_above_floor':'meets_target');
+  return {r_cents:R,d_cents:D,c_cents:C,k_cents:K,gross_profit_cents:GP,margin:(GP!=null&&R>0)?GP/R:null,gate,validation_issues:issues,per_service:per};
+}
+function brSla(req,now){
+  now=now==null?Date.now():now;
+  const sla=(+cfgv('decision_sla_minutes',60))*60000,start=new Date(req.submitted_at).getTime(),end=req.decided_at?new Date(req.decided_at).getTime():now,elapsed=Math.max(0,end-start),decided=!!req.decided_at,overdue=elapsed>sla;
+  return {elapsedMin:Math.floor(elapsed/60000),decided,overdue,met:decided&&!overdue,inDenominator:decided||overdue,basisUnconfirmed:cfgv('sla_basis',null)==null};
+}
+function brEndBanner(endDate,todayStr_){
+  if(!endDate)return '';
+  const t=todayStr_||today();
+  if(t>=endDate)return `Bridge end date ${endDate} has passed — review outstanding coverage and open bridge work. Nothing was auto-completed, extended or cancelled.`;
+  const days=Math.round((new Date(endDate+'T12:00:00Z')-new Date(t+'T12:00:00Z'))/864e5);
+  return `Bridge ends ${endDate} · ${days} days`;
+}
+
+/* ---------- data ---------- */
+const brq=t=>sbb.from(t);
+function brErr(e){const m=(e&&e.message)||String(e||'');if(/schema cache|does not exist|Could not find the table/i.test(m))return friendlyErr(e,'bridge_schema.sql');return m;}
+async function brLoad(){
+  const T=[['opps','bridge_opportunities'],['asg','bridge_assignments'],['est','bridge_estimates'],['eco','bridge_economics'],['req','bridge_requests'],['appr','bridge_approvals'],['act','bridge_actuals'],['cov','bridge_coverage_register'],['ev','bridge_events'],['agr','bridge_comp_agreements'],['roles','bridge_roles']];
+  const rs=await Promise.all(T.map(([,t])=>brq(t).select('*')).concat([brq('bridge_config').select('*')]));
+  const bad=rs.find(r=>r.error);if(bad){toast(brErr(bad.error),true);BR.loaded=false;return false;}
+  T.forEach(([k],n)=>BR[k]=rs[n].data||[]);
+  BR.cfg={};(rs[T.length].data||[]).forEach(r=>BR.cfg[r.key]=r);
+  BR.opps.sort((a,b)=>(b.seq||0)-(a.seq||0));BR.loaded=true;return true;
+}
+async function brWrite(q,okMsg){
+  const {data,error}=await q.select();
+  if(error){toast(brErr(error),true);return null;}
+  if(!data||!data.length){toast('Not saved — the database refused it (membership or policy).',true);return null;}
+  if(okMsg)toast(okMsg);await brLoad();return data[0];
+}
+const brOpp=id=>BR.opps.find(o=>o.id===id);
+const brOf=(arr,id)=>arr.filter(r=>r.opportunity_id===id);
+const brLatest=(arr,id)=>brOf(arr,id).sort((a,b)=>(b.version||0)-(a.version||0))[0]||null;
+const brNextVersion=(arr,id)=>(brLatest(arr,id)?.version||0)+1;
+const brPending=id=>brOf(BR.req,id).filter(r=>!r.decided_at);
+const brApprovedEco=id=>brOf(BR.eco,id).find(e=>e.status==='approved')||null;
+const brApprovedTechs=()=>TECHS.filter(t=>t.approved===true&&t.active!==false).map(t=>t.name);
+
+/* ---------- auth gate ---------- */
+async function bootBridge(){
+  if(!sbb){toast('Connect to Supabase first',true);return;}
+  if(!BR._wired){BR._wired=true;sbb.auth.onAuthStateChange((ev,s)=>{BR.session=s||null;brRoute();});
+    if(!TECHS.length){try{await reloadTechs();}catch(e){}}}
+  try{const {data:{session}={}}=await sbb.auth.getSession();BR.session=session||null;}catch(e){BR.session=null;}
+  await brRoute();
+}
+async function brRoute(){
+  const gate=$('#brGate'),body=$('#brBody');
+  if(!BR.session){gate.style.display='';body.style.display='none';$('#brNotMember').style.display='none';BR.role=null;return;}
+  BR.email=(BR.session.user&&BR.session.user.email)||null;
+  const {data:role,error}=await sbb.rpc('bridge_role');
+  if(error){toast(brErr(error),true);}
+  BR.role=role||null;
+  if(!BR.role){gate.style.display='';body.style.display='none';$('#brNotMember').style.display='';$('#brWhoNM').textContent=BR.email||'';return;}
+  gate.style.display='none';body.style.display='';
+  $('#brWho').textContent=`${BR.email} · ${BR.role}`;
+  const m=/[?&]bridge=([^&]+)/.exec(location.search);if(m){BR.sel=decodeURIComponent(m[1]);BR.tab='bopp';}
+  if(/[?&](code|bridge)=/.test(location.search))history.replaceState(null,'',location.pathname);
+  if(await brLoad()){$('#brEndBanner').textContent=brEndBanner(cfgv('bridge_end_date',null));showBridgeTab(BR.tab);}
+}
+$('#brSend').addEventListener('click',async()=>{
+  const email=$('#brEmail').value.trim();if(!email||!email.includes('@')){toast('Enter your work email',true);return;}
+  $('#brGateNote').textContent='Sending…';
+  const {error}=await sbb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
+  if(error){$('#brGateNote').textContent=/Signups not allowed|not allowed/i.test(error.message)?'No account for that email. The manager creates accounts in Supabase → Authentication → Users.':error.message;return;}
+  $('#brGateNote').textContent=`Link sent to ${email}. Open it on this device; you will land back here signed in.`;
+});
+async function brSignOut(){try{await sbb.auth.signOut();}catch(e){}BR.session=null;BR.role=null;brRoute();}
+$('#brSignOut').addEventListener('click',brSignOut);$('#brSignOutNM').addEventListener('click',brSignOut);
+
+/* ---------- tabs ---------- */
+function showBridgeTab(name){
+  BR.tab=name;
+  $$('#navBridge button').forEach(x=>x.classList.toggle('on',x.dataset.tab===name));
+  $$('#bridgeRoot .tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
+  clearInterval(BR._tick);BR._tick=null;
+  if(!BR.loaded)return;
+  if(name==='bqueue')brRenderQueue();
+  if(name==='bopp')brRenderOpp();
+  if(name==='bappr'){brRenderAppr();BR._tick=setInterval(()=>{if(BR.tab==='bappr')brRenderAppr();},30000);}
+  if(name==='brecon')brRenderRecon();
+  if(name==='bscore')brRenderScore();
+  if(name==='bcover')brRenderCover();
+  if(name==='bset')brRenderSet();
+}
+$('#navBridge').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showBridgeTab(b.dataset.tab);});
+function brOpen(id){BR.sel=id;showBridgeTab('bopp');history.replaceState(null,'',location.pathname+'?bridge='+encodeURIComponent(id));}
+
+/* ---------- shared widgets ---------- */
+function brIndicatorsWidget(prefix,current){
+  const cur={};(current||[]).forEach(x=>{if(x&&x.code)cur[x.code]=x;});
+  const inds=cfgv('indicators',[]);
+  return `<div>${inds.map(d=>{const c=cur[d.code];return `<div class="br-ind"><input type="checkbox" data-ind="${esc(d.code)}"${c?' checked':''} id="${prefix}_${esc(d.code)}"><label for="${prefix}_${esc(d.code)}"><b>${esc(d.label)}</b> <span class="count-note">${esc(d.kind)}</span></label><input type="text" data-indev="${esc(d.code)}" placeholder="Evidence: prior job ref, statement, Zillow…" value="${esc(c?.evidence||'')}"><input type="date" data-inddt="${esc(d.code)}" value="${esc(c?.evidence_date||'')}"></div>`;}).join('')}</div>`;
+}
+function brReadIndicators(root){return $$('[data-ind]',root).filter(cb=>cb.checked).map(cb=>{const code=cb.dataset.ind;return {code,evidence:$(`[data-indev="${code}"]`,root).value.trim(),evidence_date:$(`[data-inddt="${code}"]`,root).value||null};});}
+function brOptions(list,val,blank){return (blank?`<option value="">${esc(blank)}</option>`:'')+list.map(v=>{const [k,l]=Array.isArray(v)?v:[v,v];return `<option value="${esc(k)}"${String(val)===String(k)?' selected':''}>${esc(l)}</option>`;}).join('');}
+
+/* ---------- Queue ---------- */
+function brIntakeForm(){
+  const terr=cfgv('territories',['LA','OC']),sagiOk=cfgv('sagi_approved_for_estimates',false)===true;
+  return `<div class="br-grid">
+    <div class="fld"><label>Customer ref</label><input type="text" id="bi_customer" placeholder="CRM customer / name ref"></div>
+    <div class="fld"><label>Property ref</label><input type="text" id="bi_property" placeholder="address ref / Zillow"></div>
+    <div class="fld"><label>Job / lead ID</label><input type="text" id="bi_job" class="jobref"></div>
+    <div class="fld"><label>Territory</label><select id="bi_terr">${brOptions(terr,'')}</select></div>
+    <div class="fld"><label>Route</label><select id="bi_route">${brOptions([['combined','Combined technician'],...(sagiOk?[['sagi','Sagi (sells; his installers)']]:[])],'combined')}</select>${sagiOk?'':'<div class="count-note">Sagi route appears once the manager sets <b>sagi_approved_for_estimates</b> in Settings.</div>'}</div>
+    <div class="fld"><label>Salesperson</label><input type="text" id="bi_sales" placeholder="who sells"></div>
+    <div class="fld"><label>Expected revenue ($)</label><input type="text" id="bi_rev" placeholder="e.g. 7500"></div>
+    <div class="fld"><label>Revenue basis</label><input type="text" id="bi_basis" placeholder="prior job, scope estimate…"></div>
+    <div class="fld"><label><input type="checkbox" id="bi_unknown"> Expected revenue unknown</label><div class="count-note">Proceeds only through an estimate visit.</div></div>
+    <div class="fld"><label>HVAC check booked by HVAC dept?</label><select id="bi_hvac">${brOptions([['','Not verified'],['true','Yes — HVAC indicator does not count'],['false','No']],'')}</select></div>
+    <div class="fld"><label><input type="checkbox" id="bi_urgent"> Urgent (same-day / at risk)</label></div>
+  </div>
+  <div class="br-sec"><h3 class="pt">High-value indicators <span class="count-note">one or more = high-value lead · record the evidence and its date</span></h3>${brIndicatorsWidget('bi',[])}</div>
+  <div class="fld" style="margin-top:12px"><label>Notes</label><input type="text" id="bi_notes"></div>
+  <div class="bar tight" style="margin-top:12px"><button class="btn" id="bi_save">Record lead</button><span class="count-note">Every lead considered is recorded, including ones we decline or lose.</span></div>`;
+}
+function brRenderQueue(){
+  const box=$('#brIntake');if(!box.dataset.built){box.innerHTML=brIntakeForm();box.dataset.built='1';}
+  const terr=$('#bqTerr').value,route=$('#bqRoute').value,st=$('#bqStatus').value,q=$('#bqSearch').value.trim().toLowerCase();
+  let list=BR.opps.filter(o=>(!terr||o.territory===terr)&&(!route||o.route===route)&&(st==='all'||!BR_END.has(o.status)));
+  if(q)list=list.filter(o=>[brRef(o),o.customer_ref,o.property_ref,o.job_ref,o.salesperson,o.owner_email].some(v=>String(v||'').toLowerCase().includes(q)));
+  const open=BR.opps.filter(o=>!BR_END.has(o.status));
+  const pend=BR.req.filter(r=>!r.decided_at);const over=pend.filter(r=>brSla(r).overdue);
+  $('#bqKpis').innerHTML=`<div class="kpi"><div class="v">${open.length}</div><div class="l">Open opportunities</div></div>
+    <div class="kpi a"><div class="v">${open.filter(o=>brFlags(o).qualified).length}</div><div class="l">Qualified (≥ ${usd(cfgv('min_expected_revenue_cents',500000))})</div></div>
+    <div class="kpi ${pend.length?'b':''}"><div class="v">${pend.length}</div><div class="l">Awaiting decision</div></div>
+    <div class="kpi ${over.length?'c':''}"><div class="v">${over.length}</div><div class="l">Past the hour</div></div>
+    <div class="kpi"><div class="v">${BR.opps.filter(o=>o.status==='work_released'||o.status==='in_progress').length}</div><div class="l">Released / in progress</div></div>`;
+  if(!list.length){$('#tblBq').innerHTML='<tbody><tr><td style="color:var(--ink-2)">No opportunities match. Record a lead above.</td></tr></tbody>';return;}
+  let h='<thead><tr><th>Ref</th><th>Intake</th><th>Terr.</th><th>Customer / job</th><th>Indicators</th><th>Flag</th><th>Exp. revenue</th><th>Route</th><th>Status</th><th>Visit</th><th>Release</th><th>Clock</th><th></th></tr></thead><tbody>';
+  list.forEach(o=>{
+    const f=brFlags(o),pr=brPending(o.id)[0],sla=pr?brSla(pr):null;
+    const visit=brOf(BR.appr,o.id).some(a=>a.type==='visit_approval'&&a.decision==='approve'),rel=o.status==='work_released'||o.status==='in_progress'||o.status==='completed'||o.status==='actuals_reconciled';
+    h+=`<tr><td class="jobref"><b>${brRef(o)}</b>${o.urgent?' '+brPill('bad','URGENT'):''}</td><td>${esc(o.intake_date)}</td><td>${esc(o.territory)}</td><td>${esc(o.customer_ref||'—')}<div class="count-note">${esc(o.job_ref||'')}</div></td><td class="num">${f.indicatorCount}${f.hvacExcluded?' <span class="count-note">(HVAC excluded)</span>':''}</td>
+      <td>${f.qualified?brPill('ok','Qualified'):f.lead?brPill('blue','High-value lead'):brPill('gray','No indicator')}</td><td class="num">${o.expected_revenue_unknown?'<span class="count-note">unknown</span>':usd(o.expected_revenue_cents)}</td><td>${esc(o.route||'—')}</td><td>${brStatusPill(o.status)}</td>
+      <td>${visit?brPill('ok','Authorized'):brPill('gray','—')}</td><td>${rel?brPill('ok','Released'):brPill('gray','—')}</td><td>${sla?`<span class="br-timer${sla.overdue?' over':''}">${sla.elapsedMin} min</span>`:''}</td><td><button class="btn ghost sm" data-bropen="${esc(o.id)}">Open</button></td></tr>`;
+  });
+  $('#tblBq').innerHTML=h+'</tbody>';
+}
+$('#brNewToggle').addEventListener('click',()=>{const b=$('#brIntake');const on=b.style.display==='none';b.style.display=on?'':'none';$('#brNewToggle').textContent=on?'Hide form':'Show form';});
+['bqTerr','bqRoute','bqStatus','bqSearch'].forEach(id=>$('#'+id).addEventListener('input',brRenderQueue));
+$('#tblBq').addEventListener('click',e=>{const b=e.target.closest('[data-bropen]');if(b)brOpen(b.dataset.bropen);});
+$('#brIntake').addEventListener('click',async e=>{
+  if(!e.target.closest('#bi_save'))return;
+  const root=$('#brIntake');const unknown=$('#bi_unknown').checked;const rev=unknown?null:cents($('#bi_rev').value);
+  if(!$('#bi_terr').value){toast('Pick a territory',true);return;}
+  if(!unknown&&rev==null){toast('Enter expected revenue, or tick unknown',true);return;}
+  const hv=$('#bi_hvac').value;
+  const row={customer_ref:$('#bi_customer').value.trim()||null,property_ref:$('#bi_property').value.trim()||null,job_ref:$('#bi_job').value.trim().toUpperCase()||null,territory:$('#bi_terr').value,route:$('#bi_route').value||null,salesperson:$('#bi_sales').value.trim()||null,
+    expected_revenue_cents:rev,expected_revenue_basis:$('#bi_basis').value.trim()||null,expected_revenue_unknown:unknown,hvac_check_booked:hv===''?null:hv==='true',urgent:$('#bi_urgent').checked,indicators:brReadIndicators(root),notes:$('#bi_notes').value.trim()||null,owner_email:BR.email};
+  const saved=await brWrite(brq('bridge_opportunities').insert(row),'Lead recorded');
+  if(saved){root.dataset.built='';root.style.display='none';$('#brNewToggle').textContent='Show form';brOpen(saved.id);}
+});
+
+/* ---------- Opportunity page ---------- */
+function brRenderOpp(){
+  const el_=$('#brOpp');const o=brOpp(BR.sel);
+  if(!o){el_.innerHTML='<div class="empty">Pick an opportunity from the Queue.</div>';return;}
+  const f=brFlags(o),asg=brLatest(BR.asg,o.id),ests=brOf(BR.est,o.id).sort((a,b)=>a.version-b.version),ecos=brOf(BR.eco,o.id).sort((a,b)=>a.version-b.version),appr=brOf(BR.appr,o.id).sort((a,b)=>a.at.localeCompare(b.at)),pend=brPending(o.id),evs=brOf(BR.ev,o.id).sort((a,b)=>b.at.localeCompare(a.at));
+  const visitA=appr.find(a=>a.type==='visit_approval'&&a.decision==='approve'),relA=appr.filter(a=>a.type==='work_release'&&a.decision==='approve').pop(),exc=appr.filter(a=>a.type==='margin_exception');
+  const approvedEco=brApprovedEco(o.id),latestEst=ests[ests.length-1]||null;
+  const visitPill=visitA?brPill('ok',`Visit authorized ${visitA.at.slice(0,10)}`):pend.some(r=>r.type==='visit_approval')?brPill('warn','Visit approval pending'):brPill('gray','Visit: not requested');
+  const relPill=relA?brPill('ok',`Work released v${relA.economics_version} · ${relA.at.slice(0,10)}`):pend.some(r=>r.type==='work_release')?brPill('warn','Release pending'):o.status==='on_hold'?brPill('warn','On hold'):brPill('gray','Work: not released');
+  const techs=brApprovedTechs();
+  const d=BR._draft[o.id]||(BR._draft[o.id]={costs:[],scope:[],split:[]});
+  let h=`<div class="section-head"><div><div class="eyebrow">Opportunity · ${esc(o.territory)} · ${esc(o.route||'route not set')}</div><h2 style="font-size:24px">${brRef(o)} ${esc(o.customer_ref||'')}</h2></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${brStatusPill(o.status)}${visitPill}${relPill}${o.urgent?brPill('bad','URGENT'):''}<button class="btn ghost sm" data-bo="back">← Queue</button></div></div>
+  <div class="count-note" style="margin-bottom:12px">Intake ${esc(o.intake_date)} · job ${esc(o.job_ref||'—')} · property ${esc(o.property_ref||'—')} · owner ${esc(o.owner_email||'—')} · ${f.qualified?'qualified high-value opportunity':f.lead?'high-value lead — expected value '+(o.expected_revenue_unknown?'unknown':usd(o.expected_revenue_cents)+' (below the $5,000 threshold or no basis)'):'no indicator recorded'}</div>`;
+
+  /* stage + urgent */
+  h+=`<div class="panel"><div class="bar tight"><div class="fld"><label>Stage (manual stages only)</label><select id="bo_stage">${brOptions([['','— keep '+(BR_STATUS[o.status]||o.status)+' —'],...BR_MANUAL.map(s=>[s,BR_STATUS[s]])],'')}</select></div>
+    <div class="fld" id="bo_lostwrap" style="display:none"><label>Loss reason / category</label><div style="display:flex;gap:6px"><input type="text" id="bo_lossreason" placeholder="why"><select id="bo_losscat">${brOptions([['customer','Customer'],['internal_coverage','Internal: no coverage'],['internal_decision_delay','Internal: decision delay'],['internal_handoff','Internal: failed handoff'],['other','Other']],'customer')}</select></div></div>
+    <button class="btn ghost sm" data-bo="stage">Set stage</button><button class="btn ghost sm" data-bo="urgent">${o.urgent?'Clear urgent':'Mark urgent'}</button>
+    <span class="count-note">Visit authorized, work released and actuals reconciled are reached only through approvals — never by hand.</span></div></div>`;
+
+  /* indicators */
+  h+=`<div class="panel br-sec"><h3 class="pt">Indicators & expected value <span class="count-note">${f.indicatorCount} indicator${f.indicatorCount===1?'':'s'}${f.hvacExcluded?' · HVAC excluded (separate HVAC check booked)':''}</span></h3>${brIndicatorsWidget('bo',o.indicators)}
+    <div class="br-grid" style="margin-top:10px"><div class="fld"><label>Expected revenue ($)</label><input type="text" id="bo_rev" value="${o.expected_revenue_cents==null?'':(o.expected_revenue_cents/100)}"></div><div class="fld"><label>Basis</label><input type="text" id="bo_basis" value="${esc(o.expected_revenue_basis||'')}"></div><div class="fld"><label><input type="checkbox" id="bo_unknown"${o.expected_revenue_unknown?' checked':''}> Unknown</label></div>
+    <div class="fld"><label>HVAC check booked?</label><select id="bo_hvac">${brOptions([['','Not verified'],['true','Yes'],['false','No']],o.hvac_check_booked==null?'':String(o.hvac_check_booked))}</select></div><div class="fld"><label>Route</label><select id="bo_route">${brOptions([['','—'],['combined','Combined technician'],...(cfgv('sagi_approved_for_estimates',false)===true||o.route==='sagi'?[['sagi','Sagi']]:[])],o.route||'')}</select></div><div class="fld"><label>Salesperson</label><input type="text" id="bo_sales" value="${esc(o.salesperson||'')}"></div></div>
+    <div class="bar tight" style="margin-top:10px"><button class="btn sm" data-bo="saveind">Save indicators & value</button></div></div>`;
+
+  /* assignment */
+  h+=`<div class="panel br-sec"><h3 class="pt">Assignment <span class="count-note">${asg?`v${asg.version} · ${esc(asg.route)} · ${esc(asg.performing_technician||asg.installer_name||'—')}`:'none yet'}</span></h3>
+    ${asg?`<div class="count-note" style="margin-bottom:8px">Salesperson <b>${esc(asg.salesperson||'—')}</b>${asg.route==='combined'?` · performs: <b>${esc(asg.performing_technician||'—')}</b>`:` · installer: <b>${esc(asg.installer_name||'—')}</b> (${esc(asg.installer_capability||'capability?')}, ${esc(asg.installer_availability||'availability?')}) ${asg.installer_approved?brPill('ok','installer approved '+String(asg.installer_approved_at||'').slice(0,10)):brPill('bad','installer NOT approved')}`}${(asg.helpers||[]).length?` · helpers: ${asg.helpers.map(x=>esc(x.name)+' ('+esc(x.payer)+'-paid)').join(', ')}`:''}
+      ${asg.route==='sagi'&&!asg.installer_approved&&brMgr()?` <button class="btn sm" data-bo="approveinst">Approve installer</button>`:''}</div>`:''}
+    <details><summary class="count-note" style="cursor:pointer">New assignment version</summary><div class="br-grid" style="margin-top:8px">
+      <div class="fld"><label>Route</label><select id="ba_route">${brOptions([['combined','Combined technician'],['sagi','Sagi']],o.route||'combined')}</select></div>
+      <div class="fld"><label>Salesperson</label><input type="text" id="ba_sales" value="${esc(o.salesperson||'')}"></div>
+      <div class="fld"><label>Performing technician (combined)</label><input type="text" id="ba_tech" list="ba_techlist" placeholder="approved technician"><datalist id="ba_techlist">${techs.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></div>
+      <div class="fld"><label>Installer (Sagi route)</label><input type="text" id="ba_inst"></div><div class="fld"><label>Installer capability</label><input type="text" id="ba_instcap"></div><div class="fld"><label>Installer availability</label><input type="text" id="ba_instav"></div>
+      <div class="fld wide"><label>Helpers (name = payer; one per line, e.g. "Marco = company")</label><input type="text" id="ba_helpers" placeholder="Marco = company; Ivan = sagi"></div><div class="fld"><label>Note</label><input type="text" id="ba_note"></div></div>
+      <div class="bar tight" style="margin-top:8px"><button class="btn sm" data-bo="saveasg">Save assignment v${brNextVersion(BR.asg,o.id)}</button><span class="count-note">Helpers do not become approved installers by assisting. Only ${techs.length} approved, active technician${techs.length===1?'':'s'} exist.</span></div></details></div>`;
+
+  /* estimates */
+  const services=cfgv('services',['installation','cleaning','hvac','removal','other']);
+  h+=`<div class="panel br-sec"><h3 class="pt">Estimates <span class="count-note">${ests.length} version${ests.length===1?'':'s'} · customer acceptance is separate from internal release</span></h3>
+    ${ests.length?`<div class="twrap"><table><thead><tr><th>v</th><th>Scope</th><th>Price</th><th>Discounts</th><th>Net</th><th>Terms</th><th>Customer</th><th></th></tr></thead><tbody>${ests.map(e=>`<tr><td class="num">${e.version}</td><td>${(e.scope||[]).map(s=>esc(s.service)+(s.description?': '+esc(s.description):'')+' '+usd(s.price_cents)).join('<br>')}</td><td class="num">${usd(e.customer_price_cents)}</td><td class="num">${usd(e.discounts_cents)}</td><td class="num"><b>${usd(e.customer_price_cents-e.discounts_cents)}</b></td><td>${esc(e.payment_terms||'')} ${esc(e.financing||'')}${e.previous_price_ref?'<div class="count-note">prev: '+esc(e.previous_price_ref)+'</div>':''}</td><td>${e.customer_accepted?brPill('ok','accepted '+String(e.customer_accepted_at||'').slice(0,10)):brPill('gray','not accepted')}</td><td>${e.customer_accepted?'':`<button class="btn ghost sm" data-bo="accept" data-id="${esc(e.id)}">Record acceptance</button>`}</td></tr>`).join('')}</tbody></table></div>`:''}
+    <details><summary class="count-note" style="cursor:pointer">New estimate version</summary>
+      <div id="be_scope" style="margin-top:8px">${(d.scope.length?d.scope:[{service:'installation',description:'',price:''}]).map((s,n)=>`<div class="br-scope"><select data-sc="service">${brOptions(services,s.service)}</select><input type="text" data-sc="description" placeholder="scope description" value="${esc(s.description||'')}"><input type="text" data-sc="price" placeholder="price $" value="${esc(s.price||'')}"><button class="btn ghost sm" data-bo="scoperm" data-n="${n}">✕</button></div>`).join('')}</div>
+      <div class="bar tight"><button class="btn ghost sm" data-bo="scopeadd">+ service line</button></div>
+      <div class="br-grid" style="margin-top:8px"><div class="fld"><label>Discounts ($)</label><input type="text" id="be_disc" value="0"></div><div class="fld"><label>Payment terms</label><input type="text" id="be_terms"></div><div class="fld"><label>Financing</label><input type="text" id="be_fin"></div><div class="fld"><label>Previous price reference</label><input type="text" id="be_prev" placeholder="returning customer's prior price"></div></div>
+      <div class="bar tight" style="margin-top:8px"><button class="btn sm" data-bo="saveest">Save estimate v${brNextVersion(BR.est,o.id)}</button><span class="count-note">Price = sum of service lines. A version is never edited afterwards.</span></div></details></div>`;
+
+  /* economics */
+  const route=o.route||'combined';
+  const agrs=BR.agr.filter(a=>a.route===route);
+  const draftEst=d.estId&&ests.find(e=>e.id===d.estId)?ests.find(e=>e.id===d.estId):latestEst;
+  const agreement=d.agrId?agrs.find(a=>a.id===d.agrId):null;
+  const catList=cfgv('cost_categories',['materials','company_helper','travel','equipment','disposal','financing_processing','permits','other']);
+  const ded=new Set((agreement&&agreement.deduction_categories)||[]);
+  const scopeSvcs=draftEst?[...new Set((draftEst.scope||[]).map(s=>s.service))]:[];
+  const inputs={route,customer_price_cents:draftEst?draftEst.customer_price_cents:0,discounts_cents:draftEst?draftEst.discounts_cents:0,costs:d.costs.map(c=>({...c,amount_cents:cents(c.amount),reduces_commission_base:ded.has(c.category)})),agreement,job_level_comp_cents:d.jl===''||d.jl==null?null:cents(d.jl),job_level_note:d.jlnote||'',scope:draftEst?draftEst.scope:[],service_split:scopeSvcs.length>1?scopeSvcs.map(s=>{const x=(d.split||[]).find(y=>y.service===s)||{};return {service:s,revenue_cents:cents(x.revenue)||0,direct_cost_cents:cents(x.cost)||0};}):[],rules:cfgv('service_rules',{})};
+  const out=bridgeCompute(inputs);const g=BR_GATE[out.gate]||BR_GATE.invalid;
+  h+=`<div class="panel br-sec"><h3 class="pt">Economics <span class="count-note">${ecos.length} version${ecos.length===1?'':'s'}${approvedEco?` · approved v${approvedEco.version} (${pctOf(approvedEco.margin)})`:' · none approved'}</span></h3>
+    ${ecos.length?`<div class="twrap" style="margin-bottom:10px"><table><thead><tr><th>v</th><th>Est.</th><th>R</th><th>D</th><th>C</th><th>K</th><th>Gross profit</th><th>Margin</th><th>Gate</th><th>Status</th><th></th></tr></thead><tbody>${ecos.map(e=>{const gg=BR_GATE[e.gate]||BR_GATE.invalid;return `<tr><td class="num">${e.version}</td><td class="num">v${e.estimate_version||'?'}</td><td class="num">${usd(e.r_cents)}</td><td class="num">${usd(e.d_cents)}</td><td class="num">${usd(e.c_cents)}${e.job_level_comp_cents!=null?`<div class="count-note">job-level ${e.job_level_comp_approved_by?'approved':'NOT approved'}</div>`:''}</td><td class="num">${usd(e.k_cents)}</td><td class="num">${usd(e.gross_profit_cents)}</td><td class="num"><b>${pctOf(e.margin)}</b></td><td>${brPill(gg[0],e.gate||'—')}</td><td>${brPill(e.status==='approved'?'ok':e.status==='superseded'?'gray':'warn',e.status+(e.approved_by?' · '+e.approved_by.split('@')[0]:''))}${(e.validation_issues||[]).length?`<div class="count-note">${e.validation_issues.length} issue(s)</div>`:''}</td>
+        <td style="white-space:nowrap">${brMgr()&&e.status==='draft'&&e.job_level_comp_cents!=null&&!e.job_level_comp_approved_by?`<button class="btn ghost sm" data-bo="approvejl" data-id="${esc(e.id)}">Approve job-level amount</button> `:''}${brMgr()&&e.status==='draft'?`<button class="btn sm" data-bo="approveeco" data-id="${esc(e.id)}">Approve v${e.version}</button>`:''}</td></tr>`;}).join('')}</tbody></table></div>`:''}
+    <details ${ecos.length?'':'open'}><summary class="count-note" style="cursor:pointer">Compose a new economics version</summary>
+      <div class="br-grid" style="margin-top:8px"><div class="fld"><label>Estimate version</label><select id="bc_est">${brOptions(ests.map(e=>[e.id,`v${e.version} · ${usd(e.customer_price_cents-e.discounts_cents)}`]),draftEst?draftEst.id:'','— none —')}</select></div>
+        <div class="fld"><label>Compensation agreement (${esc(route)})</label><select id="bc_agr">${brOptions(agrs.map(a=>[a.id,`${a.name} · ${a.status}${a.deduction_categories==null?' · deductions UNRESOLVED':''}`]),d.agrId||'','— none —')}</select></div>
+        <div class="fld"><label>…or job-level amount ($, all-inclusive)</label><input type="text" id="bc_jl" value="${esc(d.jl||'')}" placeholder="${route==='sagi'?'required for Sagi until an agreement exists':'optional'}"></div>
+        <div class="fld wide"><label>Job-level note — inclusions, payer, scope</label><input type="text" id="bc_jlnote" value="${esc(d.jlnote||'')}" placeholder="e.g. covers Sagi and his two installers; company pays materials"></div></div>
+      <div class="br-sec"><h3 class="pt">Company & job costs <span class="count-note">unknown stays unknown, never zero · a cost inside another payment is not counted twice</span></h3>
+        <div class="br-cost cn"><span>category</span><span>amount $</span><span>payer</span><span>status</span><span>ref</span><span>reduces base</span><span>in other pay</span><span></span></div>
+        <div id="bc_costs">${d.costs.map((c,n)=>`<div class="br-cost"><select data-cs="category">${brOptions(catList.concat(catList.includes('installer')?[]:['installer']),c.category)}</select><input type="text" data-cs="amount" value="${esc(c.amount||'')}" placeholder="$"><select data-cs="payer">${brOptions([['company','company'],['sagi','Sagi'],['technician','technician']],c.payer||'company')}</select><select data-cs="status">${brOptions([['estimated','estimated'],['actual','actual'],['unknown','unknown']],c.status||'estimated')}</select><input type="text" data-cs="ref" value="${esc(c.ref||'')}" placeholder="quote / receipt"><input type="checkbox" disabled${ded.has(c.category)?' checked':''} title="From the agreement's deduction list — not editable per job"><input type="checkbox" data-cs="included_in_other_payment"${c.included_in_other_payment?' checked':''} title="Already inside another payment (e.g. Sagi's installers inside his package)"><button class="btn ghost sm" data-bo="costrm" data-n="${n}">✕</button></div>`).join('')}</div>
+        <div class="bar tight"><button class="btn ghost sm" data-bo="costadd">+ cost</button></div></div>
+      ${scopeSvcs.length>1?`<div class="br-sec"><h3 class="pt">Mixed job — allocate per service <span class="count-note">proposed rule: per-service floors, explicit allocation, compensation by revenue share</span></h3>${scopeSvcs.map(s=>{const x=(d.split||[]).find(y=>y.service===s)||{};return `<div class="br-grid"><div class="fld"><label>${esc(s)} revenue ($)</label><input type="text" data-sp="revenue" data-svc="${esc(s)}" value="${esc(x.revenue||'')}"></div><div class="fld"><label>${esc(s)} direct costs ($)</label><input type="text" data-sp="cost" data-svc="${esc(s)}" value="${esc(x.cost||'')}"></div></div>`;}).join('')}</div>`:''}
+      <div class="br-econ"><div class="k"><div class="l">R · revenue</div><div class="v">${usd(out.r_cents)}</div></div><div class="k"><div class="l">D · deductions</div><div class="v">${usd(out.d_cents)}</div></div><div class="k"><div class="l">C · compensation</div><div class="v">${usd(out.c_cents)}</div></div><div class="k"><div class="l">K · company costs</div><div class="v">${usd(out.k_cents)}</div></div><div class="k"><div class="l">Gross profit</div><div class="v">${usd(out.gross_profit_cents)}</div></div><div class="k"><div class="l">Margin</div><div class="v">${pctOf(out.margin)}</div></div></div>
+      <div>${brPill(g[0],g[1])} ${out.per_service.map(p=>brPill(p.below_floor?'bad':p.below_target?'warn':'ok',`${p.service} ${pctOf(p.margin)}${p.floor_pct!=null?' · floor '+p.floor_pct+'%':''}${p.target_pct!=null?' · target '+p.target_pct+'%':''}`)).join(' ')}</div>
+      ${out.validation_issues.length?`<ul class="br-issues">${out.validation_issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+      <div class="bar tight" style="margin-top:10px"><button class="btn sm" data-bo="saveeco">Save as economics v${brNextVersion(BR.eco,o.id)} (draft)</button><span class="count-note">Saving a new draft after a release pulls the job back to review and keeps both versions.</span></div></details></div>`;
+
+  /* requests & approvals */
+  h+=`<div class="panel br-sec"><h3 class="pt">Approvals <span class="count-note">two gates: the estimate visit, then the work release · decision within one hour</span></h3>
+    ${pend.map(r=>{const s=brSla(r);return `<div class="br-row${r.urgent?' urgent':''}"><div><b>${r.type==='visit_approval'?'Visit approval':'Work release v'+r.economics_version} requested</b> ${r.urgent?brPill('bad','URGENT'):''} <span class="count-note">first submitted ${esc(String(r.submitted_at).slice(0,16).replace('T',' '))}${r.resubmitted_at?' · resubmitted '+esc(String(r.resubmitted_at).slice(0,16).replace('T',' ')):''}</span> <span class="br-timer${s.overdue?' over':''}">${s.elapsedMin} min${s.overdue?' — past the hour':''}</span>${s.basisUnconfirmed?' <span class="count-note">(elapsed; hours-vs-elapsed basis unconfirmed)</span>':''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${brMgr()?`<button class="btn sm" data-bo="approve" data-id="${esc(r.id)}">Approve</button><button class="btn ghost sm" data-bo="hold" data-id="${esc(r.id)}">Hold — ask for info</button><button class="btn danger sm" data-bo="reject" data-id="${esc(r.id)}">Reject</button>`:'<span class="count-note">awaiting the manager</span>'}</div></div>`;}).join('')}
+    <div class="bar tight" style="margin-top:8px">${!visitA&&!pend.length?`<button class="btn sm" data-bo="reqvisit">Request estimate-visit approval</button>`:''}${approvedEco&&!relA&&!pend.length?`<button class="btn sm" data-bo="reqrelease">Request work release for v${approvedEco.version}</button>`:''}${!approvedEco&&ecos.length&&!pend.length?'<span class="count-note">Release needs an approved economics version.</span>':''}
+      ${brMgr()&&approvedEco&&approvedEco.gate==='below_floor'&&!exc.some(x=>x.economics_version===approvedEco.version)?`<button class="btn ghost sm" data-bo="exception">Record Sardor’s exception for v${approvedEco.version}</button>`:''}${brMgr()&&(o.status==='on_hold'||o.status==='declined')?`<button class="btn ghost sm" data-bo="reopen">Reopen</button>`:''}</div>
+    <div id="bo_excform" style="display:none;margin-top:10px" class="br-grid"><div class="fld"><label>Sardor confirmed via</label><select id="bx_via">${brOptions([['text','Text message'],['call','Phone call']],'text')}</select></div><div class="fld wide"><label>Confirmation reference (required)</label><input type="text" id="bx_ref" placeholder="e.g. text 18 Sep 14:32 — “ok on 33%”"></div><div class="fld wide"><label>Reason</label><input type="text" id="bx_reason"></div><div class="fld"><button class="btn sm" data-bo="saveexc">Record exception (on Sardor’s behalf)</button></div></div>
+    ${appr.length?`<div class="twrap" style="margin-top:10px"><table><thead><tr><th>When</th><th>Type</th><th>Decision</th><th>By</th><th>Version</th><th>Detail</th></tr></thead><tbody>${appr.slice().reverse().map(a=>`<tr><td class="num" style="text-align:left">${esc(String(a.at).slice(0,16).replace('T',' '))}</td><td>${esc(a.type)}</td><td>${brPill(a.decision==='approve'?'ok':a.decision==='reject'?'bad':a.decision==='record'?'blue':'warn',a.decision)}</td><td>${esc(a.actor_email||'—')} <span class="count-note">${esc(a.actor_role||'')}</span></td><td class="num">${a.economics_version!=null?'econ v'+a.economics_version:''}</td><td>${a.type==='margin_exception'?`on behalf of <b>${esc(a.on_behalf_of)}</b> · ${esc(a.confirmed_via)} · ref: ${esc(a.confirmation_ref)}`:''} ${esc(a.reason||'')}</td></tr>`).join('')}</tbody></table></div>`:''}</div>`;
+
+  /* completion */
+  const act=BR.act.find(x=>x.opportunity_id===o.id);
+  if(relA||act)h+=`<div class="panel br-sec"><h3 class="pt">Completion <span class="count-note">${act?(act.reconciled?'reconciled '+String(act.reconciled_at).slice(0,10):act.completed_at?'completed — awaiting reconciliation':'—'):'not completed'}</span></h3>
+    ${!act||!act.completed_at?`<div class="bar tight"><div class="fld"><label>Completed on</label><input type="date" id="bo_done" value="${today()}"></div><div class="fld" style="min-width:260px"><label>Completion evidence</label><input type="text" id="bo_evid" placeholder="photos / customer sign-off ref"></div><button class="btn sm" data-bo="complete">Mark completed</button></div>`:`<div class="count-note">Reconcile on the Reconciliation tab.</div>`}</div>`;
+
+  /* events */
+  h+=`<div class="panel br-sec"><h3 class="pt">History <span class="count-note">${evs.length} events, append-only</span></h3>${evs.slice(0,60).map(e=>`<div class="br-ev"><span class="t">${esc(String(e.at).slice(0,16).replace('T',' '))}</span><span><b>${esc(e.kind)}</b> ${e.from_status||e.to_status?esc((BR_STATUS[e.from_status]||e.from_status||'—')+' → '+(BR_STATUS[e.to_status]||e.to_status||'—')):''} ${e.payload?`<span class="count-note">${esc(Object.entries(e.payload).filter(([,v])=>v!=null).map(([k,v])=>k+': '+v).join(' · '))}</span>`:''} <span class="count-note">${esc(e.actor_email||'')}</span></span></div>`).join('')||'<div class="count-note">Nothing yet.</div>'}</div>`;
+  el_.innerHTML=h;
+  const stage=$('#bo_stage');if(stage)stage.onchange=()=>{$('#bo_lostwrap').style.display=stage.value==='lost'?'':'none';};
+}
+function brCaptureDraft(o){
+  const d=BR._draft[o.id]||(BR._draft[o.id]={costs:[],scope:[],split:[]});
+  const est=$('#bc_est');if(est)d.estId=est.value||null;const agr=$('#bc_agr');if(agr)d.agrId=agr.value||null;
+  const jl=$('#bc_jl');if(jl)d.jl=jl.value.trim();const jn=$('#bc_jlnote');if(jn)d.jlnote=jn.value.trim();
+  d.costs=$$('#bc_costs .br-cost').map(r=>({category:$('[data-cs="category"]',r).value,amount:$('[data-cs="amount"]',r).value.trim(),payer:$('[data-cs="payer"]',r).value,status:$('[data-cs="status"]',r).value,ref:$('[data-cs="ref"]',r).value.trim(),included_in_other_payment:$('[data-cs="included_in_other_payment"]',r).checked}));
+  d.scope=$$('#be_scope .br-scope').map(r=>({service:$('[data-sc="service"]',r).value,description:$('[data-sc="description"]',r).value.trim(),price:$('[data-sc="price"]',r).value.trim()}));
+  d.split=$$('[data-sp="revenue"]').map(i=>({service:i.dataset.svc,revenue:i.value.trim(),cost:($(`[data-sp="cost"][data-svc="${i.dataset.svc}"]`)||{}).value||''}));
+  return d;
+}
+$('#brOpp').addEventListener('input',e=>{const o=brOpp(BR.sel);if(!o)return;if(e.target.closest('#bc_costs,#bc_est,#bc_agr,#bc_jl,#bc_jlnote,[data-sp]')){brCaptureDraft(o);brRenderOpp();const again=$('#'+(e.target.id||''));if(again){again.focus();}}});
+$('#brOpp').addEventListener('change',e=>{const o=brOpp(BR.sel);if(!o)return;if(e.target.closest('#bc_est,#bc_agr,#bc_costs select'))brCaptureDraft(o),brRenderOpp();});
+$('#brOpp').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-bo]');if(!b)return;const act=b.dataset.bo,o=brOpp(BR.sel);if(!o)return;const d=brCaptureDraft(o);
+  if(act==='back'){showBridgeTab('bqueue');history.replaceState(null,'',location.pathname);return;}
+  if(act==='stage'){const s=$('#bo_stage').value;if(!s){toast('Pick a stage',true);return;}const patch={status:s};if(s==='lost'){patch.loss_reason=$('#bo_lossreason').value.trim()||null;patch.loss_category=$('#bo_losscat').value;}if(await brWrite(brq('bridge_opportunities').update(patch).eq('id',o.id),'Stage set'))brRenderOpp();return;}
+  if(act==='urgent'){if(await brWrite(brq('bridge_opportunities').update({urgent:!o.urgent}).eq('id',o.id),o.urgent?'Urgent cleared':'Marked urgent — the manager is expected to decide immediately'))brRenderOpp();return;}
+  if(act==='saveind'){const unknown=$('#bo_unknown').checked,rev=unknown?null:cents($('#bo_rev').value),hv=$('#bo_hvac').value;
+    if(await brWrite(brq('bridge_opportunities').update({indicators:brReadIndicators($('#brOpp')),expected_revenue_cents:rev,expected_revenue_basis:$('#bo_basis').value.trim()||null,expected_revenue_unknown:unknown,hvac_check_booked:hv===''?null:hv==='true',route:$('#bo_route').value||null,salesperson:$('#bo_sales').value.trim()||null}).eq('id',o.id),'Saved'))brRenderOpp();return;}
+  if(act==='saveasg'){const helpers=$('#ba_helpers').value.split(/[;\n]/).map(s=>s.trim()).filter(Boolean).map(s=>{const [n,p]=s.split('=').map(x=>x.trim());return {name:n,payer:(p||'company').toLowerCase()==='sagi'?'sagi':'company'};});
+    const row={opportunity_id:o.id,version:brNextVersion(BR.asg,o.id),route:$('#ba_route').value,salesperson:$('#ba_sales').value.trim()||null,performing_technician:$('#ba_tech').value.trim()||null,installer_name:$('#ba_inst').value.trim()||null,installer_capability:$('#ba_instcap').value.trim()||null,installer_availability:$('#ba_instav').value.trim()||null,helpers,note:$('#ba_note').value.trim()||null};
+    if(row.route==='combined'&&!row.performing_technician){toast('Combined route needs the performing technician',true);return;}
+    if(row.route==='combined'&&!brApprovedTechs().includes(row.performing_technician)){toast('That technician is not approved + active on the Technicians tab',true);return;}
+    if(row.route==='sagi'&&!row.installer_name){toast('Sagi route needs the installer named',true);return;}
+    if(await brWrite(brq('bridge_assignments').insert(row),'Assignment saved')){if(o.route!==row.route)await brWrite(brq('bridge_opportunities').update({route:row.route}).eq('id',o.id));brRenderOpp();}return;}
+  if(act==='approveinst'){const a=brLatest(BR.asg,o.id);if(!a)return;if(!confirm(`Approve ${a.installer_name} as the installer for ${brRef(o)}?\nSagi's selection alone does not establish company approval.`))return;if(await brWrite(brq('bridge_assignments').update({installer_approved:true}).eq('id',a.id),'Installer approved'))brRenderOpp();return;}
+  if(act==='scopeadd'){d.scope.push({service:'installation',description:'',price:''});brRenderOpp();return;}
+  if(act==='scoperm'){d.scope.splice(+b.dataset.n,1);brRenderOpp();return;}
+  if(act==='saveest'){const scope=d.scope.map(s=>({service:s.service,description:s.description,price_cents:cents(s.price)})).filter(s=>s.service);if(!scope.length||scope.some(s=>s.price_cents==null)){toast('Every service line needs a price',true);return;}
+    const price=scope.reduce((s,x)=>s+x.price_cents,0);const row={opportunity_id:o.id,version:brNextVersion(BR.est,o.id),scope,customer_price_cents:price,discounts_cents:cents($('#be_disc').value)||0,payment_terms:$('#be_terms').value.trim()||null,financing:$('#be_fin').value.trim()||null,previous_price_ref:$('#be_prev').value.trim()||null};
+    const saved=await brWrite(brq('bridge_estimates').insert(row),`Estimate v${row.version} saved`);if(saved){d.scope=[];d.estId=saved.id;brRenderOpp();}return;}
+  if(act==='accept'){if(!confirm('Record that the customer accepted this estimate version? This is separate from internal release.'))return;if(await brWrite(brq('bridge_estimates').update({customer_accepted:true}).eq('id',b.dataset.id),'Customer acceptance recorded'))brRenderOpp();return;}
+  if(act==='costadd'){d.costs.push({category:'materials',amount:'',payer:'company',status:'estimated',ref:'',included_in_other_payment:false});brRenderOpp();return;}
+  if(act==='costrm'){d.costs.splice(+b.dataset.n,1);brRenderOpp();return;}
+  if(act==='saveeco'){const ests=brOf(BR.est,o.id);const est=ests.find(x=>x.id===d.estId)||ests.sort((a,b_)=>b_.version-a.version)[0];if(!est){toast('Save an estimate version first',true);return;}
+    const route=o.route||'combined',agreement=d.agrId?BR.agr.find(a=>a.id===d.agrId):null,ded=new Set((agreement&&agreement.deduction_categories)||[]);
+    const costs=d.costs.map(c=>({category:c.category,amount_cents:c.status==='unknown'?null:cents(c.amount),payer:c.payer,status:c.status,ref:c.ref||null,reduces_commission_base:ded.has(c.category),included_in_other_payment:!!c.included_in_other_payment}));
+    const svcs=[...new Set((est.scope||[]).map(s=>s.service))];const split=svcs.length>1?svcs.map(s=>{const x=(d.split||[]).find(y=>y.service===s)||{};return {service:s,revenue_cents:cents(x.revenue)||0,direct_cost_cents:cents(x.cost)||0};}):[];
+    const inputs={route,customer_price_cents:est.customer_price_cents,discounts_cents:est.discounts_cents,costs,agreement,job_level_comp_cents:d.jl?cents(d.jl):null,job_level_note:d.jlnote,scope:est.scope,service_split:split,rules:cfgv('service_rules',{})};
+    const out=bridgeCompute(inputs);
+    const row={opportunity_id:o.id,version:brNextVersion(BR.eco,o.id),estimate_id:est.id,estimate_version:est.version,route,agreement_id:agreement?agreement.id:null,job_level_comp_cents:inputs.job_level_comp_cents,job_level_comp_note:d.jlnote||null,costs,service_split:split,r_cents:out.r_cents,d_cents:out.d_cents,c_cents:out.c_cents,k_cents:out.k_cents,gross_profit_cents:out.gross_profit_cents,margin:out.margin,gate:out.gate,validation_issues:out.validation_issues,status:'draft'};
+    if(await brWrite(brq('bridge_economics').insert(row),`Economics v${row.version} saved as draft${out.validation_issues.length?' — with '+out.validation_issues.length+' issue(s); it cannot be approved until they are fixed':''}`))brRenderOpp();return;}
+  if(act==='approvejl'){if(!confirm('Approve this job-level compensation amount as stated in its note?'))return;if(await brWrite(brq('bridge_economics').update({job_level_comp_approved_by:'manager'}).eq('id',b.dataset.id),'Job-level amount approved'))brRenderOpp();return;}
+  if(act==='approveeco'){const e_=BR.eco.find(x=>x.id===b.dataset.id);if(!e_)return;if(!confirm(`Approve economics v${e_.version}: margin ${pctOf(e_.margin)}, gate "${e_.gate}"?\nThis freezes the version; any later change is a new version.`))return;if(await brWrite(brq('bridge_economics').update({status:'approved'}).eq('id',e_.id),`Economics v${e_.version} approved`))brRenderOpp();return;}
+  if(act==='reqvisit'||act==='reqrelease'){const eco=brApprovedEco(o.id);const row={opportunity_id:o.id,type:act==='reqvisit'?'visit_approval':'work_release',urgent:o.urgent,economics_version:act==='reqrelease'?eco.version:null};if(await brWrite(brq('bridge_requests').insert(row),'Request submitted — the one-hour clock is running'))brRenderOpp();return;}
+  if(act==='approve'||act==='hold'||act==='reject'){const r=BR.req.find(x=>x.id===b.dataset.id);if(!r)return;let reason=null;
+    if(act==='hold'){reason=prompt('What is missing? (the dispatcher sees this)');if(reason==null)return;}
+    if(act==='reject'){reason=prompt('Reason for rejecting (recorded):');if(reason==null)return;}
+    const row={opportunity_id:o.id,request_id:r.id,type:act==='approve'?r.type:act,decision:act==='approve'?'approve':act,economics_version:r.economics_version,reason};
+    if(act==='hold'){await brWrite(brq('bridge_requests').update({missing_info_requested_at:new Date().toISOString(),missing_info_text:reason}).eq('id',r.id));}
+    if(await brWrite(brq('bridge_approvals').insert(row),act==='approve'?(r.type==='work_release'?'Work released — recorded with your identity and the version':'Visit authorized'):act==='hold'?'On hold — information requested':'Rejected'))brRenderOpp();return;}
+  if(act==='exception'){$('#bo_excform').style.display='';return;}
+  if(act==='saveexc'){const eco=brApprovedEco(o.id);const ref=$('#bx_ref').value.trim();if(!ref){toast('Sardor’s confirmation reference is required',true);return;}
+    if(await brWrite(brq('bridge_approvals').insert({opportunity_id:o.id,type:'margin_exception',decision:'record',economics_version:eco.version,on_behalf_of:'Sardor',confirmed_via:$('#bx_via').value,confirmation_ref:ref,reason:$('#bx_reason').value.trim()||null}),'Exception recorded on Sardor’s behalf — release still needs your own approval'))brRenderOpp();return;}
+  if(act==='reopen'){if(await brWrite(brq('bridge_approvals').insert({opportunity_id:o.id,type:'reopen',decision:'record',reason:'reopened'}),'Reopened'))brRenderOpp();return;}
+  if(act==='complete'){const row={opportunity_id:o.id,completed_at:new Date($('#bo_done').value+'T12:00:00').toISOString(),evidence_ref:$('#bo_evid').value.trim()||null};if(await brWrite(brq('bridge_actuals').upsert(row,{onConflict:'opportunity_id'}),'Marked completed — reconcile when costs are final'))brRenderOpp();return;}
+});
+
+/* ---------- Approvals tab ---------- */
+function brRenderAppr(){
+  const pend=BR.req.filter(r=>!r.decided_at).map(r=>({r,o:brOpp(r.opportunity_id),s:brSla(r)})).filter(x=>x.o).sort((a,b)=>(b.r.urgent-a.r.urgent)||(b.s.elapsedMin-a.s.elapsedMin));
+  const recent=BR.appr.slice().sort((a,b)=>b.at.localeCompare(a.at)).slice(0,25);
+  $('#brAppr').innerHTML=`<div class="kpis"><div class="kpi ${pend.length?'b':''}"><div class="v">${pend.length}</div><div class="l">Pending</div></div><div class="kpi ${pend.filter(x=>x.r.urgent).length?'c':''}"><div class="v">${pend.filter(x=>x.r.urgent).length}</div><div class="l">Urgent</div></div><div class="kpi ${pend.filter(x=>x.s.overdue).length?'c':''}"><div class="v">${pend.filter(x=>x.s.overdue).length}</div><div class="l">Past the hour</div></div></div>
+    ${pend.length?pend.map(({r,o,s})=>`<div class="br-row${r.urgent?' urgent':''}"><div><b>${brRef(o)}</b> ${esc(o.customer_ref||'')} · ${esc(o.territory)} · ${esc(o.route||'')} — <b>${r.type==='visit_approval'?'estimate-visit approval':'work release v'+r.economics_version}</b> ${r.urgent?brPill('bad','URGENT'):''}<div class="count-note">first submitted ${esc(String(r.submitted_at).slice(0,16).replace('T',' '))} · <span class="br-timer${s.overdue?' over':''}">${s.elapsedMin} min</span>${s.overdue?' — past the hour':''}${r.missing_info_text?' · asked: '+esc(r.missing_info_text):''}</div></div><div><button class="btn ghost sm" data-brgo="${esc(o.id)}">Open & decide</button></div></div>`).join(''):'<div class="empty">Nothing waiting for a decision.</div>'}
+    <h3 class="pt" style="margin-top:18px">Recent decisions</h3>${recent.length?`<div class="twrap"><table><thead><tr><th>When</th><th>Ref</th><th>Type</th><th>Decision</th><th>By</th><th>Detail</th></tr></thead><tbody>${recent.map(a=>{const o=brOpp(a.opportunity_id);return `<tr><td class="num" style="text-align:left">${esc(String(a.at).slice(0,16).replace('T',' '))}</td><td class="jobref">${o?brRef(o):'—'}</td><td>${esc(a.type)}</td><td>${brPill(a.decision==='approve'?'ok':a.decision==='reject'?'bad':a.decision==='record'?'blue':'warn',a.decision)}</td><td>${esc(a.actor_email||'')}</td><td>${a.type==='margin_exception'?'on behalf of Sardor · '+esc(a.confirmed_via)+' · '+esc(a.confirmation_ref):esc(a.reason||'')}</td></tr>`;}).join('')}</tbody></table></div>`:'<div class="count-note">None yet.</div>'}`;
+}
+$('#brAppr').addEventListener('click',e=>{const b=e.target.closest('[data-brgo]');if(b)brOpen(b.dataset.brgo);});
+
+/* ---------- Reconciliation tab ---------- */
+function brActualMargin(a){if(!a||a.final_revenue_cents==null||!(a.final_revenue_cents>0))return null;if((a.actual_costs||[]).some(c=>c.status==='unknown'))return null;const k=(a.actual_costs||[]).filter(c=>c.payer==='company'&&!c.included_in_other_payment).reduce((s,c)=>s+(+c.amount_cents||0),0);const gp=a.final_revenue_cents-k-(+a.final_comp_cents||0);return {gp,margin:gp/a.final_revenue_cents,k};}
+function brRenderRecon(){
+  const list=BR.opps.filter(o=>o.status==='completed'||o.status==='actuals_reconciled'||BR.act.some(a=>a.opportunity_id===o.id&&a.completed_at));
+  const sel=BR._reconSel&&list.find(o=>o.id===BR._reconSel)?BR._reconSel:(list[0]&&list[0].id);BR._reconSel=sel;
+  const unrec=list.filter(o=>!(BR.act.find(a=>a.opportunity_id===o.id)||{}).reconciled).length;
+  let h=`<div class="kpis"><div class="kpi ${unrec?'b':''}"><div class="v">${unrec}</div><div class="l">Completed, unreconciled</div></div><div class="kpi a"><div class="v">${list.length-unrec}</div><div class="l">Reconciled</div></div></div>`;
+  if(!list.length){$('#brRecon').innerHTML=h+'<div class="empty">No completed jobs yet.</div>';return;}
+  h+=`<div class="twrap" style="margin-bottom:12px"><table><thead><tr><th>Ref</th><th>Route</th><th>Completed</th><th>Projected margin</th><th>Actual margin</th><th>Δ pts</th><th>Payment</th><th>Status</th><th></th></tr></thead><tbody>${list.map(o=>{const a=BR.act.find(x=>x.opportunity_id===o.id)||{},e=brApprovedEco(o.id)||brOf(BR.eco,o.id).sort((x,y)=>y.version-x.version)[0],am=brActualMargin(a);const delta=(am&&e&&e.margin!=null)?((am.margin-e.margin)*100).toFixed(2):null;return `<tr><td class="jobref"><b>${brRef(o)}</b></td><td>${esc(o.route||'')}</td><td>${esc(String(a.completed_at||'').slice(0,10))}</td><td class="num">${e?pctOf(e.margin):'—'}</td><td class="num">${am?pctOf(am.margin):'<span class="count-note">unknown</span>'}</td><td class="num">${delta==null?'—':(delta>0?'+':'')+delta}</td><td>${esc(a.payment_status||'—')}</td><td>${a.reconciled?brPill('ok','reconciled'):brPill('warn','open')}</td><td><button class="btn ghost sm" data-brrec="${esc(o.id)}">${sel===o.id?'Editing':'Edit'}</button></td></tr>`;}).join('')}</tbody></table></div>`;
+  const o=brOpp(sel);const a=BR.act.find(x=>x.opportunity_id===sel)||{};const costs=BR._reconCosts&&BR._reconCostsFor===sel?BR._reconCosts:(a.actual_costs||[]).map(c=>({...c,amount:c.amount_cents!=null?c.amount_cents/100:''}));BR._reconCosts=costs;BR._reconCostsFor=sel;
+  const catList=cfgv('cost_categories',[]);
+  h+=`<div class="panel"><h3 class="pt">${brRef(o)} — actuals ${a.reconciled?brPill('ok','reconciled by '+esc(a.reconciled_by||'')):''}</h3><div class="br-grid"><div class="fld"><label>Final revenue ($)</label><input type="text" id="ra_rev" value="${a.final_revenue_cents!=null?a.final_revenue_cents/100:''}"></div><div class="fld"><label>Final compensation ($)</label><input type="text" id="ra_comp" value="${a.final_comp_cents!=null?a.final_comp_cents/100:''}"></div><div class="fld"><label>Payment status</label><select id="ra_pay">${brOptions([['','—'],['unpaid','unpaid'],['partial','partial'],['paid','paid'],['refunded','refunded']],a.payment_status||'')}</select></div><div class="fld"><label>Callback? (cost $ or blank)</label><input type="text" id="ra_cb" value="${a.callback&&a.callback.cost_cents!=null?a.callback.cost_cents/100:''}" placeholder="corrective work cost"></div><div class="fld"><label>Refund ($ or blank)</label><input type="text" id="ra_refund" value="${a.refund&&a.refund.amount_cents!=null?a.refund.amount_cents/100:''}"></div><div class="fld wide"><label>Note</label><input type="text" id="ra_note" value="${esc(a.note||'')}"></div></div>
+    <div class="br-sec"><h3 class="pt">Actual costs <span class="count-note">unknown blocks reconciliation</span></h3><div class="br-cost cn"><span>category</span><span>amount $</span><span>payer</span><span>status</span><span>ref</span><span></span><span>in other pay</span><span></span></div><div id="ra_costs">${costs.map((c,n)=>`<div class="br-cost"><select data-rc="category">${brOptions(catList.concat(['installer']),c.category)}</select><input type="text" data-rc="amount" value="${esc(c.amount||'')}"><select data-rc="payer">${brOptions([['company','company'],['sagi','Sagi'],['technician','technician']],c.payer||'company')}</select><select data-rc="status">${brOptions([['actual','actual'],['unknown','unknown']],c.status||'actual')}</select><input type="text" data-rc="ref" value="${esc(c.ref||'')}"><span></span><input type="checkbox" data-rc="included_in_other_payment"${c.included_in_other_payment?' checked':''}><button class="btn ghost sm" data-brrecact="costrm" data-n="${n}">✕</button></div>`).join('')}</div><div class="bar tight"><button class="btn ghost sm" data-brrecact="costadd">+ cost</button></div></div>
+    <div class="bar tight" style="margin-top:10px"><button class="btn sm" data-brrecact="save">Save actuals</button>${brMgr()&&!a.reconciled?`<button class="btn sm" data-brrecact="reconcile">Reconcile (manager)</button>`:''}<span class="count-note">The approved projection is never overwritten — actuals sit beside it.</span></div></div>`;
+  $('#brRecon').innerHTML=h;
+}
+function brReconRead(){return $$('#ra_costs .br-cost').map(r=>({category:$('[data-rc="category"]',r).value,amount:$('[data-rc="amount"]',r).value.trim(),payer:$('[data-rc="payer"]',r).value,status:$('[data-rc="status"]',r).value,ref:$('[data-rc="ref"]',r).value.trim(),included_in_other_payment:$('[data-rc="included_in_other_payment"]',r).checked}));}
+$('#brRecon').addEventListener('click',async e=>{
+  const sel=e.target.closest('[data-brrec]');if(sel){BR._reconSel=sel.dataset.brrec;BR._reconCostsFor=null;brRenderRecon();return;}
+  const b=e.target.closest('[data-brrecact]');if(!b)return;const act=b.dataset.brrecact,id=BR._reconSel;BR._reconCosts=brReconRead();
+  if(act==='costadd'){BR._reconCosts.push({category:'materials',amount:'',payer:'company',status:'actual',ref:'',included_in_other_payment:false});brRenderRecon();return;}
+  if(act==='costrm'){BR._reconCosts.splice(+b.dataset.n,1);brRenderRecon();return;}
+  const costs=BR._reconCosts.map(c=>({category:c.category,amount_cents:c.status==='unknown'?null:cents(c.amount),payer:c.payer,status:c.status,ref:c.ref||null,included_in_other_payment:!!c.included_in_other_payment}));
+  const cb=cents($('#ra_cb').value),rf=cents($('#ra_refund').value);
+  const row={opportunity_id:id,final_revenue_cents:cents($('#ra_rev').value),final_comp_cents:cents($('#ra_comp').value),payment_status:$('#ra_pay').value||null,actual_costs:costs,callback:cb!=null?{occurred:true,cost_cents:cb}:null,refund:rf!=null?{amount_cents:rf}:null,note:$('#ra_note').value.trim()||null};
+  const am=brActualMargin({...row});row.actual_margin=am?am.margin:null;
+  if(act==='reconcile'){if(!am){toast('Cannot reconcile: revenue missing or a cost is unknown — unknown is not zero',true);return;}row.reconciled=true;}
+  const cur=BR.act.find(x=>x.opportunity_id===id);
+  if(await brWrite(cur?brq('bridge_actuals').update(row).eq('opportunity_id',id):brq('bridge_actuals').insert({...row,completed_at:new Date().toISOString()}),act==='reconcile'?'Reconciled':'Actuals saved')){BR._reconCostsFor=null;brRenderRecon();}
+});
+
+/* ---------- Scorecard ---------- */
+function brWeekOf(dstr){const d=new Date(dstr+'T12:00:00');const s=startOfWeek(d);return [iso(s),iso(addDays(s,6))];}
+function brScorecard(a,b,terr,route){
+  const inW=ts=>{const d=String(ts||'').slice(0,10);return d>=a&&d<=b;};
+  const opps=BR.opps.filter(o=>(!terr||o.territory===terr)&&(!route||o.route===route));const ids=new Set(opps.map(o=>o.id));
+  const acts=BR.act.filter(x=>ids.has(x.opportunity_id));
+  const recon=acts.filter(x=>x.reconciled&&inW(x.completed_at));
+  const gp=recon.map(x=>brActualMargin(x)).filter(Boolean);
+  const rev=recon.reduce((s,x)=>s+(+x.final_revenue_cents||0),0),gpSum=gp.reduce((s,x)=>s+x.gp,0);
+  const unrecCompleted=acts.filter(x=>!x.reconciled&&inW(x.completed_at)).length;
+  const rules=cfgv('service_rules',{});
+  const floorOk=recon.filter(x=>{const m=brActualMargin(x);if(!m)return false;const e=brApprovedEco(x.opportunity_id);const est=e?BR.est.find(s=>s.id===e.estimate_id):null;const svcs=est?[...new Set((est.scope||[]).map(s=>s.service))]:['installation'];return svcs.every(s=>{const r=rules[s];return !r||r.floor_pct==null||m.gp*100>=r.floor_pct*x.final_revenue_cents;});}).length;
+  const withExc=recon.filter(x=>BR.appr.some(ap=>ap.opportunity_id===x.opportunity_id&&ap.type==='margin_exception')).length;
+  const lostEv=BR.ev.filter(e=>e.to_status==='lost'&&inW(e.at)&&ids.has(e.opportunity_id));
+  const lostInt=lostEv.map(e=>brOpp(e.opportunity_id)).filter(o=>o&&String(o.loss_category||'').startsWith('internal'));
+  const lostVal=lostInt.reduce((s,o)=>s+(+o.expected_revenue_cents||0),0);
+  const firstEst={};BR.est.filter(e=>ids.has(e.opportunity_id)).forEach(e=>{if(!firstEst[e.opportunity_id]||e.created_at<firstEst[e.opportunity_id])firstEst[e.opportunity_id]=e.created_at;});
+  const cohort=opps.filter(o=>firstEst[o.id]&&inW(firstEst[o.id]));
+  const won=cohort.filter(o=>['work_released','in_progress','completed','actuals_reconciled'].includes(o.status)||o.outcome==='won').length,lostC=cohort.filter(o=>['declined','cancelled','lost'].includes(o.status)).length,pendingC=cohort.length-won-lostC;
+  const reqs=BR.req.filter(r=>ids.has(r.opportunity_id)&&inW(r.submitted_at)).map(r=>brSla(r));const slaDen=reqs.filter(s=>s.inDenominator).length,slaNum=reqs.filter(s=>s.met).length;
+  const startEv=BR.ev.filter(e=>['in_progress','completed'].includes(e.to_status)&&inW(e.at)&&ids.has(e.opportunity_id));const startedIds=[...new Set(startEv.map(e=>e.opportunity_id))];
+  const unauthorized=startedIds.filter(id=>{const first=startEv.filter(e=>e.opportunity_id===id).sort((x,y)=>x.at.localeCompare(y.at))[0];return !BR.appr.some(ap=>ap.opportunity_id===id&&ap.type==='work_release'&&ap.decision==='approve'&&ap.at<=first.at);});
+  const cbWin=cfgv('callback_window_days',30),cbActive=(BR.cfg.callback_window_days||{}).status==='confirmed';
+  const cbDen=acts.filter(x=>x.completed_at&&(Date.now()-new Date(x.completed_at).getTime())>=cbWin*864e5&&inW(x.completed_at)).length,cbNum=acts.filter(x=>x.callback&&x.callback.occurred&&inW(x.completed_at)).length;
+  return {recon:recon.length,rev,gpSum,unrecCompleted,weighted:rev>0?gpSum/rev:null,floorOk,withExc,lostInt:lostInt.length,lostVal,lostByReason:lostEv.reduce((m,e)=>{const o=brOpp(e.opportunity_id);const k=(o&&o.loss_category)||'unknown';m[k]=(m[k]||0)+1;return m;},{}),cohort:cohort.length,won,lostC,pendingC,slaDen,slaNum,started:startedIds.length,unauthorized,cbActive,cbDen,cbNum,
+    diag:{projVsActual:recon.map(x=>{const e=brApprovedEco(x.opportunity_id),m=brActualMargin(x);return e&&m&&e.margin!=null?{ref:brRef(brOpp(x.opportunity_id)),pts:((m.margin-e.margin)*100).toFixed(2)}:null;}).filter(Boolean),
+      missingCosts:BR.eco.filter(e=>ids.has(e.opportunity_id)&&e.status==='approved'&&(e.costs||[]).some(c=>c.status==='estimated')).length,
+      stalePending:opps.filter(o=>o.status==='customer_decision_pending'&&(Date.now()-new Date(o.updated_at).getTime())>7*864e5).length}};
+}
+function brRenderScore(){
+  if(!$('#bsWeek').value)$('#bsWeek').value=today();
+  const [a,b]=brWeekOf($('#bsWeek').value),terr=$('#bsTerr').value,route=$('#bsRoute').value;
+  const S=brScorecard(a,b,terr,route);
+  const row=(m,def,val,note)=>`<tr><td><b>${esc(m)}</b><div class="count-note">${esc(def)}</div></td><td class="num">${val}</td><td>${note||''}</td></tr>`;
+  const routes=['combined','sagi'].map(r=>{const s=brScorecard(a,b,terr,r);return `<tr><td><b>${r}</b></td><td class="num">${s.recon}</td><td class="num">${usd(s.rev)}</td><td class="num">${usd(s.gpSum)}</td><td class="num">${s.weighted==null?'N/A':pctOf(s.weighted)}</td><td class="num">${ratio(s.won,s.won+s.lostC)}</td><td class="num">${ratio(s.slaNum,s.slaDen)}</td></tr>`;}).join('');
+  $('#brScore').innerHTML=`<div class="count-note" style="margin-bottom:10px">Week ${a} → ${b} (PT, Monday start — proposed, confirm) · ${terr||'LA + OC'} · ${route||'both routes'} · no historical baseline exists; targets are not fabricated.</div>
+    <div class="twrap"><table><thead><tr><th>Primary outcome</th><th>This week</th><th>Note</th></tr></thead><tbody>
+      ${row('Realized gross profit','Σ(final revenue − company direct costs − compensation), completed & reconciled jobs, by completion week',usd(S.gpSum),`revenue ${usd(S.rev)} · ${S.recon} reconciled · <b>${S.unrecCompleted}</b> completed but unreconciled (not counted)`)}
+      ${row('Margin-floor attainment','reconciled jobs meeting every applicable floor / all reconciled jobs',ratio(S.floorOk,S.recon),`weighted company margin ${S.weighted==null?'N/A':pctOf(S.weighted)} (total profit ÷ total revenue, not an average of job %) · ${S.withExc} with a Sardor exception, shown separately and still below-floor here`)}
+      ${row('Opportunities lost through internal failure','lost with cause: no coverage, decision delay, failed handoff — by loss week',String(S.lostInt),`known expected value ${usd(S.lostVal)} — potential revenue, not realized lost profit · proposed target: zero`)}
+    </tbody></table></div>
+    <div class="twrap" style="margin-top:12px"><table><thead><tr><th>Driver / control</th><th>This week</th><th>Note</th></tr></thead><tbody>
+      ${row('Estimate conversion','won / (won + lost), first-estimate cohort',ratio(S.won,S.won+S.lostC),`${S.pendingC} still pending in this cohort — provisional, not final`)}
+      ${row('One-hour decisions','decided within 60 min / (decided or past deadline)',ratio(S.slaNum,S.slaDen),`overdue pending requests count as misses${(BR.cfg.sla_basis||{}).value==null?' · elapsed-time basis; hours-vs-elapsed unconfirmed':''}`)}
+      ${row('Approval compliance','started jobs with a recorded work release before start / all started jobs',ratio(S.started-S.unauthorized.length,S.started),S.unauthorized.length?`<b>${S.unauthorized.length} unauthorized start(s):</b> ${S.unauthorized.map(id=>brRef(brOpp(id))).join(', ')}`:'no unauthorized starts')}
+      ${row('Callback rate','jobs needing corrective work within the window / completed jobs with a full window',S.cbActive?ratio(S.cbNum,S.cbDen):'inactive',S.cbActive?'':`window ${cfgv('callback_window_days',30)} days is <b>proposed</b> — metric activates when confirmed in Settings (${S.cbNum} callbacks recorded so far)`)}
+    </tbody></table></div>
+    <h3 class="pt" style="margin-top:18px">By route <span class="count-note">shown separately; the job mix is not assumed comparable</span></h3>
+    <div class="twrap"><table><thead><tr><th>Route</th><th>Reconciled</th><th>Revenue</th><th>Gross profit</th><th>Weighted margin</th><th>Conversion</th><th>1-hour decisions</th></tr></thead><tbody>${routes}</tbody></table></div>
+    <details style="margin-top:14px"><summary class="count-note" style="cursor:pointer">Diagnostics</summary><ul class="clean" style="margin-top:8px;font-size:13.5px">
+      <li>Projected vs actual margin: ${S.diag.projVsActual.length?S.diag.projVsActual.map(x=>`${x.ref} ${x.pts>0?'+':''}${x.pts} pts`).join(' · '):'no reconciled jobs'}</li>
+      <li>Approved economics still carrying estimated (not actual) costs: ${S.diag.missingCosts}</li>
+      <li>Estimates pending customer decision for more than 7 days: ${S.diag.stalePending}</li>
+      <li>Losses by reason: ${Object.keys(S.lostByReason).length?Object.entries(S.lostByReason).map(([k,v])=>`${k} ${v}`).join(' · '):'none this week'}</li></ul></details>`;
+}
+['bsWeek','bsTerr','bsRoute'].forEach(id=>$('#'+id).addEventListener('change',brRenderScore));
+
+/* ---------- Coverage register ---------- */
+function brRenderCover(){
+  const terr=cfgv('territories',['LA','OC']),services=cfgv('services',[]).filter(s=>s!=='other'),techs=brApprovedTechs(),agreed=cfgv('coverage_denominator_agreed',false)===true;
+  const rows=BR.cov.slice().sort((a,b)=>(a.territory+a.service).localeCompare(b.territory+b.service));
+  const indep=r=>!!(r.primary_name&&r.backup_name&&r.primary_name.trim().toLowerCase()!==r.backup_name.trim().toLowerCase()&&!String(r.shared_dependencies||'').trim());
+  const accepted=rows.filter(r=>r.accepted).length;
+  const sel=BR._covSel&&rows.find(r=>r.id===BR._covSel)?rows.find(r=>r.id===BR._covSel):null;
+  $('#brCover').innerHTML=`<div class="kpis"><div class="kpi"><div class="v">${rows.length}</div><div class="l">Territory × service rows</div></div><div class="kpi a"><div class="v">${accepted}</div><div class="l">Accepted</div></div><div class="kpi"><div class="v">${agreed&&rows.length?pctOf(accepted/rows.length):'N/A'}</div><div class="l">Coverage ${agreed?'':'· denominator not agreed'}</div></div><div class="kpi"><div class="v">${techs.length}</div><div class="l">Approved technicians</div></div></div>
+    ${agreed?'':'<div class="count-note" style="margin-bottom:10px">The required territory × service list is <b>unresolved</b> (Settings → coverage_denominator_agreed). Rows can be built now; the percentage appears once the denominator is agreed. Bridge jobs never count here.</div>'}
+    <div class="twrap"><table><thead><tr><th>Territory</th><th>Service</th><th>Primary</th><th>Backup</th><th>Independent?</th><th>Evidence</th><th>Availability</th><th>Accepted</th><th></th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${esc(r.territory)}</td><td>${esc(r.service)}</td><td>${esc(r.primary_name||'—')}</td><td>${esc(r.backup_name||'—')}</td><td>${indep(r)?brPill('ok','independent'):brPill('bad',r.shared_dependencies?'shared: '+esc(r.shared_dependencies):'incomplete')}</td><td>${esc(r.capability_evidence||'')}</td><td>${esc(r.availability||'')}</td><td>${r.accepted?brPill('ok','accepted '+String(r.accepted_at||'').slice(0,10)):brPill('gray','not accepted')}</td><td style="white-space:nowrap"><button class="btn ghost sm" data-brcov="edit" data-id="${esc(r.id)}">Edit</button> ${brMgr()&&!r.accepted&&indep(r)?`<button class="btn sm" data-brcov="accept" data-id="${esc(r.id)}">Accept</button>`:''}</td></tr>`).join(''):'<tr><td style="color:var(--ink-2)">No rows yet.</td></tr>'}</tbody></table></div>
+    <div class="panel" style="margin-top:12px"><h3 class="pt">${sel?'Edit row':'Add row'}</h3><div class="br-grid"><div class="fld"><label>Territory</label><select id="cv_terr">${brOptions(terr,sel?sel.territory:'')}</select></div><div class="fld"><label>Service</label><select id="cv_svc">${brOptions(services,sel?sel.service:'')}</select></div><div class="fld"><label>Primary</label><input type="text" id="cv_pri" list="cv_techs" value="${esc(sel?sel.primary_name||'':'')}"></div><div class="fld"><label>Backup</label><input type="text" id="cv_bak" list="cv_techs" value="${esc(sel?sel.backup_name||'':'')}"></div><datalist id="cv_techs">${techs.map(t=>`<option value="${esc(t)}">`).join('')}</datalist><div class="fld"><label>Capability evidence</label><input type="text" id="cv_ev" value="${esc(sel?sel.capability_evidence||'':'')}" placeholder="real jobs sold + performed"></div><div class="fld"><label>Availability</label><input type="text" id="cv_av" value="${esc(sel?sel.availability||'':'')}"></div><div class="fld wide"><label>Shared dependencies (blank = none)</label><input type="text" id="cv_dep" value="${esc(sel?sel.shared_dependencies||'':'')}" placeholder="e.g. both rely on installer X"></div><div class="fld"><label>Note</label><input type="text" id="cv_note" value="${esc(sel?sel.note||'':'')}"></div></div>
+    <div class="bar tight" style="margin-top:8px"><button class="btn sm" data-brcov="save">${sel?'Save row':'Add row'}</button>${sel?'<button class="btn ghost sm" data-brcov="new">New row</button>':''}<span class="count-note">Two backups sharing one indispensable installer are not independent capacity.</span></div></div>`;
+}
+$('#brCover').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-brcov]');if(!b)return;const act=b.dataset.brcov;
+  if(act==='edit'){BR._covSel=b.dataset.id;brRenderCover();return;}if(act==='new'){BR._covSel=null;brRenderCover();return;}
+  if(act==='accept'){if(!confirm('Accept this territory × service as covered by an approved primary and an independent backup?'))return;if(await brWrite(brq('bridge_coverage_register').update({accepted:true}).eq('id',b.dataset.id),'Coverage accepted'))brRenderCover();return;}
+  if(act==='save'){const row={territory:$('#cv_terr').value,service:$('#cv_svc').value,primary_name:$('#cv_pri').value.trim()||null,backup_name:$('#cv_bak').value.trim()||null,capability_evidence:$('#cv_ev').value.trim()||null,availability:$('#cv_av').value.trim()||null,shared_dependencies:$('#cv_dep').value.trim()||null,note:$('#cv_note').value.trim()||null};
+    if(!row.territory||!row.service){toast('Territory and service are required',true);return;}
+    if(await brWrite(BR._covSel?brq('bridge_coverage_register').update(row).eq('id',BR._covSel):brq('bridge_coverage_register').insert(row),'Saved')){BR._covSel=null;brRenderCover();}}
+});
+
+/* ---------- Settings ---------- */
+const BR_UNRESOLVED=[['combined deduction list','Exact deductions before the combined technician’s 50% commission — company-paid helpers, financing, other expenses. Agreement stays draft until set.','service_rules'],['Sagi compensation','Exact components, recipients, bases, helper treatment; payment terms for both routes. Until then: job-level approved amounts only.','sagi_approved_for_estimates'],['installer approver','Who approves Sagi-route installers and by what criteria. Luka is proposed, not confirmed.','installer_approver'],['coverage requirements','Required services within LA / OC, hours, capacity, primary/backup roster, final-redundancy evidence.','coverage_denominator_agreed'],['timezone, week, SLA basis','Business timezone and reporting week; whether the one-hour SLA counts operating hours or elapsed time.','sla_basis'],['proposed rules','Lead-vs-job qualification distinction, mixed-service margin rule, callback window, demonstration period.','callback_window_days'],['notifications & cutoff','Notification destinations, urgent escalation, KPI penalty weighting, exact January 1 cutoff and open-job treatment.','notify_enabled']];
+function brRenderSet(){
+  const keys=Object.values(BR.cfg).sort((a,b)=>a.key.localeCompare(b.key));
+  const agrs=BR.agr.slice().sort((a,b)=>a.name.localeCompare(b.name));const catList=cfgv('cost_categories',[]);
+  $('#brSet').innerHTML=`<div class="panel"><h3 class="pt">Unresolved before operational use <span class="count-note">brief §9 — values come from Luka, never defaulted</span></h3><ul class="clean" style="font-size:13.5px">${BR_UNRESOLVED.map(([t,d])=>`<li><b>${esc(t)}</b> — ${esc(d)}</li>`).join('')}</ul></div>
+    <div class="panel"><h3 class="pt">Business values <span class="count-note">${brMgr()?'edit value as JSON, set status, save':'read-only for the dispatcher'}</span></h3><div class="twrap"><table><thead><tr><th>Key</th><th>Value</th><th>Status</th><th>Note</th>${brMgr()?'<th></th>':''}</tr></thead><tbody>${keys.map(r=>`<tr data-key="${esc(r.key)}"><td class="jobref" style="letter-spacing:0"><b>${esc(r.key)}</b></td><td>${brMgr()?`<input type="text" data-cfgv value="${esc(JSON.stringify(r.value))}" style="width:260px;font-family:var(--mono);font-size:12px">`:`<code>${esc(JSON.stringify(r.value))}</code>`}</td><td>${brMgr()?`<select data-cfgs>${brOptions(['confirmed','proposed','unresolved'],r.status)}</select>`:`<span class="br-pill br-status ${esc(r.status)}">${esc(r.status)}</span>`}</td><td class="count-note">${esc(r.note||'')}</td>${brMgr()?`<td><button class="btn ghost sm" data-brset="savecfg">Save</button></td>`:''}</tr>`).join('')}</tbody></table></div></div>
+    <div class="panel"><h3 class="pt">Compensation agreements</h3>${agrs.length?`<div class="twrap"><table><thead><tr><th>Name</th><th>Route</th><th>Components</th><th>Deductions before commission</th><th>Status</th><th></th></tr></thead><tbody>${agrs.map(a=>`<tr><td><b>${esc(a.name)}</b><div class="count-note">${esc(a.note||'')}</div></td><td>${esc(a.route)}</td><td>${(a.components||[]).map(c=>esc(c.name)+(c.rate_pct!=null?' '+c.rate_pct+'% of '+(c.base||'R'):c.fixed_cents!=null?' '+usd(c.fixed_cents):'')).join('<br>')}</td><td>${a.deduction_categories==null?brPill('bad','UNRESOLVED'):esc(a.deduction_categories.join(', ')||'none')}</td><td>${brPill(a.status==='approved'?'ok':a.status==='superseded'?'gray':'warn',a.status+(a.approved_by?' · '+esc(a.approved_by):''))}</td><td>${brMgr()&&a.status==='draft'?`<button class="btn sm" data-brset="approveagr" data-id="${esc(a.id)}">Approve</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${brMgr()?`<details style="margin-top:10px"><summary class="count-note" style="cursor:pointer">New agreement version</summary><div class="br-grid" style="margin-top:8px"><div class="fld"><label>Name</label><input type="text" id="ag_name"></div><div class="fld"><label>Route</label><select id="ag_route">${brOptions([['combined','combined'],['sagi','sagi']],'combined')}</select></div><div class="fld"><label>Recipient</label><input type="text" id="ag_rcpt"></div><div class="fld"><label>Rate % of (R − D)</label><input type="text" id="ag_rate" value="50"></div><div class="fld wide"><label>Deductions before commission (explicit list)</label><div style="display:flex;gap:10px;flex-wrap:wrap">${catList.map(c=>`<label><input type="checkbox" data-agded value="${esc(c)}"> ${esc(c)}</label>`).join('')}</div></div><div class="fld"><label>Helper treatment</label><input type="text" id="ag_help"></div><div class="fld wide"><label>Note</label><input type="text" id="ag_note"></div></div><div class="bar tight" style="margin-top:8px"><button class="btn sm" data-brset="saveagr">Save as draft</button><span class="count-note">Approve separately; an approved agreement is immutable.</span></div></details>`:''}</div>
+    <div class="panel"><h3 class="pt">Members</h3><div class="twrap"><table><thead><tr><th>Email</th><th>Role</th><th>Since</th><th></th></tr></thead><tbody>${BR.roles.map(r=>`<tr><td>${esc(r.email)}</td><td>${brPill(r.role==='manager'?'ok':'blue',r.role)}</td><td class="num" style="text-align:left">${esc(String(r.added_at||'').slice(0,10))}</td><td>${brMgr()?`<button class="btn danger sm" data-brset="revoke" data-email="${esc(r.email)}">Revoke</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+      ${brMgr()?`<div class="bar tight" style="margin-top:10px"><div class="fld"><label>Email (account must exist)</label><input type="email" id="rl_email"></div><div class="fld"><label>Role</label><select id="rl_role">${brOptions([['dispatcher','dispatcher'],['manager','manager']],'dispatcher')}</select></div><button class="btn sm" data-brset="grant">Grant</button><span class="count-note">Accounts are created in Supabase → Authentication → Users, never here.</span></div>`:''}</div>
+    <div class="count-note">${esc(brEndBanner(cfgv('bridge_end_date',null)))}</div>`;
+}
+$('#brSet').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-brset]');if(!b)return;const act=b.dataset.brset;
+  if(act==='savecfg'){const tr=b.closest('tr');let v;try{v=JSON.parse($('[data-cfgv]',tr).value);}catch(x){toast('Value must be valid JSON (e.g. 40, "text", true, ["LA","OC"])',true);return;}if(await brWrite(brq('bridge_config').update({value:v,status:$('[data-cfgs]',tr).value}).eq('key',tr.dataset.key),`${tr.dataset.key} saved`))brRenderSet();return;}
+  if(act==='approveagr'){if(!confirm('Approve this agreement? It becomes immutable and usable in economics.'))return;if(await brWrite(brq('bridge_comp_agreements').update({status:'approved'}).eq('id',b.dataset.id),'Agreement approved'))brRenderSet();return;}
+  if(act==='saveagr'){const ded=$$('[data-agded]').filter(c=>c.checked).map(c=>c.value);const row={name:$('#ag_name').value.trim(),route:$('#ag_route').value,recipient:$('#ag_rcpt').value.trim()||null,components:[{name:'commission',rate_pct:Number($('#ag_rate').value)||0,base:'R-D'}],deduction_categories:ded,helper_treatment:$('#ag_help').value.trim()||null,note:$('#ag_note').value.trim()||null,status:'draft'};if(!row.name){toast('Name the agreement',true);return;}if(await brWrite(brq('bridge_comp_agreements').insert(row),'Draft agreement saved'))brRenderSet();return;}
+  if(act==='grant'){const {data,error}=await sbb.rpc('grant_bridge',{target_email:$('#rl_email').value.trim(),target_role:$('#rl_role').value});if(error){toast(brErr(error),true);return;}toast(data||'Granted');await brLoad();brRenderSet();return;}
+  if(act==='revoke'){if(!confirm(`Revoke ${b.dataset.email}?`))return;const {data,error}=await sbb.rpc('revoke_bridge',{target_email:b.dataset.email});if(error){toast(brErr(error),true);return;}toast(data||'Revoked');await brLoad();brRenderSet();return;}
+});
+
+
+/* ---------- page boot ---------- */
+(function init(){
+  applyTheme(localStorage.getItem(LS.theme)||'light');
+  $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+  $('#brConnect').onclick=()=>{const url=$('#brCfgUrl').value.trim(),key=$('#brCfgKey').value.trim();if(!url||!key){toast('Both fields are needed',true);return;}saveConf({url,key});location.reload();};
+  const c=loadConf();
+  if(!c||!c.url||!c.key){$('#brSetup').style.display='';$('#brGate').style.display='none';return;}
+  /* Two clients on purpose: `sb` reads the open tables (technicians) as anon and never holds a session;
+     `sbb` holds the Bridge sign-in under its own storage key, so nothing else on this origin changes principal. */
+  sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  sbb=window.supabase.createClient(c.url,c.key,{auth:{storageKey:'adc_bridge_auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'pkce'}});
+  bootBridge();
+})();
+
+</script>
+</body>
+</html>

@@ -336,6 +336,7 @@ body.admin-on .admin-only{display:block}
       <button data-ws="adc" class="on">ADC Outbound</button>
       <button data-ws="sales">Office Sales</button>
       <button data-ws="jobs">Job Assignment</button>
+      <button data-ws="bridge">M2 Bridge ↗</button>
     </div>
   </div>
   <nav id="nav"></nav>
@@ -2135,6 +2136,9 @@ async function salesGateOK(){
 }
 const WS_LABEL={adc:'ADC OUTBOUND',sales:'OFFICE SALES',jobs:'JOB ASSIGNMENT'};
 async function setWorkspace(ws){
+  /* The M2 Bridge is its own page (bridge.html): it has real sign-in and will keep growing, and the brief's
+     approval model must not live inside this anonymous file. Nothing here changes when it does. */
+  if(ws==='bridge'){location.href='bridge.html';return;}
   const target=WS_LABEL[ws]?ws:'adc';
   if(target==='sales'){ const ok=await salesGateOK(); if(!ok){ $$('#wsMenu button').forEach(b=>b.classList.toggle('on',b.dataset.ws===WS)); return; } }
   WS=target;

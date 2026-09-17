@@ -4,7 +4,8 @@ Replaces the per-agent Google Sheet with a single web app: agents enter daily nu
 everything saves to Supabase, and you review it in Meeting / Scorecard / Admin views.
 
 ## What's in the box
-- `index.html` — the entire app (one self-contained file, no build step)
+- `index.html` — the board (one self-contained file, no build step)
+- `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; opened from the brand dropdown)
 - `schema.sql` — core Outbound tables (agents, daily reports, bookings, settings, weekly
   history) + security policies + agent seed
 - `sales_schema.sql` — tables for the **Office Sales** workspace (salespersons, daily metrics, sales log)
@@ -13,7 +14,11 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 - `crm_sync_schema.sql` — the `crm_*` columns on `bookings` that the CRM sync writes
 - `coverage_schema.sql` — the **Coverage** tab: `coverage_log`, `coverage_days`, and the approved-list
   fields on `technicians` (run after `jobs_schema.sql`)
+- `bridge_schema.sql` — the **M2 Bridge** workspace: twelve `bridge_*` tables, the role allowlist and
+  the release gates (run after `coverage_schema.sql`; needs Supabase Auth — see below)
 - `scripts/crm-sync.mjs` — reconciles each booking's job reference against the CRM
+- `tests/` — jsdom suite for the Bridge (`npm install && npm test`): the brief's §10 acceptance scenarios run
+  against an in-memory database that mirrors `bridge_schema.sql`'s rules
 
 The SQL files do not overlap, and each is idempotent — safe to re-run at any time.
 
@@ -265,6 +270,42 @@ for the Coverage tab. Four tabs:
    offered name must be approved and active at the time. Nothing in the log can be deleted.
 
 All dates follow PST like the rest of the platform.
+
+
+## M2 Bridge workspace
+Fourth entry in the brand dropdown (**M2 Bridge ↗**) — it opens **`bridge.html`**, a separate page, so the
+board's single file stays the board and the Bridge can keep growing. Built from the brief *ADL — M2 High-Value-Job
+Bridge* (2026-09-18) for Rock *ADC Ironclad Coverage* milestone 2. It protects high-value sales during
+the transition while preserving gross margin: every high-value lead is recorded with its indicators and
+evidence, staffed by route (**combined technician** or **Sagi**), estimated in versions, priced through an
+**economics version** (R, D, C, K, gross profit, margin, gate), and released only through two written
+approvals — the estimate visit and the work release. Seven sub-tabs: Queue · Opportunity · Approvals
+(one-hour timers) · Reconciliation · Scorecard · Coverage register · Settings.
+
+**It is the only part of the board with real sign-in.** The brief requires approvals that are evidence,
+so the Bridge uses Supabase Auth (magic link) with a two-role allowlist — `manager` (Luka: approvals,
+release, Sardor exceptions, settings) and `dispatcher` (Vasyl) — and the database stamps the approver
+from the signed-in identity. The page has its own two Supabase clients (anon for the roster, a session-holding one for the `bridge_*`
+tables, under its own storage key), so signing in changes nothing for the board. Sardor does not sign in: a margin exception is recorded by the manager on
+his behalf and must carry how he confirmed (text / call) and a reference.
+
+**Rules the database enforces** (`bridge_schema.sql`): release needs an approved economics version whose
+gate is at floor (or a recorded Sardor exception for that exact version), an accepted estimate, every
+service classified with a margin rule, no unknown cost, and — on Sagi's route — an approved installer and
+an explicitly approved job-level amount. Approvals and events are append-only; an approved economics
+version is immutable and a later change creates a new version and pulls the job back to review.
+
+**Every business value carries the brief's own status** — confirmed / proposed / unresolved — in
+`bridge_config` and the Settings tab. Unresolved values are `null` and block what depends on them; nothing
+is defaulted silently. Money is integer cents; margins are compared unrounded.
+
+**Setup (Luka, once):** Supabase → Authentication → Providers → Email: on, magic link on, sign-ups **off**;
+URL configuration → Site URL = the deployed URL and an additional redirect URL of `<deployed URL>/bridge.html`
+(the magic link returns to the Bridge page). Authentication → Users → add
+`luka.m@homealliance.com` and `vasyl.k@homealliance.com` (Auto Confirm). Run **`bridge_schema.sql`**; if
+the users existed the roles are seeded, otherwise `select grant_bridge('email','manager')`. The SLA watch
+(`adc-bridge-sla-watch`, a scheduled task) reads pending requests with the service-role key and DMs Luka
+about overdue or urgent ones — **off until `notify_enabled` is true** in Settings.
 
 
 ## Calling Database (ADC Outbound → Database tab)

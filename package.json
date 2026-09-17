@@ -1,0 +1,11 @@
+{
+  "name": "adc-outbound-performance-board",
+  "private": true,
+  "description": "Tests for the ADC Outbound Performance Board. The app itself has no build step.",
+  "scripts": {
+    "test": "node tests/bridge.test.cjs bridge.html"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}
