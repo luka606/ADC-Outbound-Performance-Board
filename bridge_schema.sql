@@ -118,12 +118,19 @@ revoke all on function public.revoke_bridge(text) from public, anon;
 grant execute on function public.grant_bridge(text,text) to authenticated;
 grant execute on function public.revoke_bridge(text) to authenticated;
 
--- Generic stamp: who and when, from the JWT. The page never sets these.
+-- Generic stamp: who and when, from the JWT. The page never sets these. Guarded per column so the
+-- same function serves every bridge_* table whatever audit columns it carries (bridge_config has no
+-- created_* pair) — the first apply failed on exactly that.
 create or replace function public.bridge_stamp() returns trigger
 language plpgsql security definer set search_path = public, auth as $$
+declare j jsonb := to_jsonb(new);
 begin
-  if tg_op = 'INSERT' then new.created_at := coalesce(new.created_at, now()); new.created_by := auth.email(); end if;
-  new.updated_at := now(); new.updated_by := auth.email();
+  if tg_op = 'INSERT' then
+    if j ? 'created_at' then new.created_at := coalesce(new.created_at, now()); end if;
+    if j ? 'created_by' then new.created_by := auth.email(); end if;
+  end if;
+  if j ? 'updated_at' then new.updated_at := now(); end if;
+  if j ? 'updated_by' then new.updated_by := auth.email(); end if;
   return new;
 end $$;
 
@@ -135,6 +142,8 @@ create table if not exists public.bridge_config(
   value      jsonb,
   status     text not null check (status in ('confirmed','proposed','unresolved')),
   note       text,
+  created_at timestamptz not null default now(),
+  created_by text,
   updated_at timestamptz not null default now(),
   updated_by text
 );
@@ -298,6 +307,8 @@ alter table public.bridge_events enable row level security;
 drop policy if exists bev_read on public.bridge_events;
 create policy bev_read on public.bridge_events for select to authenticated using (is_bridge_member());
 
+-- BEFORE, not AFTER: it defaults `outcome`, and an AFTER row trigger's changes to NEW are silently
+-- discarded. Column defaults (id) are filled in before BEFORE triggers, so the event rows below are valid.
 create or replace function public.bridge_opp_guard() returns trigger
 language plpgsql security definer set search_path = public, auth as $$
 declare internal boolean := coalesce(current_setting('bridge.internal', true), '') = '1';
@@ -324,7 +335,7 @@ end $$;
 drop trigger if exists bopp_stamp_t on public.bridge_opportunities;
 create trigger bopp_stamp_t before insert or update on public.bridge_opportunities for each row execute function public.bridge_stamp();
 drop trigger if exists bopp_guard_t on public.bridge_opportunities;
-create trigger bopp_guard_t after insert or update on public.bridge_opportunities for each row execute function public.bridge_opp_guard();
+create trigger bopp_guard_t before insert or update on public.bridge_opportunities for each row execute function public.bridge_opp_guard();
 
 -- =====================================================================
 -- 6. Assignments — versioned staffing by route
