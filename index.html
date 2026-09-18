@@ -2964,7 +2964,7 @@ async function renderSDash(){
   if(/[?&]code=/.test(location.search)){location.replace('bridge.html'+location.search);return;}
   /* Drop any session an earlier build stored under supabase-js's default key. The Bridge's own key (adc_bridge_auth)
      is untouched. */
-  try{Object.keys(localStorage).filter(k=>/^sb-.*-auth-token$/.test(k)).forEach(k=>localStorage.removeItem(k));}catch(e){}
+  try{Object.keys(localStorage).filter(k=>/^sb-.*-auth-token(\.\d+|-code-verifier)?$/.test(k)).forEach(k=>localStorage.removeItem(k));}catch(e){}
   applyTheme(localStorage.getItem(LS.theme)||'light');
   $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
   $('#adminBtn').onclick=adminButtonClick;
