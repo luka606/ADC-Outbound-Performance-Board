@@ -307,9 +307,17 @@ alter table public.bridge_events enable row level security;
 drop policy if exists bev_read on public.bridge_events;
 create policy bev_read on public.bridge_events for select to authenticated using (is_bridge_member());
 
--- BEFORE, not AFTER: it defaults `outcome`, and an AFTER row trigger's changes to NEW are silently
--- discarded. Column defaults (id) are filled in before BEFORE triggers, so the event rows below are valid.
-create or replace function public.bridge_opp_guard() returns trigger
+-- Split in two, and the split is load-bearing.
+--
+-- BEFORE: validation and defaults only. It mutates NEW (an AFTER trigger's changes to NEW are
+-- silently discarded), so `outcome` is defaulted here.
+--
+-- AFTER: the event rows only. bridge_events.opportunity_id is a FOREIGN KEY to this table, and on
+-- INSERT the row does not exist until the statement completes — writing the event from the BEFORE
+-- trigger raised `violates foreign key constraint "bridge_events_opportunity_id_fkey"` and rejected
+-- the dispatcher's lead outright (seen in production 2026-09-19). Events belong in AFTER; defaults
+-- belong in BEFORE; neither does the other's job.
+create or replace function public.bridge_opp_before() returns trigger
 language plpgsql security definer set search_path = public, auth as $$
 declare internal boolean := coalesce(current_setting('bridge.internal', true), '') = '1';
 begin
@@ -323,19 +331,31 @@ begin
         raise exception 'A lost opportunity needs a loss reason (brief §7: losses by reason).';
       end if;
     end if;
-    insert into public.bridge_events(opportunity_id, actor_email, kind, from_status, to_status)
-    values (new.id, auth.email(), 'status', old.status, new.status);
-  end if;
-  if tg_op = 'INSERT' then
-    insert into public.bridge_events(opportunity_id, actor_email, kind, from_status, to_status)
-    values (new.id, auth.email(), 'created', null, new.status);
   end if;
   return new;
 end $$;
+
+create or replace function public.bridge_opp_after() returns trigger
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if tg_op = 'INSERT' then
+    insert into public.bridge_events(opportunity_id, actor_email, kind, from_status, to_status)
+    values (new.id, auth.email(), 'created', null, new.status);
+  elsif new.status is distinct from old.status then
+    insert into public.bridge_events(opportunity_id, actor_email, kind, from_status, to_status)
+    values (new.id, auth.email(), 'status', old.status, new.status);
+  end if;
+  return null;   -- ignored for AFTER triggers
+end $$;
+
 drop trigger if exists bopp_stamp_t on public.bridge_opportunities;
 create trigger bopp_stamp_t before insert or update on public.bridge_opportunities for each row execute function public.bridge_stamp();
-drop trigger if exists bopp_guard_t on public.bridge_opportunities;
-create trigger bopp_guard_t before insert or update on public.bridge_opportunities for each row execute function public.bridge_opp_guard();
+drop trigger if exists bopp_guard_t on public.bridge_opportunities;   -- the old combined trigger, if present
+drop trigger if exists bopp_before_t on public.bridge_opportunities;
+create trigger bopp_before_t before insert or update on public.bridge_opportunities for each row execute function public.bridge_opp_before();
+drop trigger if exists bopp_after_t on public.bridge_opportunities;
+create trigger bopp_after_t after insert or update on public.bridge_opportunities for each row execute function public.bridge_opp_after();
+drop function if exists public.bridge_opp_guard();
 
 -- =====================================================================
 -- 6. Assignments — versioned staffing by route

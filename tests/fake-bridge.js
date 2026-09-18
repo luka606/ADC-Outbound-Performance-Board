@@ -7,11 +7,29 @@ function makeFake(db, opts){
   const roleOf=()=>{const r=(db.bridge_roles||[]).find(x=>x.email===email());return r?r.role:null;};
   const isMgr=()=>roleOf()==='manager';
   const cfg=k=>{const r=(db.bridge_config||[]).find(x=>x.key===k);return r?r.value:undefined;};
-  const ev=(opp,kind,from,to,payload)=>db.bridge_events.push({id:db.bridge_events.length+1,opportunity_id:opp,at:now(),actor_email:email(),kind,from_status:from??null,to_status:to??null,payload:payload||null});
+  const ev=(opp,kind,from,to,payload)=>{
+    if(opp!=null&&!(db.bridge_opportunities||[]).some(r=>String(r.id)===String(opp)))
+      throw new Error('insert or update on table "bridge_events" violates foreign key constraint "bridge_events_opportunity_id_fkey"');
+    db.bridge_events.push({id:db.bridge_events.length+1,opportunity_id:opp,at:now(),actor_email:email(),kind,from_status:from??null,to_status:to??null,payload:payload||null});};
   const setStatus=(oppId,st)=>{const o=db.bridge_opportunities.find(x=>x.id===oppId);if(!o||o.status===st)return;const f=o.status;o.status=st;o.updated_at=now();ev(oppId,'status',f,st);};
   const ERR=m=>({data:null,error:{message:m}});
   const GATED=new Set(['visit_authorized','work_released','actuals_reconciled']);
   // per-table rule emulation. returns error string or null; may mutate `row` (the row as it will be stored)
+  // Foreign keys the real schema declares. The dispatcher's lead was rejected in production by exactly
+  // one of these (bridge_events.opportunity_id) because an event was written from a BEFORE INSERT
+  // trigger, before its parent row existed — so the fake enforces them.
+  const FK={bridge_events:['opportunity_id','bridge_opportunities'],bridge_assignments:['opportunity_id','bridge_opportunities'],
+    bridge_estimates:['opportunity_id','bridge_opportunities'],bridge_economics:['opportunity_id','bridge_opportunities'],
+    bridge_requests:['opportunity_id','bridge_opportunities'],bridge_approvals:['opportunity_id','bridge_opportunities'],
+    bridge_actuals:['opportunity_id','bridge_opportunities']};
+  function fkCheck(t,row){
+    const fk=FK[t]; if(!fk) return null;
+    const [col,parent]=fk; const v=row[col];
+    if(v==null) return null;
+    if(!(db[parent]||[]).some(r=>String(r.id)===String(v)))
+      return `insert or update on table "${t}" violates foreign key constraint "${t}_${col}_fkey"`;
+    return null;
+  }
   function before(t,op,row,old){
     if(!(t.startsWith('bridge_')))return null;
     if(!email())return 'permission denied (anon)';
@@ -80,7 +98,7 @@ function makeFake(db, opts){
       if(this.t==='bridge_events'&&this.op!=='select')return ERR('permission denied for table bridge_events');
       let data=null;
       if(this.op==='select'){data=this._rows().slice();for(const [k,asc] of this.sorts.slice().reverse())data.sort((a,b)=>{const x=a[k]??'',y=b[k]??'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});if(this.lim!=null)data=data.slice(0,this.lim);if(this.single)data=data[0]||null;}
-      else if(this.op==='insert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const r={id:uid(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);after(this.t,'insert',r,null);out.push(r);}data=out;}
+      else if(this.op==='insert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const r={id:uid(),...p};const err=before(this.t,'insert',r,null)||fkCheck(this.t,r);if(err)return ERR(err);db[this.t].push(r);try{after(this.t,'insert',r,null);}catch(ex){db[this.t].pop();return ERR(String(ex.message||ex));}out.push(r);}data=out;}
       else if(this.op==='update'){const rows=this._rows();const staged=[];for(const r of rows){const nr={...r,...this.payload};const err=before(this.t,'update',nr,r);if(err)return ERR(err);staged.push([r,nr]);}staged.forEach(([r,nr])=>{const old={...r};Object.assign(r,nr);after(this.t,'update',r,old);});data=rows;}
       else if(this.op==='upsert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const hit=(db[this.t]||[]).find(r=>this.conflict.length&&this.conflict.every(k=>String(r[k])===String(p[k])));if(hit){const nr={...hit,...p};const err=before(this.t,'update',nr,hit);if(err)return ERR(err);const old={...hit};Object.assign(hit,nr);after(this.t,'update',hit,old);out.push(hit);}else{const r={id:uid(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);after(this.t,'insert',r,null);out.push(r);}}data=out;}
       else if(this.op==='delete'){return ERR('permission denied (no delete)');}

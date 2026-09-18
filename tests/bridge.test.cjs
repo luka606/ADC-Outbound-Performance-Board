@@ -64,6 +64,7 @@ const signIn=email=>{fake.auth.__set({user:{id:'u',email}});};
   const ind=$('[data-ind="returning_upsell"]'); ind.checked=true; $('[data-indev="returning_upsell"]').value='Job A1B2C3, 2026-05-02'; $('[data-inddt="returning_upsell"]').value='2026-05-02';
   $('#bi_save').click(); await tick(120);
   const opp=db.bridge_opportunities[0];
+  T('recording a lead does not trip the bridge_events foreign key (the BEFORE-trigger regression)',!/foreign key/i.test(toast())&&db.bridge_opportunities.length===1,toast());
   T('lead recorded: seq B-1, qualified, event "created"',!!opp&&opp.seq===1&&w.brFlags(opp).qualified&&db.bridge_events.some(e=>e.opportunity_id===opp.id&&e.kind==='created'),opp);
   T('opens on the Opportunity page',$('#tab-bopp').classList.contains('on')&&/B-1/.test($('#brOpp').textContent));
   // gated statuses cannot be set by hand
