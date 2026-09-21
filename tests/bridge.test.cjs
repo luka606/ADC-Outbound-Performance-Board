@@ -88,6 +88,15 @@ const signIn=email=>{fake.auth.__set({user:{id:'u',email}});};
   // manager creates + approves a real agreement (Settings), then prices properly
   w.showBridgeTab('bset'); await tick(60);
   T('Settings shows status pills / editors for the manager',$$('[data-cfgs]').length>10);
+  // The seeded combined agreement ships with deduction_categories = null and blocks every release.
+  // It must be fixable in place: a draft is by definition not yet frozen.
+  T('a draft agreement exposes its deduction list as tick-boxes',$$('[data-agrow="agr-draft"] [data-agded2]').length===8&&/Unresolved/.test($('[data-agrow="agr-draft"]').parentElement.textContent));
+  $$('[data-agrow="agr-draft"] [data-agded2]').forEach(c=>{c.checked=['materials','company_helper'].includes(c.value);});
+  $('[data-brset="saveagr2"]').click(); await tick(120);
+  T('saving the draft sets the deduction list',JSON.stringify(db.bridge_comp_agreements.find(a=>a.id==='agr-draft').deduction_categories)==='["materials","company_helper"]',db.bridge_comp_agreements.find(a=>a.id==='agr-draft').deduction_categories);
+  $('[data-brset="approveagr"][data-id="agr-draft"]').click(); await tick(120);
+  T('the once-unresolved agreement now approves, stamped with the approver',db.bridge_comp_agreements.find(a=>a.id==='agr-draft').status==='approved'&&db.bridge_comp_agreements.find(a=>a.id==='agr-draft').approved_by==='luka.m@homealliance.com');
+  T('an approved agreement is no longer editable in place',$$('[data-agrow="agr-draft"]').length===0);
   setv('#ag_name','Combined — deduct materials + company helpers'); setv('#ag_route','combined'); setv('#ag_rate','50'); $$('[data-agded]').forEach(c=>{c.checked=['materials','company_helper'].includes(c.value);}); $('[data-brset="saveagr"]').click(); await tick(120);
   const agr=db.bridge_comp_agreements.find(a=>a.name.startsWith('Combined — deduct')); T('new agreement saved as draft with explicit deductions',!!agr&&JSON.stringify(agr.deduction_categories)==='["materials","company_helper"]',agr);
   $(`[data-brset="approveagr"][data-id="${agr.id}"]`).click(); await tick(120); T('agreement approved, approver stamped from identity',agr.status==='approved'&&agr.approved_by==='luka.m@homealliance.com');
