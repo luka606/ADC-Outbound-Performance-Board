@@ -323,6 +323,13 @@ outcomes — Pass · Coaching · Probation · Disqualify — recorded only by th
 tied to the metric version in force. Six tabs: Overview · Teams (comparison) · Team (detail, every source record,
 drill-downs, the decision form) · Queues · Configuration (versions) · Definitions.
 
+**Design (2026-09-23).** The page follows the claude.ai/design project *Team Qualification* — an Apple-system look:
+one accent, grouped inset lists, segmented controls, ring and bar scores, and **sheets instead of browser prompts** for
+every entry. The Team page is a summary (score ring, official vs recommended, gates, seven categories with drill-down,
+evidence progress) plus **guided daily entry** for the dispatcher (lead → appointment → job → completion, with a
+"continue where you left off" list) and one page per record type. Timestamps typed on the page are Pacific time
+regardless of the machine's zone.
+
 **Sign-in and roles are the Bridge's** (`bridge_roles`: manager / dispatcher, same storage key), so one magic link
 serves both pages. The dispatcher records leads, estimate versions, appointments, jobs, costs, promise-date
 reschedules, availability, coverage offers and responses, quality events, compliance checks, supervised-job notes,
