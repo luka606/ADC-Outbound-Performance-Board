@@ -3,7 +3,9 @@
   "private": true,
   "description": "Tests for the ADC Outbound Performance Board. The app itself has no build step.",
   "scripts": {
-    "test": "node tests/bridge.test.cjs bridge.html"
+    "test": "node tests/bridge.test.cjs bridge.html && node tests/qualification.test.cjs qualification.html",
+    "test:bridge": "node tests/bridge.test.cjs bridge.html",
+    "test:qualification": "node tests/qualification.test.cjs qualification.html"
   },
   "devDependencies": {
     "jsdom": "^24.1.3"
