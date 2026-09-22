@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Qualification · ADC Outbound · Home Alliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* bridge.html carries a copy of index.html's design tokens and components so the Bridge reads as part of the
+   board. Kept in sync by hand for now; when a third page appears, move this to a shared stylesheet. */
+/* ============ design tokens (matched to Job Efficiency Board) ============ */
+:root{
+  --bg:#F6F7F5; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.07), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#F3F5F2; --glass:rgba(255,255,255,.75);
+  --ink:#101614; --ink-2:#5B6862; --ink-3:#94A099; --line:#E4E8E2; --line-2:#EEF1EC;
+  --accent:#0E9F6E; --accent-hi:#10B981; --accent-deep:#047857; --accent-soft:#E4F5EE; --on-accent:#FFFFFF;
+  --amber:#B45309; --amber-soft:#FCF0DC;
+  --red:#C0392B; --red-soft:#FAE5E1;
+  --blue:#2563EB; --blue-soft:#E5EDFB;
+  --lux:#7C3AED; --lux-soft:#F1EAFD;
+  --shadow:0 1px 2px rgba(16,24,20,.04),0 6px 20px rgba(16,24,20,.05);
+  --shadow-lg:0 12px 40px rgba(16,24,20,.16);
+  --focus:0 0 0 3px rgba(16,185,129,.25);
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --disp:'Space Grotesk',var(--sans);
+  --r:16px; --r-sm:10px; --r-xs:8px;
+  /* aliases so shared component code reads naturally */
+  --brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--accent); --green-soft:var(--accent-soft); --radius:var(--r); --radius-sm:var(--r-sm);
+}
+[data-theme="dark"]{
+  --bg:#0B0F0D; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.08), transparent 60%);
+  --panel:#141A17; --panel-2:#1B2320; --glass:rgba(20,26,23,.8);
+  --ink:#E8EEEA; --ink-2:#9DABA2; --ink-3:#69766E; --line:#26302B; --line-2:#1F2823;
+  --accent:#10B981; --accent-hi:#34D399; --accent-deep:#059669; --accent-soft:#132B21; --on-accent:#06130D;
+  --amber:#E9A23B; --amber-soft:#2E230F;
+  --red:#E0705F; --red-soft:#361D18;
+  --blue:#7CA9F5; --blue-soft:#16233A;
+  --lux:#B79CF7; --lux-soft:#241B38;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 22px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.55);
+  --focus:0 0 0 3px rgba(52,211,153,.3);
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
+body{background:var(--bg);background-image:var(--bg-grad);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-xs);padding:9px 11px;outline:none;transition:border-color .15s,box-shadow .15s,background .3s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:var(--focus)}
+input::placeholder{color:var(--ink-3)}
+::selection{background:var(--accent-soft)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+a{color:var(--accent)}
+.hidden{display:none!important}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
+
+/* ============ header ============ */
+header{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:62px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);transition:.3s}
+.brand .dot.live{background:var(--accent-hi);box-shadow:0 0 10px var(--accent-hi)}
+.brand small{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.5px;color:var(--ink-3)}
+nav{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:12.5px;letter-spacing:.2px;padding:7px 15px;border-radius:99px;white-space:nowrap;transition:.18s}
+nav button:hover{color:var(--ink)}
+nav button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
+.hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+.admin-on #adminBtn{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+#themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+.eyebrow{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.sub{color:var(--ink-2);font-size:13.5px;margin-bottom:20px;max-width:860px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+
+/* ============ panels / buttons ============ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(16,185,129,.3);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,.4)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.5;cursor:default;transform:none;filter:none;box-shadow:none}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn.ghost:hover{border-color:var(--ink-3);background:var(--panel-2);box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#E05545,#B03A2B);color:#fff;box-shadow:0 2px 10px rgba(192,57,43,.3)}
+.btn.sm{padding:5px 12px;font-size:12px}
+.sort-pill{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:99px;padding:5px 13px;font-size:12px;font-weight:600;transition:.15s}
+.sort-pill:hover{border-color:var(--ink-3);color:var(--ink)}
+.sort-pill.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+/* ============ KPI cards ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);transition:transform .18s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px}
+.kpi.a .v{color:var(--accent)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
+
+/* ============ tables / badges ============ */
+.twrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);text-align:left;padding:11px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--panel-2)}
+.badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 9px;border-radius:99px;line-height:1.5}
+.badge.booking{background:var(--accent-soft);color:var(--accent)}
+.badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
+.badge.sold{background:var(--accent-soft);color:var(--accent)}
+.badge.cancelled{background:var(--red-soft);color:var(--red)}
+/* CRM job status, written by scripts/crm-sync.mjs */
+.crm-b{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.crm-b.ok{background:var(--accent-soft);color:var(--accent-deep)}
+.crm-b.bad{background:var(--red-soft);color:var(--red)}
+.crm-b.blue{background:var(--blue-soft);color:var(--blue)}
+.crm-b.gray{background:var(--panel-2);color:var(--ink-2)}
+.crm-b.none{background:transparent;color:var(--ink-3)}
+.badge.ran_not_sold{background:var(--amber-soft);color:var(--amber)}
+.badge.pending{background:var(--line-2);color:var(--ink-2)}
+.jobref{font-family:var(--mono);letter-spacing:.14em}
+.count-note{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+
+/* ============ report entry ============ */
+.entry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.numwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+.numwrap label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2);margin-bottom:7px}
+.numwrap input{width:100%;border:0;background:transparent;font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ink);padding:0}
+.numwrap input:focus{box-shadow:none}
+.numwrap.derived{background:var(--accent-soft);border-color:var(--accent)}
+.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--accent)}
+.numwrap.derived.cross{background:var(--blue-soft);border-color:var(--blue)}
+.numwrap.derived.cross .val{color:var(--blue)}
+.bookblock{border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px;margin-top:12px;background:var(--panel-2)}
+.bookblock.cross{background:var(--blue-soft);border-color:var(--blue)}
+.bookblock h4{font-family:var(--disp);font-size:14px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.bookblock .hint{font-size:12px;color:var(--ink-2);margin-bottom:10px}
+.refrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.refrow .idx{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:20px;text-align:center;flex:0 0 auto}
+.refrow input{flex:1;letter-spacing:.28em;font-family:var(--mono);text-align:center}
+.refrow .state{width:150px;font-size:11.5px}
+.refrow .state.ok{color:var(--accent);font-weight:700}
+.refrow .state.warn{color:var(--red)}
+.refrow input.bad{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+
+/* ============ meeting leaderboard ============ */
+.meet-sort{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.meet-sort .lbl{font-size:12px;color:var(--ink-2);margin-right:2px}
+.meet-avg{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.meet-list{display:flex;flex-direction:column;gap:8px}
+.lb-row{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;text-align:left;color:var(--ink);
+  display:grid;grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 78px 74px 26px;gap:14px;align-items:center;padding:12px 16px;transition:border-color .18s,transform .15s}
+.lb-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.lb-rank{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-align:center}
+.lb-avatar{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:15px;background:var(--accent-soft);color:var(--accent)}
+.lb-row:nth-child(2) .lb-avatar{background:var(--blue-soft);color:var(--blue)}
+.lb-row:nth-child(3) .lb-avatar{background:var(--amber-soft);color:var(--amber)}
+.lb-row:nth-child(4) .lb-avatar{background:var(--red-soft);color:var(--red)}
+.lb-main{min-width:0}
+/* These children are spans, so without this they flow inline: the agent name
+   runs into the legend and .mix-bar collapses to zero width, taking the whole
+   reached/no-answer/not-interested visualisation with it. Pre-existing; the
+   bar has never been visible. */
+.lb-main>span{display:block}
+.lb-name{font-family:var(--disp);font-weight:700;font-size:15.5px;letter-spacing:-.1px}
+.mix-bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:var(--line-2);margin-top:7px;max-width:430px}
+.mix-bar .seg{position:absolute;top:0;bottom:0}
+.mix-bar .p1{background:var(--accent-hi)} .mix-bar .p2{background:var(--blue)} .mix-bar .p3{background:var(--red)}
+.mix-bar .avg-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;z-index:2}
+.mix-legend{font-size:11px;color:var(--ink-3);margin-top:4px;font-family:var(--mono)}
+/* attainment against the prorated weekly target: bookings + cross-books, after cancellations */
+.tgt-bar{position:relative;display:block;height:4px;border-radius:3px;overflow:hidden;background:var(--line-2);margin-top:6px;max-width:430px}
+.tgt-fill{display:block;height:100%;background:var(--ink-3);transition:width .2s}
+.tgt-fill.hit{background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.lb-stat{text-align:right}
+.lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
+.lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
+.tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
+.lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
+.lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
+@media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 78px 26px}.lb-row .lb-stat.conv,.lb-row .lb-stat.bk{display:none}.mix-bar,.tgt-bar{max-width:none}}
+@media(max-width:560px){.lb-row{grid-template-columns:40px minmax(0,1fr) 78px 26px}.lb-rank,.lb-row .lb-stat.calls{display:none}}
+
+/* ============ report modal ============ */
+.rep-backdrop{position:fixed;inset:0;background:rgba(8,12,10,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:80;display:none;align-items:center;justify-content:center;padding:26px}
+.rep-backdrop.show{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rep{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow-lg);width:min(1000px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:repIn .24s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes repIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rep-top{display:flex;align-items:center;gap:18px;padding:24px 28px 20px;border-bottom:1px solid var(--line)}
+.rep-avatar{width:58px;height:58px;border-radius:16px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:22px;flex-shrink:0}
+.rep-title{min-width:0}
+.rep-title .nm{font-family:var(--disp);font-weight:700;font-size:28px;letter-spacing:-.4px;line-height:1.1}
+.rep-title .dt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);margin-top:4px}
+.rep-nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rep-nav .btn.ghost{padding:8px 14px;font-size:15px;line-height:1}
+.rep-close{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:16px;line-height:1;transition:.15s}
+.rep-close:hover{color:var(--ink);border-color:var(--ink-3)}
+.rep-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:12px;padding:20px 28px 6px}
+.rep-kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;text-align:center}
+.rep-kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
+.rep-kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px}
+.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}
+.rep-body{overflow:auto;padding:16px 28px 26px}
+.rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
+.bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.hintrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+@media(max-width:760px){.rep-kpis{grid-template-columns:repeat(2,1fr)}.rep-title .nm{font-size:22px}}
+
+/* ============ scorecard ============ */
+.sc-group{margin-top:26px}
+.sc-group>.lab{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--ink);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:10px}
+.sc-group>.lab::before{content:"";width:5px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-deep));flex:0 0 auto}
+.sc-group>.lab .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+.sc-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(168px,1fr))}
+.tip{position:relative;color:var(--ink-3);cursor:help;font-size:11px;border:1px solid var(--line);border-radius:50%;width:15px;height:15px;display:inline-grid;place-items:center;line-height:1}
+.tip:hover::after{content:attr(data-tip);position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--panel);font-size:11px;font-weight:500;padding:7px 9px;border-radius:8px;width:190px;z-index:5;box-shadow:var(--shadow-lg)}
+
+/* ============ admin summary ============ */
+.summary3{display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+.sumline{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line-2);color:var(--ink-2)}
+.sumline b{color:var(--ink);font-weight:600}
+.amt-input{width:96px;padding:6px 8px;font-size:13px}
+.st-select{padding:6px 8px;font-size:12.5px}
+
+/* ============ toast / gate ============ */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--bg);padding:14px 20px;border-radius:14px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px) scale(.97);transition:.25s cubic-bezier(.2,.9,.3,1.2);pointer-events:none;z-index:99;max-width:380px}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--red);color:#fff}
+.center-wrap{min-height:70vh;display:grid;place-items:center;padding:24px}
+.gate{max-width:460px;width:100%;text-align:center}
+.gate .lockbig{width:64px;height:64px;border-radius:18px;margin:0 auto 16px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:28px}
+.gate h2{font-size:23px}.gate p{color:var(--ink-2);font-size:14px;margin:8px 0 20px}
+.pin-in{letter-spacing:.5em;text-align:center;font-family:var(--mono);font-size:22px;width:100%}
+.codebox{background:#0B0F0D;color:#cfe0d6;border-radius:12px;padding:14px;font-family:var(--mono);font-size:12px;text-align:left;white-space:pre-wrap;overflow:auto;max-height:260px}
+.empty{text-align:center;color:var(--ink-3);padding:40px 20px;font-size:14px}
+@media(max-width:720px){.summary3{grid-template-columns:1fr}header{gap:12px;padding:0 14px}}
+/* ============ workspace switcher ============ */
+#wsBtn{cursor:pointer;display:flex;align-items:center;gap:10px}
+.ws-caret{color:var(--ink-3);font-size:11px;transition:.15s}
+#wsBtn:hover .ws-caret{color:var(--ink)}
+.ws-menu{position:absolute;top:calc(100% + 10px);left:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;display:none;min-width:230px;z-index:60}
+.ws-menu.show{display:block;animation:fadeIn .15s ease}
+.ws-menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink);font-weight:600;font-size:13.5px;padding:11px 14px;border-radius:9px;transition:.12s}
+.ws-menu button:hover{background:var(--panel-2)}
+.ws-menu button.on{background:var(--accent-soft);color:var(--accent)}
+
+/* ============ office sales workspace ============ */
+.tab{display:none}.tab.on{display:block;animation:fadeIn .22s ease}
+#salesRoot main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
+#salesRoot h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
+h3.pt{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin-bottom:12px}
+.bar.tight{margin-bottom:0}
+td.num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.loading{color:var(--ink-2);font-size:13px;padding:20px;text-align:center;font-family:var(--mono)}
+.badge.yes{background:var(--accent-soft);color:var(--accent)}
+.badge.gray{background:var(--line-2);color:var(--ink-2)}
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:980px){.dash-cols{grid-template-columns:1fr}}
+.bar-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.bar-row .lbl{width:130px;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .trk{flex:1;height:18px;background:var(--line-2);border-radius:6px;overflow:hidden}
+.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep));border-radius:6px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.bar-row .fill.alt{background:linear-gradient(90deg,#60A5FA,var(--blue))}
+.bar-row .val{font-family:var(--mono);font-size:11px;width:44px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ============ login gate + admin-only ============ */
+body.logged-out #wsBtn,body.logged-out #nav,body.logged-out #navSales,body.logged-out #navJobs,body.logged-out #whoami,body.logged-out #adminBtn,body.logged-out #logoutBtn{display:none!important}
+.admin-only{display:none}
+body.admin-on .admin-only{display:block}
+
+/* ============ database tab ============ */
+.db-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.db-grid{grid-template-columns:1fr}}
+.qbar{height:9px;border-radius:5px;background:var(--line-2);overflow:hidden;display:flex;margin-top:6px}
+.qbar i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.runway{background:linear-gradient(135deg,var(--accent-soft),transparent);border:1px solid var(--accent);border-radius:var(--r);padding:18px 20px}
+.runway .big{font-family:var(--disp);font-size:44px;font-weight:700;color:var(--accent-deep);line-height:1;letter-spacing:-1px}
+.runway .u{font-size:14px;color:var(--ink-2);font-weight:600}
+.assump{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.assump input{width:78px}
+.dbload{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+/* ============ SOP tab ============ */
+.sop-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0 18px}
+.sop-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.sop-ic{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;margin-bottom:12px}
+.sop-card h3{font-family:var(--disp);font-size:18px;font-weight:700;margin-bottom:4px}
+.sop-card p{font-size:14px;color:var(--ink-2);flex:1}
+.sop-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.sop-preview{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.sop-preview-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+#sopFrame{width:100%;height:70vh;border:0;background:#fff;display:block}
+@media(max-width:720px){.sop-cards{grid-template-columns:1fr}#sopFrame{height:60vh}}
+
+/* ============ coverage tab (Job Assignment) ============ */
+.cv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:flex-end}
+.cv-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;min-height:32px}
+.cv-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;transition:.15s}
+.cv-chip:hover{border-color:var(--ink-3)}
+.cv-chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+.cv-chip .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
+.cv-chip.on .meta{color:var(--accent)}
+.badge.uncovered{background:var(--amber-soft);color:var(--amber)}
+.badge.reassigned{background:var(--accent-soft);color:var(--accent)}
+.badge.rejected{background:var(--line-2);color:var(--ink-2)}
+.badge.potentially_lost{background:var(--red-soft);color:var(--red)}
+.badge.confirmed_lost{background:var(--red);color:var(--on-accent)}
+.badge.approved{background:var(--accent-soft);color:var(--accent-deep)}
+.cv-eod{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.cv-eod label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 10px;border:1px solid var(--line-2);border-radius:var(--r-xs);cursor:pointer}
+.cv-eod label:hover{background:var(--panel-2)}
+.cv-eod input{margin-top:3px}
+
+/* ============ m2 bridge ============ */
+.br-pill{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);white-space:nowrap}
+.br-pill.ok{background:var(--accent-soft);color:var(--accent-deep);border-color:transparent}
+.br-pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+.br-pill.bad{background:var(--red-soft);color:var(--red);border-color:transparent}
+.br-pill.blue{background:var(--blue-soft);color:var(--blue);border-color:transparent}
+.br-pill.gray{background:var(--line-2);color:var(--ink-2);border-color:transparent}
+.br-status.confirmed{background:var(--accent-soft);color:var(--accent-deep)}
+.br-status.proposed{background:var(--blue-soft);color:var(--blue)}
+.br-status.unresolved{background:var(--red-soft);color:var(--red)}
+.br-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:flex-end}
+.br-grid .wide{grid-column:span 2}
+.br-sec{margin-top:18px}
+.br-sec h3.pt{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.br-ind{display:grid;grid-template-columns:auto 1fr 150px 150px;gap:8px 10px;align-items:center;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.br-ind:last-child{border-bottom:none}
+.br-ind input[type=text],.br-ind input[type=date]{width:100%}
+.br-econ{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.br-econ .k{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.br-econ .k .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
+.br-econ .k .v{font-family:var(--disp);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;margin-top:2px}
+.br-issues{background:var(--red-soft);border-radius:var(--r-sm);padding:10px 14px;font-size:13.5px;color:var(--red);margin:8px 0}
+.br-issues li{margin:3px 0}
+.br-timer{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+.br-timer.over{color:var(--red)}
+.br-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);margin-bottom:8px}
+.br-row.urgent{border-color:var(--red)}
+.br-ev{font-size:13px;padding:6px 0;border-bottom:1px solid var(--line-2);display:grid;grid-template-columns:150px 1fr;gap:10px}
+.br-ev .t{font-family:var(--mono);color:var(--ink-3);font-size:11.5px}
+.br-cost{display:grid;grid-template-columns:1.2fr 1fr .9fr .9fr 1fr auto auto auto;gap:6px;align-items:center;padding:4px 0}
+.br-cost .cn{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.br-scope{display:grid;grid-template-columns:1fr 2fr 1fr auto;gap:6px;align-items:center;padding:4px 0}
+.br-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.br-two{grid-template-columns:1fr}.br-ind{grid-template-columns:auto 1fr}.br-cost,.br-scope{grid-template-columns:1fr 1fr}}
+
+
+/* ============ m2 bridge · purpose strip + SOP ============ */
+.br-why{max-width:1420px;margin:14px auto 0;padding:12px 18px;border:1px solid var(--accent-soft);background:linear-gradient(135deg,var(--accent-soft),transparent 70%);border-radius:var(--r-sm);font-size:13.5px;color:var(--ink);line-height:1.55}
+.br-why .br-why-k{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-deep);font-weight:700;margin-right:8px}
+.br-why a{color:var(--accent-deep);font-weight:600;white-space:nowrap}
+.br-sop{max-width:860px}
+.br-sop p,.br-sop li{font-size:14.5px;line-height:1.6}
+.br-sop .panel p{margin:8px 0}
+.br-sop h2{font-size:26px;margin:6px 0 8px;letter-spacing:-.3px}
+.br-sop h3.pt{font-size:17px}
+.br-sop ul.clean{list-style:none;padding:0;margin:8px 0}
+.br-sop ul.clean li{position:relative;padding-left:18px;margin:5px 0}
+.br-sop ul.clean li::before{content:"";position:absolute;left:0;top:10px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.br-sop ol.br-steps{padding-left:0;list-style:none;counter-reset:s}
+.br-sop ol.br-steps li{counter-increment:s;position:relative;padding-left:44px;margin:12px 0}
+.br-sop ol.br-steps li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent-deep);font-family:var(--disp);font-weight:700;display:flex;align-items:center;justify-content:center}
+.br-sop .br-refuse>div,.br-sop .br-terms>div{display:grid;grid-template-columns:minmax(160px,.9fr) 2fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+.br-sop .br-refuse>div:last-child,.br-sop .br-terms>div:last-child{border-bottom:none}
+.br-sop .br-refuse b{color:var(--red)}
+.br-sop .br-terms b{font-family:var(--mono);color:var(--accent-deep)}
+.br-sop .br-refuse span,.br-sop .br-terms span{color:var(--ink-2)}
+.br-sop .faq .q{padding:10px 0;border-bottom:1px solid var(--line-2)}.br-sop .faq .q:last-child{border-bottom:none}
+.br-sop .faq .q b{display:block;margin-bottom:3px}.br-sop .faq .q p{color:var(--ink-2);margin:0}
+.br-sop .ui{font-family:var(--mono);font-size:.86em;background:var(--line-2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap}
+@media(max-width:720px){.br-sop .br-refuse>div,.br-sop .br-terms>div{grid-template-columns:1fr}}
+.br-ded{display:flex;gap:4px 12px;flex-wrap:wrap;max-width:330px}
+.br-ded label{display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap}
+/* ===== team qualification (M4) ===== */
+.q-score{font-family:var(--disp);font-weight:700;font-size:30px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1}
+.q-score.na{color:var(--ink-3);font-size:22px}
+.q-out{display:inline-block;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.6px;text-transform:uppercase;padding:4px 11px;border-radius:99px}
+.q-out.pass{background:var(--accent-soft);color:var(--accent)}.q-out.coaching{background:var(--blue-soft);color:var(--blue)}.q-out.probation{background:var(--amber-soft);color:var(--amber)}
+.q-out.disqualify{background:var(--red);color:var(--on-accent)}.q-out.pending{background:var(--line-2);color:var(--ink-2)}.q-out.none{background:transparent;color:var(--ink-3);border:1px dashed var(--line)}
+.q-ev{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2.5px 9px;border-radius:99px;background:var(--line-2);color:var(--ink-2)}
+.q-ev.decision_eligible{background:var(--accent-soft);color:var(--accent)}.q-ev.pending_evidence{background:var(--amber-soft);color:var(--amber)}.q-ev.supervised_trial{background:var(--blue-soft);color:var(--blue)}
+.q-pts{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.q-pts.p100{color:var(--accent)}.q-pts.p70{color:var(--blue)}.q-pts.p40{color:var(--amber)}.q-pts.p0{color:var(--red)}.q-pts.na{color:var(--ink-3)}
+.q-cat td{vertical-align:top}
+.q-cat .nd{font-family:var(--mono);font-size:11px;color:var(--ink-2);white-space:nowrap}
+.q-drill{font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;margin-top:6px;max-height:180px;overflow:auto;word-break:break-all}
+.q-gate{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.q-gate:last-child{border-bottom:0}
+.q-gate .g{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.q-gate .g.ok{background:var(--accent-soft);color:var(--accent)}.q-gate .g.fail{background:var(--red-soft);color:var(--red)}.q-gate .g.na{background:var(--line-2);color:var(--ink-2)}
+.q-team-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.q-team-head h2{margin:0}
+.q-meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:6px}
+details.q-sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px;box-shadow:var(--shadow)}
+details.q-sec>summary{cursor:pointer;padding:14px 20px;font-family:var(--disp);font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;list-style:none}
+details.q-sec>summary::-webkit-details-marker{display:none}
+details.q-sec>summary .count-note{font-weight:400}
+details.q-sec>.q-secbody{padding:0 20px 18px}
+.q-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 12px;align-items:end;margin-bottom:12px}
+.q-form .fld.wide{grid-column:1/-1}
+.q-form input,.q-form select,.q-form textarea{width:100%}
+.q-row-act{display:flex;gap:6px;flex-wrap:wrap}
+.q-warn{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber);border-radius:var(--r-sm);padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+.q-block{background:var(--red-soft);color:var(--red);border:1px solid var(--red);border-radius:var(--r-sm);padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+.q-ok{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent);border-radius:var(--r-sm);padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+.q-queue{margin-bottom:14px}
+.q-queue h3{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+.q-mix{display:flex;gap:6px;flex-wrap:wrap}
+.q-mix span{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:99px;background:var(--line-2);color:var(--ink-2)}
+.q-cfg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0}
+.q-cfg-grid .fld input{width:100%}
+.q-cfg-cat{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;background:var(--panel-2)}
+.q-cfg-cat b{font-family:var(--disp)}
+.q-linkrow{cursor:pointer}.q-linkrow:hover td{background:var(--panel-2)}
+.q-def h3{margin:16px 0 6px}.q-def table td,.q-def table th{font-size:12.5px}
+.q-frozen{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+@media(max-width:720px){.q-form{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div style="position:relative">
+    <a class="brand" href="index.html" title="Back to the board" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><span class="dot live" id="connDot"></span><span>TEAM QUALIFICATION</span><span class="ws-caret">← board</span></a>
+  </div>
+  <nav id="navQual">
+    <button data-tab="qover" class="on">Overview</button>
+    <button data-tab="qteams">Teams</button>
+    <button data-tab="qteam">Team</button>
+    <button data-tab="qqueue">Queues</button>
+    <button data-tab="qcfg">Configuration</button>
+    <button data-tab="qdef">Definitions</button>
+  </nav>
+  <div class="hdr-right">
+    <span id="qWho" class="count-note"></span>
+    <span id="qVerBadge" class="count-note"></span>
+    <a class="hdr-btn" href="bridge.html" title="M2 Bridge" style="text-decoration:none">Bridge ↗</a>
+    <button class="hdr-btn" id="qSignOut" title="Sign out (shared with the Bridge)">Sign out</button>
+    <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
+  </div>
+</header>
+<div class="br-why"><span class="br-why-k">Why one scorecard</span> Every technician-sales team — the ones we have, the ones we recruit, and a rebuilt team led by the former technician — is judged by <b>one balanced standard</b>: sales, revenue efficiency, coverage, attendance, completion, customer quality and compliance, with <b>gates no score can override</b>. A team counts toward the Rock's three-team redundancy only after a current <b>Pass</b> on enough evidence. Luka records every official outcome on a frozen evidence snapshot, so each decision can be reproduced later. <a href="#" id="qWhyDef">Read the definitions →</a></div>
+
+<main id="qualRoot">
+<div id="qSetup" class="panel" style="display:none;max-width:520px;margin:40px auto">
+  <div class="eyebrow">Team Qualification</div><h2 style="font-size:22px;margin:6px 0 10px">Connect to the board's database</h2>
+  <div class="sub" style="margin-bottom:14px">This page uses the same Supabase project as the board. If you have already connected the board on this device, this step is skipped.</div>
+  <div class="fld"><label>Project URL</label><input type="text" id="qCfgUrl" placeholder="https://xxxx.supabase.co"></div>
+  <div class="fld" style="margin-top:10px"><label>Anon key</label><input type="password" id="qCfgKey" placeholder="public anon key"></div>
+  <div class="bar tight" style="margin-top:14px"><button class="btn" id="qConnect">Connect</button></div>
+</div>
+<div id="qGate" class="panel" style="max-width:520px;margin:40px auto">
+  <div class="eyebrow">Team Qualification</div>
+  <h2 style="font-size:22px;margin:6px 0 10px">Sign in</h2>
+  <div class="sub" style="margin-bottom:14px">Qualification decisions are evidence, so this page knows who you are. It shares the Bridge sign-in: if you are signed in to the Bridge on this device, you are already in. Otherwise enter your work email for a one-time link.</div>
+  <div class="bar tight"><div class="fld" style="min-width:260px"><label>Email</label><input type="email" id="qEmail" placeholder="you@homealliance.com" autocomplete="email"></div><button class="btn" id="qSend">Send sign-in link</button></div>
+  <div class="count-note" id="qGateNote" style="margin-top:10px"></div>
+  <div id="qNotMember" style="display:none;margin-top:12px" class="count-note">Signed in as <b id="qWhoNM"></b>, but this account is not a member. Ask the manager to grant a role in the Bridge's Settings. <button class="btn ghost sm" id="qSignOutNM">Sign out</button></div>
+</div>
+<div id="qBody" style="display:none">
+  <div id="qBlockers"></div>
+
+  <section class="tab on" id="tab-qover"><div class="section-head"><h2 style="margin:0">Executive overview</h2><span class="count-note" id="qOverMeta"></span></div>
+    <div class="sub">Who qualifies today against the Rock target of three, where evidence is thin, and what needs a decision. Provisional, Pending-Evidence, restricted, expired and inactive teams never count as qualified.</div>
+    <div id="qOver"></div></section>
+
+  <section class="tab" id="tab-qteams"><h2>Team comparison</h2>
+    <div class="sub">One row per team. Filters change what you see, never the stored official outcome. Values are the live calculation for the period ending on the date chosen; the official outcome is the last recorded decision.</div>
+    <div class="bar">
+      <div class="fld"><label>Territory</label><select id="qfTerr"><option value="">All</option></select></div>
+      <div class="fld"><label>Service</label><select id="qfSvc"><option value="">All</option><option value="installation">Installation</option><option value="cleaning">Cleaning</option></select></div>
+      <div class="fld"><label>Team type</label><select id="qfType"><option value="">All</option><option value="incumbent">Incumbent</option><option value="candidate">Candidate</option><option value="rebuilt">Rebuilt</option></select></div>
+      <div class="fld"><label>Official outcome</label><select id="qfOut"><option value="">All</option><option value="pass">Pass</option><option value="coaching">Coaching</option><option value="probation">Probation</option><option value="disqualify">Disqualify</option><option value="none">No decision yet</option></select></div>
+      <div class="fld"><label>Evidence state</label><select id="qfEv"><option value="">All</option><option value="pending_entry_review">Pending Entry Review</option><option value="supervised_trial">Supervised Trial</option><option value="pending_evidence">Pending Evidence</option><option value="decision_eligible">Decision Eligible</option></select></div>
+      <div class="fld"><label>Period ends</label><input type="date" id="qfEnd"></div>
+      <div class="fld"><label>&nbsp;</label><button class="btn ghost sm" id="qNewTeam">+ New team</button></div>
+    </div>
+    <div id="qNewTeamForm" class="panel" style="display:none"></div>
+    <div id="qTeams"></div></section>
+
+  <section class="tab" id="tab-qteam"><div id="qTeam"></div></section>
+
+  <section class="tab" id="tab-qqueue"><h2>Review and decision queues</h2>
+    <div class="sub">What is waiting on whom. Nothing here changes an outcome by itself — a timer expiring never passes, restricts or disqualifies a team.</div>
+    <div id="qQueues"></div></section>
+
+  <section class="tab" id="tab-qcfg"><h2>Configuration and definitions</h2>
+    <div class="sub">Weights, targets, bands, gates, evidence minimums and windows live in <b>versions</b>. A version used in an official decision is immutable; changing a threshold means a new version, and past decisions stay tied to theirs. Weights must total exactly 100 — nothing is normalised silently.</div>
+    <div id="qCfg"></div></section>
+
+  <section class="tab" id="tab-qdef"><div class="br-sop q-def" id="qDef"></div></section>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+/* ---------- shared helpers (mirrors index.html; kept in sync by hand — a shared script file is the next step if more pages appear) ---------- */
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme'};
+let sb=null;
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const money=n=>(n||n===0)?'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0}):'—';
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className='toast show'+(isErr?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',isErr?4200:2600);}
+function friendlyErr(e,file){const m=(e&&e.message)?e.message:String(e||'');if(/schema cache|does not exist|Could not find the table/i.test(m))return `Setup step missing — run ${file} in Supabase (SQL Editor), then reload.`;return m;}
+const PST_TZ='America/Los_Angeles';
+function nowPST(){return new Date(new Date().toLocaleString('en-US',{timeZone:PST_TZ}));}
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>iso(nowPST()); const todayStr=today;
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');if(b){b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';}localStorage.setItem(LS.theme,t);}
+function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
+function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
+const WS='qualification';
+let TECHS=[];
+async function reloadTechs(){if(!sb)return;const {data,error}=await sb.from('technicians').select('*').order('name');if(error){TECHS=[];return;}TECHS=data||[];}
+
+/* =========================================================================
+   M4 TEAM QUALIFICATION SCORECARD
+   Rock "ADC Ironclad Coverage", milestone 4 · brief "ADL — M4 Team Qualification Scorecard" (2026-09-23).
+   One balanced standard for every technician-sales team: seven weighted categories, non-negotiable gates,
+   evidence states, four official outcomes recorded only by the manager on a frozen snapshot.
+
+   IDENTITY. Shares the M2 Bridge sign-in (`sbb`, storage key adc_bridge_auth) and its roles (bridge_roles:
+   manager / dispatcher). `sb` is the session-free anon client for the open tables (technicians, coverage_log).
+   RULES live in qualification_schema.sql triggers; the checks repeated here only make the message friendlier.
+   ENGINE. qualCompute() is a pure function of (team, version, records, period, now) — no DOM, no network — so
+   the acceptance tests run it directly and a frozen snapshot is exactly what the page showed.
+   STATUS of every business value is the brief's own: confirmed | proposed | unresolved. Unresolved = null and
+   blocks whatever depends on it. The revenue-efficiency baseline is unresolved → official scoring is blocked
+   until the manager approves a version that carries it. Nothing is defaulted silently.
+   ========================================================================= */
+let sbb=null;
+const Q={session:null,email:null,role:null,ver:[],teams:[],members:[],avail:[],leads:[],ests:[],appts:[],jobs:[],resched:[],cov:[],qe:[],cc:[],ex:[],sup:[],inc:[],res:[],snaps:[],dec:[],act:[],rev:[],audit:[],
+  sel:null,tab:'qover',loaded:false,_wired:false,end:null,filters:{},_open:{},_cfgDraft:null};
+const QTABLES={ver:'qual_metric_versions',teams:'qual_teams',members:'qual_team_members',avail:'qual_availability',leads:'qual_leads',ests:'qual_lead_estimates',appts:'qual_appointments',jobs:'qual_jobs',resched:'qual_job_reschedules',cov:'qual_coverage_events',qe:'qual_quality_events',cc:'qual_compliance_checks',ex:'qual_exclusions',sup:'qual_supervised_jobs',inc:'qual_incidents',res:'qual_restrictions',snaps:'qual_snapshots',dec:'qual_decisions',act:'qual_actions',rev:'qual_reviews'};
+const QCAT_LABEL={sales:'Sales effectiveness',revenue:'Revenue efficiency',coverage:'Coverage reliability',attendance:'Attendance',completion:'Completion reliability',quality:'Customer quality',compliance:'Compliance'};
+const QEV_LABEL={pending_entry_review:'Pending Entry Review',supervised_trial:'Supervised Trial',pending_evidence:'Pending Evidence',decision_eligible:'Decision Eligible'};
+const QOUT_LABEL={pass:'Pass',coaching:'Coaching',probation:'Probation',disqualify:'Disqualify',pending:'No recommendation yet',none:'No decision'};
+const qErr=e=>friendlyErr(e,'qualification_schema.sql');
+const cents=n=>(n==null||isNaN(n))?'—':'$'+(Number(n)/100).toLocaleString(undefined,{maximumFractionDigits:0});
+const pct=(v,d=1)=>(v==null||isNaN(v))?'N/A':Number(v).toFixed(d)+'%';
+const toC=s=>{const t=String(s==null?'':s).replace(/[$,\s]/g,'');if(t==='')return null;const n=Number(t);return isNaN(n)?null:Math.round(n*100);};
+/* PT calendar date of an ISO timestamp — every period boundary is a PT date (proposed, §18.7) */
+function dPT(ts){if(!ts)return null;const s=String(ts);if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const d=new Date(s);if(isNaN(d))return null;return iso(new Date(d.toLocaleString('en-US',{timeZone:PST_TZ})));}
+function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
+function addDaysIso(s,n){const d=new Date(s+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
+const cfgval=x=>(x&&typeof x==='object'&&'value' in x)?x.value:x;
+const cfgstat=x=>(x&&typeof x==='object'&&'status' in x)?x.status:'confirmed';
+
+/* ---------- ENGINE: bands ---------- */
+function qualBand(valuePct,bands,direction){
+  if(valuePct==null||isNaN(valuePct)||!bands)return null;
+  const p100=Number(bands.p100),p70=Number(bands.p70),p40=Number(bands.p40);
+  if(direction==='lower'){if(valuePct<=p100)return 100;if(valuePct<=p70)return 70;if(valuePct<=p40)return 40;return 0;}
+  if(valuePct>=p100)return 100;if(valuePct>=p70)return 70;if(valuePct>=p40)return 40;return 0;
+}
+function qualBandLabel(pts){return pts==null?'N/A':pts===100?'100-point band':pts===70?'70-point band':pts===40?'40-point band':'0-point band';}
+
+/* ---------- ENGINE: margin guardrails (brief §4.2 revenue, §4.3, §16.8–10) ----------
+   Unknown or missing costs never become zero: the margin is null and says why. Installation floor 35 / target 40,
+   cleaning floor 45 — applied per service component on a mixed job. A recorded Sardor exception stays visible
+   as below-floor work; it authorises the job, it does not lift the margin. */
+function qualMargin(job,rules){
+  rules=rules||{installation:{target_pct:40,floor_pct:35},cleaning:{floor_pct:45}};
+  const out={revenue_cents:job.revenue_cents??null,projected:null,actual:null,issues:[],components:[],exception_ref:job.margin_exception_ref||null,below_floor:null,floor_pct:null,target_pct:null};
+  const costs=Array.isArray(job.costs)?job.costs:[];
+  if(out.revenue_cents==null){out.issues.push('revenue not recorded');}
+  if(!costs.length){out.issues.push('no costs recorded — margin not calculable');}
+  const sum=(st)=>{let t=0,bad=false;costs.forEach(c=>{if(c.status==='unknown'||c.amount_cents==null||isNaN(c.amount_cents)){bad=true;return;}if(st==='actual'&&c.status!=='actual')return;t+=Number(c.amount_cents);});return {t,bad};};
+  if(costs.some(c=>c.status==='unknown'||c.amount_cents==null))out.issues.push('a cost is unknown — it is not treated as zero');
+  const R=out.revenue_cents;
+  if(R!=null&&R>0&&costs.length&&!costs.some(c=>c.status==='unknown'||c.amount_cents==null)){
+    const p=sum('projected');out.projected={cost_cents:p.t,gp_cents:R-p.t,margin_pct:(R-p.t)*100/R};
+    if(costs.every(c=>c.status==='actual')){out.actual=out.projected;}
+    else if(costs.some(c=>c.status==='actual')){out.actual=null;out.issues.push('actual costs incomplete — actual margin pending');}
+  }else if(R===0){out.issues.push('zero revenue — no valid margin');}
+  const svc=job.service||'other';
+  const floorFor=s=>s==='installation'?{floor:rules.installation?.floor_pct??35,target:rules.installation?.target_pct??40}:s==='cleaning'?{floor:rules.cleaning?.floor_pct??45,target:null}:{floor:null,target:null};
+  if(svc==='mixed'){
+    const mix=Array.isArray(job.service_mix)?job.service_mix:[];
+    if(!mix.length)out.issues.push('mixed job without a service split — per-service floors cannot be applied');
+    mix.forEach(m=>{const f=floorFor(m.service);const r=Number(m.revenue_cents),c=m.cost_cents;const comp={service:m.service,revenue_cents:r,cost_cents:c??null,margin_pct:null,floor_pct:f.floor,target_pct:f.target,below_floor:null};
+      if(r>0&&c!=null&&!isNaN(c)){comp.margin_pct=(r-Number(c))*100/r;if(f.floor!=null)comp.below_floor=(r-Number(c))*100<f.floor*r;}else out.issues.push(`${m.service||'component'}: revenue or cost missing — component margin not calculable`);
+      out.components.push(comp);});
+    if(out.components.some(c=>c.below_floor===true))out.below_floor=true;else if(out.components.length&&out.components.every(c=>c.below_floor===false))out.below_floor=false;
+  }else{
+    const f=floorFor(svc);out.floor_pct=f.floor;out.target_pct=f.target;
+    const m=out.actual||out.projected;
+    if(m&&f.floor!=null)out.below_floor=(m.gp_cents*100<f.floor*R);   // integer comparison, never rounded
+  }
+  return out;
+}
+
+/* ---------- ENGINE: the scorecard ----------
+   input = {team, version, period:{start,end}, now, data:{members,avail,leads,ests,appts,jobs,resched,cov,qe,cc,ex,sup,inc,res,snaps,dec}}
+   Every rate returns numerator, denominator, n, excluded, missing and the source ids behind it (brief §4.3, §16.16). */
+function qualCompute(input){
+  const {team,version:V}=input; const P=input.period; const now=input.now||new Date().toISOString(); const today=dPT(now);
+  const D=input.data||{}; const tid=team.id; const of=a=>(a||[]).filter(r=>r.team_id===tid);
+  const members=of(D.members),leads=of(D.leads),appts=of(D.appts),jobs=of(D.jobs),cov=of(D.cov),qe=of(D.qe),cc=of(D.cc),ex=of(D.ex),sup=of(D.sup),inc=of(D.inc),res=of(D.res);
+  const ests=(D.ests||[]).filter(e=>leads.some(l=>l.id===e.lead_id));
+  const decisions=of(D.dec).slice().sort((a,b)=>String(a.decided_at).localeCompare(String(b.decided_at)));
+  const inP=ts=>{const d=dPT(ts);return d!=null&&d>=P.start&&d<=P.end;};
+  const excl=new Map();ex.forEach(x=>{if(x.status==='approved')excl.set(x.source_table+':'+x.source_id,x);});
+  const pendingExcl=ex.filter(x=>x.status==='pending').length;
+  const isEx=(t,id)=>excl.has(t+':'+id);
+  const cats=[];const warnings=[];
+  const vcat=k=>(V.categories||[]).find(c=>c.key===k)||{};
+  const mk=(key,o)=>{const c=vcat(key);const weight=Number(c.weight_pct||0);const r=Object.assign({key,label:c.label||QCAT_LABEL[key],weight,formula:c.formula||'',target:c.target||'',status:c.status||'proposed',value:null,numerator:0,denominator:0,n:0,excluded:0,missing:0,points:null,band:null,contribution:null,complete:true,notes:[],included_ids:[],excluded_ids:[],diagnostics:{}},o);
+    if(r.denominator===0){r.value=null;r.notes.unshift('N/A — zero denominator');}
+    if(r.points==null&&r.value!=null&&r.allow_points!==false)r.points=qualBand(r.value,c.bands,c.direction||'higher');
+    if(r.cap!=null&&r.points!=null&&r.points>r.cap){r.points=r.cap;}
+    r.band=qualBandLabel(r.points);r.contribution=r.points==null?null:r.points*weight/100;
+    if(r.value==null)r.complete=false;
+    delete r.allow_points;delete r.cap;cats.push(r);return r;};
+
+  /* 1 · Sales effectiveness — cohort by assignment; estimate revisions never add entries (§16.11) */
+  const decAge=cfgval(V.evidence?.decision_age_days);
+  const cohort=leads.filter(l=>l.qualified!==false&&inP(l.assigned_at));
+  {
+    const inc_=[],exc_=[],pend=[];let won=0;
+    cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}
+      if(l.status==='pending'){const age=daysBetween(dPT(l.assigned_at),today);if(decAge!=null&&age>=Number(decAge)){inc_.push(l.id);}else pend.push(l.id);return;}
+      inc_.push(l.id);if(l.status==='won')won++;});
+    const estN=cohort.filter(l=>ests.some(e=>e.lead_id===l.id)||l.status!=='pending').length;
+    mk('sales',{numerator:won,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length?won*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{pending_not_counted:pend.length,pending_ids:pend,decision_age_days:decAge??null,estimate_versions:ests.length,qualified_estimates:estN,declined:cohort.filter(l=>l.status==='declined').length,team_failed:cohort.filter(l=>l.status==='team_failed').length},
+      notes:[...(decAge==null&&pend.length?['decision-age cutoff unresolved — pending leads are shown, not counted']:[]),...(pend.length?[`${pend.length} pending lead(s) not yet in the denominator`]:[])]});
+  }
+  /* 2 · Revenue efficiency — sold revenue per qualified lead vs the approved baseline (unresolved → blocked) */
+  {
+    const inc_=[],exc_=[];let sold=0,collected=0;const svcMix={},terrMix={};
+    cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}inc_.push(l.id);sold+=Number(l.sold_revenue_cents||0);collected+=Number(l.collected_revenue_cents||0);svcMix[l.service||'?']=(svcMix[l.service||'?']||0)+1;terrMix[l.territory||'?']=(terrMix[l.territory||'?']||0)+1;});
+    const base=cfgval(V.revenue?.baseline_cents);const rpl=inc_.length?sold/inc_.length:null;
+    const value=(rpl!=null&&base!=null&&Number(base)>0)?rpl*100/Number(base):null;
+    let gpKnown=0,gpN=0;jobs.filter(j=>j.lead_id&&inc_.includes(j.lead_id)).forEach(j=>{const m=qualMargin(j,V.margin_rules);const mm=m.actual||m.projected;if(mm){gpKnown+=mm.gp_cents;gpN++;}});
+    const r=mk('revenue',{numerator:sold,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{revenue_per_lead_cents:rpl,baseline_cents:base??null,baseline_status:cfgstat(V.revenue?.baseline_cents),sold_revenue_cents:sold,collected_revenue_cents:collected,credit_point:cfgval(V.revenue?.credit_point)||'sold',service_mix:svcMix,territory_mix:terrMix,gross_profit_known_cents:gpKnown,gross_profit_jobs:gpN,gross_profit_per_lead_cents:(gpN&&inc_.length)?gpKnown/inc_.length:null},
+      notes:base==null?['baseline unresolved (§18.3) — revenue per lead is shown, no points until the manager approves a baseline']:[]});
+    if(base==null&&inc_.length){r.complete=false;warnings.push('Revenue-efficiency baseline is unresolved — official scoring is blocked.');}
+  }
+  /* 3 · Coverage reliability — eligible offers only; eligibility frozen at offer time (§16.14) */
+  {
+    const inP_=cov.filter(c=>inP(c.offered_at));const inc_=[],exc_=[],inel=[];let ful=0;const fail={};
+    inP_.forEach(c=>{if(isEx('qual_coverage_events',c.id)){exc_.push(c.id);return;}if(!c.eligible){inel.push(c.id);return;}inc_.push(c.id);if(c.fulfilled)ful++;else fail[c.response||'pending']=(fail[c.response||'pending']||0)+1;});
+    const pendingResp=inP_.filter(c=>c.eligible&&c.response==='pending').length;
+    mk('coverage',{numerator:ful,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing:pendingResp,value:inc_.length?ful*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{ineligible_offers:inel.length,ineligible_ids:inel,failures_by_response:fail,pending_response:pendingResp},
+      notes:pendingResp?[`${pendingResp} offer(s) still without a response count as unfulfilled until recorded`]:[]});
+  }
+  /* 4 · Attendance — documented reschedules/cancellations excluded with their reason; unexplained no-shows cap the band */
+  {
+    const grace=cfgval(V.windows?.on_time_grace_minutes);
+    const inP_=appts.filter(a=>inP(a.scheduled_at));const inc_=[],exc_=[];let ontime=0,late=0,noshow=0,unexpl=0,missing=0;const exReasons=[];
+    inP_.forEach(a=>{if(isEx('qual_appointments',a.id)||['customer_reschedule','company_cancel','force_majeure'].includes(a.outcome)){exc_.push(a.id);if(a.reason)exReasons.push(a.reason);return;}
+      if(a.outcome==='scheduled'){if(dPT(a.scheduled_at)<today){inc_.push(a.id);missing++;}return;}
+      inc_.push(a.id);let o=a.outcome;
+      if(o==='attended'&&grace!=null&&a.arrival_at){const lateBy=(new Date(a.arrival_at)-new Date(a.scheduled_at))/60000;if(lateBy>Number(grace))o='late';}
+      if(o==='attended')ontime++;else if(o==='late')late++;else if(o==='no_show'){noshow++;if(!String(a.reason||'').trim())unexpl++;}});
+    mk('attendance',{numerator:ontime,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing,value:inc_.length?ontime*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,cap:unexpl?70:null,
+      diagnostics:{late,no_show:noshow,unexplained_no_show:unexpl,outcome_missing:missing,grace_minutes:grace??null,grace_status:cfgstat(V.windows?.on_time_grace_minutes),exclusion_reasons:exReasons},
+      notes:[...(grace==null?['on-time grace window unresolved (§18.6) — the dispatcher\'s attended/late marking is used as recorded']:[]),...(unexpl?[`${unexpl} unexplained no-show(s) — passing standard not met, band capped at 70`]:[]),...(missing?[`${missing} past appointment(s) without a recorded outcome count as not attended`]:[])]});
+  }
+  /* 5 · Completion reliability — by the (rescheduled) promise date with evidence; the original promise is kept */
+  {
+    const dueEnd=P.end<today?P.end:today;
+    const due=jobs.filter(j=>!j.cancelled&&j.current_promise_date>=P.start&&j.current_promise_date<=dueEnd);const inc_=[],exc_=[];let ok=0,lateC=0,noEv=0,open=0;
+    due.forEach(j=>{if(isEx('qual_jobs',j.id)){exc_.push(j.id);return;}inc_.push(j.id);
+      if(!j.completed_at){open++;return;}const onTime=dPT(j.completed_at)<=j.current_promise_date;const ev=!!String(j.completion_evidence||'').trim();
+      if(onTime&&ev)ok++;else{if(!onTime)lateC++;if(!ev)noEv++;}});
+    mk('completion',{numerator:ok,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing:open+noEv,value:inc_.length?ok*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{late_completions:lateC,missing_evidence:noEv,not_completed:open,rescheduled_jobs:due.filter(j=>j.current_promise_date!==j.promised_date).length},
+      notes:noEv?[`${noEv} completion(s) without evidence do not count as compliant`]:[]});
+  }
+  /* 6 · Customer quality — job-level rate on mature jobs; immature shown separately; a job counts once (§16.12–13) */
+  const severeOpen=qe.filter(e=>e.severity==='severe'&&e.status==='open'&&e.substantiation!=='unsubstantiated');
+  {
+    const win=cfgval(V.windows?.quality_observation_days);
+    /* cohort: jobs completed in the period shifted back by the observation window, so a job has had the chance to mature;
+       jobs completed more recently are listed as immature — never as issue-free */
+    const qStart=win!=null?addDaysIso(P.start,-Number(win)):P.start;
+    const done=jobs.filter(j=>!j.cancelled&&j.completed_at&&dPT(j.completed_at)>=qStart&&dPT(j.completed_at)<=P.end);const inc_=[],exc_=[],immature=[];let issueJobs=0,events=0,cost=0,openEv=0;
+    done.forEach(j=>{if(isEx('qual_jobs',j.id)){exc_.push(j.id);return;}
+      const mature=win!=null&&daysBetween(dPT(j.completed_at),today)>=Number(win);if(!mature){immature.push(j.id);return;}inc_.push(j.id);
+      const evs=qe.filter(e=>e.job_id===j.id&&!isEx('qual_quality_events',e.id));if(evs.some(e=>e.substantiation==='substantiated'))issueJobs++;});
+    qe.forEach(e=>{events++;cost+=Number(e.cost_cents||0);if(e.status==='open')openEv++;});
+    mk('quality',{numerator:issueJobs,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length?issueJobs*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{cohort_start:qStart,immature_jobs:immature.length,immature_ids:immature,observation_days:win??null,observation_status:cfgstat(V.windows?.quality_observation_days),events_total:events,events_open:openEv,events_cost_cents:cost,severe_unresolved:severeOpen.length,pending_substantiation:qe.filter(e=>e.substantiation==='pending').length},
+      notes:[...(win==null?['observation window unresolved (§18.5) — every completed job is shown as immature']:[]),...(immature.length?[`${immature.length} job(s) still inside the ${win??'?'}-day window — immature, not issue-free`]:[]),...(inc_.length&&!issueJobs?['provisional: a low-volume clean result does not establish stable quality']:[])]});
+  }
+  /* 7 · Compliance — missing is not a pass; any critical failure is the 0-point band and a failed gate */
+  const ccP=cc.filter(c=>inP(c.checked_at)&&!isEx('qual_compliance_checks',c.id));
+  const critFail=ccP.filter(c=>c.critical&&c.result!=='pass');
+  {
+    const pass=ccP.filter(c=>c.result==='pass').length,missing=ccP.filter(c=>c.result==='missing').length;
+    const r=mk('compliance',{numerator:pass,denominator:ccP.length,n:ccP.length,excluded:cc.filter(c=>inP(c.checked_at)&&isEx('qual_compliance_checks',c.id)).length,missing,value:ccP.length?pass*100/ccP.length:null,included_ids:ccP.map(c=>c.id),excluded_ids:cc.filter(c=>inP(c.checked_at)&&isEx('qual_compliance_checks',c.id)).map(c=>c.id),
+      diagnostics:{critical_checks:ccP.filter(c=>c.critical).length,critical_failed:critFail.length,critical_failed_ids:critFail.map(c=>c.id),failed:ccP.filter(c=>c.result==='fail').length,missing},
+      notes:[...(missing?[`${missing} check(s) with missing evidence count as not passed`]:[]),...(critFail.length?[`${critFail.length} critical check(s) failed or missing — 0-point band regardless of the overall rate`]:[])]});
+    if(critFail.length&&r.points!=null){r.points=0;r.band=qualBandLabel(0);r.contribution=0;}
+  }
+
+  /* weighted score — only definitive when every category has points; otherwise provisional and labelled so */
+  const totalW=cats.reduce((s,c)=>s+c.weight,0);
+  const missingCats=cats.filter(c=>c.points==null).map(c=>c.key);
+  const weighted_score=missingCats.length?null:cats.reduce((s,c)=>s+c.contribution,0);
+  const availW=cats.filter(c=>c.points!=null).reduce((s,c)=>s+c.weight,0);
+  const provisional_score=availW>0?cats.filter(c=>c.points!=null).reduce((s,c)=>s+c.contribution,0)*100/availW:null;
+  if(Math.abs(totalW-100)>1e-9)warnings.push(`Metric version weights total ${totalW}, not 100 — the version is invalid.`);
+  const zeroBand=cats.filter(c=>c.points===0).map(c=>c.key);
+  const belowPassing=cats.filter(c=>c.points!=null&&c.points<100).map(c=>c.key);
+
+  /* gates */
+  const activeRes=res.filter(r=>!r.lifted_at);
+  const lastDec=decisions[decisions.length-1]||null;
+  const confirmedInc=inc.filter(i=>i.status==='confirmed'&&(!lastDec||String(i.reviewed_at||i.reported_at)>String(lastDec.decided_at)));
+  const openInc=inc.filter(i=>i.status==='suspected'||i.status==='under_review');
+  const gates=[
+    {key:'critical_compliance',label:'Every critical compliance check passed',passed:critFail.length===0,detail:critFail.length?`${critFail.length} critical check(s) failed or missing`:(ccP.some(c=>c.critical)?'all critical checks passed':'no critical checks recorded in the period')},
+    {key:'no_unresolved_severe',label:'No unresolved severe customer or safety incident',passed:severeOpen.length===0&&openInc.length===0,detail:[severeOpen.length?`${severeOpen.length} severe customer issue(s) open`:'',openInc.length?`${openInc.length} incident(s) awaiting review`:''].filter(Boolean).join(' · ')||'none open'},
+    {key:'no_active_restriction',label:'No active restriction',passed:activeRes.length===0,detail:activeRes.length?activeRes.map(r=>r.kind+': '+r.reason).join(' · '):'none'},
+    {key:'no_confirmed_critical',label:'No confirmed automatic critical event',passed:confirmedInc.length===0,detail:confirmedInc.length?confirmedInc.map(i=>i.event_code).join(', '):'none since the last decision'}
+  ];
+  const gatesFailed=gates.filter(g=>!g.passed);
+
+  /* evidence state (§6) */
+  const E=V.evidence||{};const minEst=Number(E.min_qualified_estimates??10),minJobs=Number(E.min_completed_jobs??5),minSup=Number(E.supervised_jobs??3);
+  const completedN=jobs.filter(j=>!j.cancelled&&j.completed_at&&inP(j.completed_at)).length;
+  const estN=cats.find(c=>c.key==='sales').diagnostics.qualified_estimates;
+  const supOk=sup.filter(s=>s.reviewed_at&&s.result&&s.result!=='unsatisfactory').length;
+  const needsTrial=team.team_type!=='incumbent';
+  const critEvidence=ccP.some(c=>c.critical);
+  const evReasons=[];let evidence_state;
+  if(!team.entry_review_complete_at){evidence_state='pending_entry_review';evReasons.push('entry review not completed by the manager');}
+  else if(needsTrial&&supOk<minSup){evidence_state='supervised_trial';evReasons.push(`${supOk} of ${minSup} supervised jobs signed off`);}
+  else{
+    if(estN<minEst)evReasons.push(`${estN} of ${minEst} qualified estimates`);
+    if(completedN<minJobs)evReasons.push(`${completedN} of ${minJobs} completed jobs`);
+    if(!critEvidence)evReasons.push('no critical-compliance evidence recorded');
+    const qc=cats.find(c=>c.key==='quality');if(qc.denominator===0)evReasons.push('no job has matured through the customer-quality observation window');
+    evidence_state=evReasons.length?'pending_evidence':'decision_eligible';
+  }
+  const progress={entry_review:!!team.entry_review_complete_at,supervised:{done:supOk,min:minSup,required:needsTrial},estimates:{done:estN,min:minEst},completed_jobs:{done:completedN,min:minJobs},critical_evidence:critEvidence,quality_mature:cats.find(c=>c.key==='quality').denominator};
+
+  /* recommended outcome — precedence §7 */
+  const R=V.outcome_rules||{};const passMin=Number(R.pass_min??80),coachMin=Number(R.coaching_min??70),probMin=Number(R.probation_min??60);
+  const rank={pass:0,coaching:1,probation:2,disqualify:3};const worse=(a,b)=>rank[a]>=rank[b]?a:b;
+  const reasons=[];let rec;
+  if(confirmedInc.length){rec='disqualify';reasons.push(`confirmed critical event: ${confirmedInc.map(i=>i.event_code).join(', ')} — final decision remains Luka's after documented review`);}
+  else if(evidence_state!=='decision_eligible'||weighted_score==null){
+    rec='pending';reasons.push(evidence_state!=='decision_eligible'?`evidence: ${QEV_LABEL[evidence_state]} — ${evReasons.join('; ')}`:`weighted score not definitive — ${missingCats.map(k=>QCAT_LABEL[k]).join(', ')} without points`);
+    if(gatesFailed.length)reasons.push(`gates failed: ${gatesFailed.map(g=>g.label).join('; ')}`);
+    if(provisional_score!=null)reasons.push(`provisional score ${provisional_score.toFixed(1)} over ${availW}% of the weight — not used for any outcome`);
+  }else{
+    rec=weighted_score>=passMin?'pass':weighted_score>=coachMin?'coaching':weighted_score>=probMin?'probation':'disqualify';
+    reasons.push(`weighted score ${weighted_score.toFixed(1)} → ${QOUT_LABEL[rec]}`);
+    if(zeroBand.length){rec=worse(rec,'probation');reasons.push(`0-point band: ${zeroBand.map(k=>QCAT_LABEL[k]).join(', ')}`);}
+    if(gatesFailed.length){rec=worse(rec,'probation');reasons.push(`gate failed: ${gatesFailed.map(g=>g.label).join('; ')} — Pass is not available`);}
+    if(rec==='pass'&&belowPassing.length){rec='coaching';reasons.push(`below passing standard: ${belowPassing.map(k=>QCAT_LABEL[k]).join(', ')} — recoverable, coaching recommended`);}
+    const last2=decisions.filter(d=>d.kind!=='probation_end').slice(-2);
+    if(last2.length===2&&last2.every(d=>d.official_outcome==='coaching')&&last2[0].issue&&last2[0].issue===last2[1].issue&&rec!=='disqualify'){
+      const stillBelow=belowPassing.some(k=>String(last2[1].issue).toLowerCase().includes(k))||belowPassing.length>0;
+      if(stillBelow){rec=worse(rec,'probation');reasons.push(`coaching in two consecutive official periods for "${last2[1].issue}" and still unresolved`);}
+    }
+    if(lastDec&&lastDec.official_outcome==='probation'&&lastDec.next_review_date&&lastDec.next_review_date<=today&&rank[rec]>=rank.probation){rec='disqualify';reasons.push('probation review date reached without recovery — approved probation plan failed');}
+  }
+  const priorSnap=(D.snaps||[]).filter(s=>s.team_id===tid&&decisions.some(d=>d.snapshot_id===s.id)).sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at))).slice(-1)[0]||null;
+  const prior_score=priorSnap?priorSnap.weighted_score:null;
+  const official=lastDec?lastDec.official_outcome:null;
+  const decisionCurrent=!!lastDec&&(!lastDec.next_review_date||lastDec.next_review_date>=today);
+  const qualified_for_rock=official==='pass'&&decisionCurrent&&evidence_state==='decision_eligible'&&activeRes.length===0&&team.status==='active'&&!confirmedInc.length;
+  if(pendingExcl)warnings.push(`${pendingExcl} exclusion request(s) awaiting the manager.`);
+  const memberChange=members.some(m=>lastDec&&(String(m.created_at)>String(lastDec.decided_at)||(m.active_to&&m.active_to>dPT(lastDec.decided_at))));
+  if(memberChange)warnings.push('Membership changed since the last official decision — whether this restarts qualification is unresolved (§18.10).');
+  if(team.former_technician)warnings.push('Rebuilt team led by the former technician: same entry, trial, sample, score and gates as every other team — no bypass.');
+  return {team_id:tid,team_name:team.name,period:{start:P.start,end:P.end},computed_at:now,version:{id:V.id,version:V.version,label:V.label,status:V.status},
+    categories:cats,weighted_score,provisional_score,available_weight:availW,missing_categories:missingCats,zero_band:zeroBand,below_passing:belowPassing,
+    gates,evidence:{state:evidence_state,reasons:evReasons,progress},recommended_outcome:rec,reasons,official_outcome:official,decision_current:decisionCurrent,last_decision:lastDec?{id:lastDec.id,outcome:lastDec.official_outcome,decided_at:lastDec.decided_at,next_review_date:lastDec.next_review_date,issue:lastDec.issue}:null,
+    qualified_for_rock,prior_score,trend:(prior_score!=null&&weighted_score!=null)?weighted_score-prior_score:null,warnings,
+    counts:{members:members.filter(m=>!m.active_to).length,leads:cohort.length,jobs:jobs.length,completed:completedN,coverage_offers:cov.filter(c=>inP(c.offered_at)).length,open_actions:of(D.act).filter(a=>a.status==='open').length,active_restrictions:activeRes.length,pending_exclusions:pendingExcl}};
+}
+/* validate a version client-side (the database repeats this) */
+function qualValidateVersion(v){
+  const errs=[];const cats=v.categories||[];if(!cats.length)errs.push('no categories');
+  const total=cats.reduce((s,c)=>s+Number(c.weight_pct||0),0);if(Math.abs(total-100)>1e-9)errs.push(`weights total ${total}, must be exactly 100`);
+  cats.forEach(c=>{const b=c.bands||{};const p100=Number(b.p100),p70=Number(b.p70),p40=Number(b.p40);if([p100,p70,p40].some(isNaN)){errs.push(`${c.key}: bands incomplete`);return;}
+    if((c.direction||'higher')==='higher'?!(p100>p70&&p70>p40):!(p100<p70&&p70<p40))errs.push(`${c.key}: bands overlap or leave a gap (${p100}/${p70}/${p40})`);});
+  return errs;
+}
+
+/* ---------- auth gate (shared session with the Bridge) ---------- */
+async function bootQual(){
+  if(!sbb){toast('Connect to Supabase first',true);return;}
+  if(!Q._wired){Q._wired=true;sbb.auth.onAuthStateChange((ev,s)=>{Q.session=s||null;qRoute();});if(!TECHS.length){try{await reloadTechs();}catch(e){}}}
+  try{const {data:{session}={}}=await sbb.auth.getSession();Q.session=session||null;}catch(e){Q.session=null;}
+  await qRoute();
+}
+async function qRoute(){
+  const gate=$('#qGate'),body=$('#qBody');
+  if(!Q.session){gate.style.display='';body.style.display='none';$('#qNotMember').style.display='none';Q.role=null;return;}
+  Q.email=(Q.session.user&&Q.session.user.email)||null;
+  const {data:role,error}=await sbb.rpc('bridge_role');if(error)toast(qErr(error),true);
+  Q.role=role||null;
+  if(!Q.role){gate.style.display='';body.style.display='none';$('#qNotMember').style.display='';$('#qWhoNM').textContent=Q.email||'';return;}
+  gate.style.display='none';body.style.display='';
+  $('#qWho').textContent=`${Q.email} · ${Q.role}`;
+  const m=/[?&]team=([^&]+)/.exec(location.search);if(m){Q.sel=decodeURIComponent(m[1]);Q.tab='qteam';}
+  if(/[?&](code|team)=/.test(location.search))history.replaceState(null,'',location.pathname);
+  if(await qLoad())showQualTab(Q.tab);
+}
+$('#qSend').addEventListener('click',async()=>{
+  const email=$('#qEmail').value.trim();if(!email||!email.includes('@')){toast('Enter your work email',true);return;}
+  $('#qGateNote').textContent='Sending…';
+  const {error}=await sbb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
+  if(error){$('#qGateNote').textContent=/Signups not allowed|not allowed/i.test(error.message)?'No account for that email. The manager creates accounts in Supabase → Authentication → Users.':error.message;return;}
+  $('#qGateNote').textContent=`Link sent to ${email}. Open it on this device; you will land back here signed in.`;
+});
+async function qSignOut(){try{await sbb.auth.signOut();}catch(e){}Q.session=null;Q.role=null;qRoute();}
+$('#qSignOut').addEventListener('click',qSignOut);$('#qSignOutNM').addEventListener('click',qSignOut);
+const isMgr=()=>Q.role==='manager';
+
+/* ---------- tabs ---------- */
+function showQualTab(name){
+  Q.tab=name;
+  $$('#navQual button').forEach(x=>x.classList.toggle('on',x.dataset.tab===name));
+  $$('#qualRoot .tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
+  if(name==='qdef'){qRenderDef();return;}
+  if(!Q.loaded)return;
+  qRenderBlockers();
+  if(name==='qover')qRenderOver();
+  if(name==='qteams')qRenderTeams();
+  if(name==='qteam')qRenderTeam();
+  if(name==='qqueue')qRenderQueues();
+  if(name==='qcfg')qRenderCfg();
+}
+$('#navQual').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showQualTab(b.dataset.tab);});
+$('#qWhyDef').addEventListener('click',e=>{e.preventDefault();showQualTab('qdef');});
+function qOpen(id){Q.sel=id;showQualTab('qteam');history.replaceState(null,'',location.pathname+'?team='+encodeURIComponent(id));}
+
+/* ---------- data ---------- */
+async function qLoad(){
+  const keys=Object.keys(QTABLES);
+  const rs=await Promise.all(keys.map(k=>sbb.from(QTABLES[k]).select('*')));
+  for(let i=0;i<rs.length;i++){if(rs[i].error){toast(qErr(rs[i].error),true);Q.loaded=false;$('#qBlockers').innerHTML=`<div class="q-block">${esc(qErr(rs[i].error))}</div>`;return false;}Q[keys[i]]=rs[i].data||[];}
+  Q.ver.sort((a,b)=>a.version-b.version);Q.teams.sort((a,b)=>(a.seq||0)-(b.seq||0));
+  if(!Q.end)Q.end=today();$('#qfEnd').value=Q.end;
+  Q.loaded=true;qRefreshedAt=new Date();
+  const av=qActiveVersion();$('#qVerBadge').textContent=av?`metric v${av.version} active`:'no active metric version';
+  return true;
+}
+let qRefreshedAt=null;
+async function qReload(){await qLoad();showQualTab(Q.tab);}
+const qActiveVersion=()=>Q.ver.find(v=>v.status==='active')||null;
+function qCalcVersion(){return qActiveVersion()||Q.ver.filter(v=>v.status==='draft').slice(-1)[0]||null;}
+function qPeriod(V){const days=Number(cfgval(V?.evidence?.window_days)||28);return {start:addDaysIso(Q.end,-(days-1)),end:Q.end};}
+function qCalc(team,V){V=V||qCalcVersion();if(!V)return null;return qualCompute({team,version:V,period:qPeriod(V),now:new Date().toISOString(),data:Q});}
+const qTeam=id=>Q.teams.find(t=>t.id===id);
+const qCode=t=>'T-'+String(t.seq||'?').padStart(3,'0');
+const qLastDec=tid=>Q.dec.filter(d=>d.team_id===tid).sort((a,b)=>String(b.decided_at).localeCompare(String(a.decided_at)))[0]||null;
+const fmtTs=ts=>ts?new Date(ts).toLocaleString('en-US',{timeZone:PST_TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+const fmtD=d=>d||'—';
+const outPill=o=>`<span class="q-out ${esc(o||'none')}">${esc(QOUT_LABEL[o||'none']||o)}</span>`;
+const evPill=s=>`<span class="q-ev ${esc(s)}">${esc(QEV_LABEL[s]||s)}</span>`;
+const ptsCls=p=>p==null?'na':'p'+p;
+const stPill=s=>`<span class="br-pill ${esc(s||'proposed')}">${esc(s||'proposed')}</span>`;
+function opts(list,val,blank){return (blank!=null?`<option value="">${esc(blank)}</option>`:'')+list.map(v=>{const [k,l]=Array.isArray(v)?v:[v,v];return `<option value="${esc(k)}"${String(val??'')===String(k)?' selected':''}>${esc(l)}</option>`;}).join('');}
+function fld(label,inner,cls){return `<div class="fld${cls?' '+cls:''}"><label>${label}</label>${inner}</div>`;}
+function readForm(root){const o={};$$('[data-f]',root).forEach(i=>{const k=i.dataset.f,t=i.dataset.t||'text';let v=i.type==='checkbox'?i.checked:i.value;
+  if(t==='cents')v=toC(v);else if(t==='int')v=v===''?null:Number(v);else if(t==='num')v=v===''?null:Number(v);else if(t==='arr')v=String(v).split(',').map(s=>s.trim()).filter(Boolean);else if(t==='ts')v=v?new Date(v).toISOString():null;else if(t==='date')v=v||null;else if(t==='bool')v=v===true||v==='true';else if(t==='nullbool')v=v===''?null:v==='true';else if(typeof v==='string'){v=v.trim();if(v==='')v=null;}
+  o[k]=v;});return o;}
+async function qWrite(table,op,payload,id,okMsg){
+  let r;if(op==='insert')r=await sbb.from(table).insert(payload).select();else if(op==='update')r=await sbb.from(table).update(payload).eq('id',id).select();else if(op==='delete')r=await sbb.from(table).delete().eq('id',id);
+  if(r.error){toast(qErr(r.error),true);return null;}
+  toast(okMsg||'Saved');await qReload();return r.data&&r.data[0]||true;
+}
+const terrList=()=>{const s=new Set(['LA','OC']);Q.teams.forEach(t=>(t.territories||[]).forEach(x=>s.add(x)));TECHS.forEach(t=>String(t.areas||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>s.add(x)));return [...s];};
+const svcList=['installation','cleaning'];
+
+/* ---------- blockers banner (§15.12, §18) ---------- */
+function qRenderBlockers(){
+  const av=qActiveVersion(),cv=qCalcVersion();const items=[];
+  if(!av)items.push(`<b>No active metric version.</b> Live values use ${cv?`draft v${cv.version}`:'no configuration'} and are provisional; official decisions are blocked until the manager activates a version in <b>Configuration</b> (brief §15.11).`);
+  if(cv&&cfgval(cv.revenue?.baseline_cents)==null)items.push(`<b>Revenue-efficiency baseline unresolved</b> (§18.3) — revenue per qualified lead is shown, the category earns no points, and no weighted score is definitive until a version with an approved baseline is active.`);
+  if(cv){const u=[];if(cfgval(cv.windows?.on_time_grace_minutes)==null)u.push('on-time grace window');if(cfgval(cv.evidence?.decision_age_days)==null)u.push('decision-age cutoff for pending leads');if(cfgval(cv.outcome_rules?.probation_days)==null)u.push('probation duration');if(u.length)items.push(`Unresolved and not guessed: ${u.join(', ')} — see the §18 checklist in Configuration.`);}
+  $('#qBlockers').innerHTML=items.map(i=>`<div class="q-warn">${i}</div>`).join('');
+}
+
+/* ---------- Overview ---------- */
+function qRenderOver(){
+  const V=qCalcVersion(),P=V?qPeriod(V):null;const calcs=Q.teams.filter(t=>t.status!=='inactive').map(t=>({t,c:qCalc(t,V)}));
+  $('#qOverMeta').textContent=P?`period ${P.start} → ${P.end} · ${V.status==='active'?'metric v'+V.version:'DRAFT v'+V.version+' (provisional)'} · refreshed ${qRefreshedAt?qRefreshedAt.toLocaleTimeString('en-US',{timeZone:PST_TZ,hour:'numeric',minute:'2-digit'})+' PT':''}`:'no metric version';
+  const root=$('#qOver');if(!V){root.innerHTML='<div class="q-block">No metric version exists. Run qualification_schema.sql — it seeds draft v1.</div>';return;}
+  const qualified=calcs.filter(x=>x.c.qualified_for_rock);
+  const byOut={pass:0,coaching:0,probation:0,disqualify:0,none:0};calcs.forEach(x=>byOut[x.c.official_outcome||'none']++);
+  const byEv={pending_entry_review:0,supervised_trial:0,pending_evidence:0,decision_eligible:0};calcs.forEach(x=>byEv[x.c.evidence.state]++);
+  const restricted=calcs.filter(x=>x.c.counts.active_restrictions>0);
+  const overdue=Q.act.filter(a=>a.status==='open'&&a.due_date<today());
+  const warnN=calcs.reduce((s,x)=>s+x.c.warnings.length+x.c.categories.filter(c=>!c.complete).length,0);
+  const pairs=[];Q.teams.forEach(t=>(t.territories||[]).forEach(tr=>(t.services||[]).forEach(sv=>{if(!pairs.some(p=>p.tr===tr&&p.sv===sv))pairs.push({tr,sv});})));
+  const gaps=pairs.map(p=>({...p,n:qualified.filter(x=>(x.t.territories||[]).includes(p.tr)&&(x.t.services||[]).includes(p.sv)).length})).filter(p=>p.n===0);
+  root.innerHTML=`
+  <div class="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+    <div class="kpi ${qualified.length>=3?'a':'b'}"><div class="v">${qualified.length}<span style="font-size:16px;color:var(--ink-3)"> / 3</span></div><div class="l">Qualified teams (current Pass)</div></div>
+    <div class="kpi"><div class="v">${byEv.decision_eligible}</div><div class="l">Decision eligible</div></div>
+    <div class="kpi ${restricted.length?'c':''}"><div class="v">${restricted.length}</div><div class="l">Active restrictions</div></div>
+    <div class="kpi ${overdue.length?'c':''}"><div class="v">${overdue.length}</div><div class="l">Overdue corrective actions</div></div>
+    <div class="kpi ${warnN?'b':''}"><div class="v">${warnN}</div><div class="l">Data-completeness warnings</div></div>
+  </div>
+  <div class="br-two">
+    <div class="panel"><h3 class="pt">Teams by official outcome</h3><div class="q-mix" style="margin-top:8px">${Object.keys(byOut).map(k=>`<span>${esc(QOUT_LABEL[k])}: <b>${byOut[k]}</b></span>`).join('')}</div>
+      <h3 class="pt" style="margin-top:14px">Teams by evidence state</h3><div class="q-mix" style="margin-top:8px">${Object.keys(byEv).map(k=>`<span>${esc(QEV_LABEL[k])}: <b>${byEv[k]}</b></span>`).join('')}</div>
+      <div class="count-note" style="margin-top:10px">Provisional, Pending-Evidence, restricted, expired and inactive teams are never counted as qualified.</div></div>
+    <div class="panel"><h3 class="pt">Territory × service without a qualified team</h3>
+      ${pairs.length?(gaps.length?`<ul class="clean">${gaps.map(g=>`<li><b>${esc(g.tr)}</b> · ${esc(g.sv)} — 0 qualified teams</li>`).join('')}</ul>`:'<div class="q-ok">Every declared territory × service has at least one qualified team.</div>'):'<div class="count-note">No team declares territories and services yet.</div>'}
+      ${restricted.length?`<h3 class="pt" style="margin-top:14px">Restricted teams</h3><ul class="clean">${restricted.map(x=>`<li><a href="#" data-open="${x.t.id}">${esc(x.t.name)}</a> — ${x.c.gates.find(g=>g.key==='no_active_restriction').detail}</li>`).join('')}</ul>`:''}
+    </div>
+  </div>
+  <div class="panel"><h3 class="pt">Teams</h3>
+    <div class="twrap"><table><thead><tr><th>Team</th><th>Official</th><th>Evidence</th><th>Score</th><th>Recommended</th><th>Counts</th></tr></thead><tbody>
+    ${calcs.map(({t,c})=>`<tr class="q-linkrow" data-open="${t.id}"><td><b>${esc(t.name)}</b> <span class="count-note">${qCode(t)} · ${esc(t.team_type)}</span></td><td>${outPill(c.official_outcome)}${c.qualified_for_rock?' <span class="badge yes">counts</span>':''}</td><td>${evPill(c.evidence.state)}</td><td>${c.weighted_score!=null?`<span class="q-pts">${c.weighted_score.toFixed(1)}</span>`:c.provisional_score!=null?`<span class="count-note">prov. ${c.provisional_score.toFixed(1)}</span>`:'<span class="count-note">N/A</span>'}</td><td>${outPill(c.recommended_outcome)}</td><td class="count-note">${c.counts.leads} leads · ${c.counts.completed} completed · ${c.counts.coverage_offers} offers</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No teams yet — add one on the Teams tab.</td></tr>'}
+    </tbody></table></div></div>`;
+  root.querySelectorAll('[data-open]').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();qOpen(x.dataset.open);}));
+}
+
+/* ---------- Teams comparison ---------- */
+$('#qfEnd').addEventListener('change',()=>{Q.end=$('#qfEnd').value||today();showQualTab(Q.tab);});
+['qfTerr','qfSvc','qfType','qfOut','qfEv'].forEach(id=>$('#'+id).addEventListener('change',qRenderTeams));
+$('#qNewTeam').addEventListener('click',()=>{const f=$('#qNewTeamForm');f.style.display=f.style.display==='none'?'':'none';if(f.style.display==='')f.innerHTML=qTeamForm();});
+function qTeamForm(t){t=t||{};return `<h3 class="pt">${t.id?'Edit team':'New team'}</h3><div class="q-form">
+  ${fld('Team name','<input data-f="name" value="'+esc(t.name||'')+'" placeholder="e.g. Donat team">')}
+  ${fld('Team type','<select data-f="team_type">'+opts([['incumbent','Incumbent'],['candidate','Candidate'],['rebuilt','Rebuilt (returning leader)']],t.team_type||'candidate')+'</select>')}
+  ${fld('Leader','<input data-f="leader_name" value="'+esc(t.leader_name||'')+'" list="qTechList">')}
+  ${fld('Territories (comma)','<input data-f="territories" data-t="arr" value="'+esc((t.territories||[]).join(', '))+'" placeholder="LA, OC">')}
+  ${fld('Services (comma)','<input data-f="services" data-t="arr" value="'+esc((t.services||[]).join(', '))+'" placeholder="installation, cleaning">')}
+  ${fld('Status','<select data-f="status">'+opts([['prospective','Prospective'],['provisional','Provisional'],['inactive','Inactive']].concat(t.status==='active'?[['active','Active']]:[]).concat(t.status==='disqualified'?[['disqualified','Disqualified']]:[]),t.status||'prospective')+'</select><div class="count-note">Active and Disqualified follow official decisions.</div>')}
+  ${fld('<input type="checkbox" data-f="former_technician" data-t="bool"'+(t.former_technician?' checked':'')+'> Led by the former technician','<div class="count-note">Flag only — same rules apply.</div>')}
+  ${fld('Notes','<input data-f="notes" value="'+esc(t.notes||'')+'">','wide')}
+  </div><div class="bar tight"><button class="btn" data-act="saveteam" data-id="${esc(t.id||'')}">${t.id?'Save':'Create team'}</button></div>
+  <datalist id="qTechList">${TECHS.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>`;}
+$('#qNewTeamForm').addEventListener('click',async e=>{const b=e.target.closest('[data-act="saveteam"]');if(!b)return;const f=readForm($('#qNewTeamForm'));if(!f.name){toast('Name the team',true);return;}
+  const r=await qWrite('qual_teams','insert',f,null,'Team created — it starts at Entry Review');if(r&&r.id){$('#qNewTeamForm').style.display='none';qOpen(r.id);}});
+function qRenderTeams(){
+  const V=qCalcVersion();const tsel=$('#qfTerr');const cur=tsel.value;tsel.innerHTML='<option value="">All</option>'+terrList().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('');
+  const f={terr:tsel.value,svc:$('#qfSvc').value,type:$('#qfType').value,out:$('#qfOut').value,ev:$('#qfEv').value};
+  const rows=Q.teams.map(t=>({t,c:V?qCalc(t,V):null})).filter(({t,c})=>(!f.terr||(t.territories||[]).includes(f.terr))&&(!f.svc||(t.services||[]).includes(f.svc))&&(!f.type||t.team_type===f.type)&&(!f.out||(c&&(c.official_outcome||'none')===f.out))&&(!f.ev||(c&&c.evidence.state===f.ev)));
+  const cats=['sales','revenue','coverage','attendance','completion','quality','compliance'];
+  $('#qTeams').innerHTML=`<div class="twrap"><table><thead><tr><th>Team</th><th>Official · evidence</th><th>Score</th>${cats.map(k=>`<th title="${esc(QCAT_LABEL[k])}">${esc(QCAT_LABEL[k].split(' ')[0])}</th>`).join('')}<th>Period · n</th><th>Trend</th><th>Territories · services</th><th>Open</th><th>Next review</th></tr></thead><tbody>
+  ${rows.map(({t,c})=>{const ld=qLastDec(t.id);return `<tr class="q-linkrow" data-open="${t.id}"><td><b>${esc(t.name)}</b><div class="count-note">${qCode(t)} · ${esc(t.leader_name||'—')} · ${esc(t.team_type)}</div></td>
+    <td>${outPill(c?c.official_outcome:null)}<div style="margin-top:4px">${c?evPill(c.evidence.state):''}</div></td>
+    <td>${c&&c.weighted_score!=null?`<span class="q-score" style="font-size:22px">${c.weighted_score.toFixed(1)}</span>`:c&&c.provisional_score!=null?`<span class="count-note">prov. ${c.provisional_score.toFixed(1)}</span>`:'<span class="count-note">N/A</span>'}</td>
+    ${cats.map(k=>{const r=c?c.categories.find(x=>x.key===k):null;return `<td>${r?`<span class="q-pts ${ptsCls(r.points)}">${pct(r.value)}</span><div class="nd count-note">${r.numerator}/${r.denominator}</div>`:'—'}</td>`;}).join('')}
+    <td class="count-note">${c?`${c.period.start}→${c.period.end}<br>${c.counts.leads} leads · ${c.counts.completed} jobs`:'—'}</td>
+    <td>${c&&c.trend!=null?`<span class="q-pts ${c.trend>=0?'p100':'p0'}">${c.trend>=0?'+':''}${c.trend.toFixed(1)}</span>`:'<span class="count-note">—</span>'}</td>
+    <td class="count-note">${esc((t.territories||[]).join(', ')||'—')}<br>${esc((t.services||[]).join(', ')||'—')}</td>
+    <td class="count-note">${c?`${c.counts.active_restrictions} restr · ${c.counts.open_actions} actions`:''}</td><td class="count-note">${ld&&ld.next_review_date?ld.next_review_date:'—'}</td></tr>`;}).join('')||'<tr><td colspan="14" class="count-note">No teams match.</td></tr>'}
+  </tbody></table></div>`;
+  $$('#qTeams [data-open]').forEach(x=>x.addEventListener('click',()=>qOpen(x.dataset.open)));
+}
+
+/* ---------- Team detail ---------- */
+function qRenderTeam(){
+  const root=$('#qTeam');const t=qTeam(Q.sel);
+  if(!t){root.innerHTML=`<h2>Team</h2><div class="sub">Pick a team on the Teams tab.</div>`;return;}
+  const V=qCalcVersion();const c=V?qCalc(t,V):null;const ld=qLastDec(t.id);
+  const sec=(key,title,count,body,extra)=>`<details class="q-sec" data-sec="${key}"${Q._open[key]?' open':''}><summary>${title} <span class="count-note">${count??''}${extra?' · '+extra:''}</span></summary><div class="q-secbody">${body}</div></details>`;
+  root.innerHTML=`
+  <div class="q-team-head"><div><div class="eyebrow">${qCode(t)} · ${esc(t.team_type)}${t.former_technician?' · rebuilt team led by the former technician':''}</div><h2>${esc(t.name)}</h2>
+    <div class="q-meta"><span>leader ${esc(t.leader_name||'—')}</span><span>status ${esc(t.status)}</span><span>territories ${esc((t.territories||[]).join(', ')||'—')}</span><span>services ${esc((t.services||[]).join(', ')||'—')}</span><span>active ${fmtD(t.active_from)} → ${fmtD(t.active_to)}</span></div></div>
+    <div class="bar tight"><button class="btn ghost sm" data-act="editteam">Edit team</button></div></div>
+  <div id="qTeamEdit" class="panel" style="display:none;margin-top:12px"></div>
+  ${c?qScoreBlock(t,c,V,ld):'<div class="q-block">No metric version — nothing to compute.</div>'}
+  ${sec('roster','Roster and entry review',Q.members.filter(m=>m.team_id===t.id&&!m.active_to).length+' active',qRosterBody(t))}
+  ${sec('avail','Availability',Q.avail.filter(a=>a.team_id===t.id).length,qAvailBody(t))}
+  ${sec('leads','Leads and estimates',Q.leads.filter(l=>l.team_id===t.id).length,qLeadsBody(t,c))}
+  ${sec('appts','Appointments',Q.appts.filter(a=>a.team_id===t.id).length,qApptsBody(t))}
+  ${sec('jobs','Jobs, promise dates, margins',Q.jobs.filter(j=>j.team_id===t.id).length,qJobsBody(t,V))}
+  ${sec('cov','Coverage events',Q.cov.filter(x=>x.team_id===t.id).length,qCovBody(t))}
+  ${sec('qe','Customer-quality events',Q.qe.filter(x=>x.team_id===t.id).length,qQeBody(t))}
+  ${sec('cc','Compliance checks',Q.cc.filter(x=>x.team_id===t.id).length,qCcBody(t))}
+  ${sec('sup','Supervised jobs',Q.sup.filter(x=>x.team_id===t.id).length,qSupBody(t))}
+  ${sec('inc','Incidents and restrictions',Q.inc.filter(x=>x.team_id===t.id).length+' · '+Q.res.filter(x=>x.team_id===t.id&&!x.lifted_at).length+' active',qIncBody(t,V))}
+  ${sec('ex','Exclusions',Q.ex.filter(x=>x.team_id===t.id).length,qExBody(t))}
+  ${sec('dec','Decisions and corrective actions',Q.dec.filter(x=>x.team_id===t.id).length+' · '+Q.act.filter(x=>x.team_id===t.id&&x.status==='open').length+' open',qDecBody(t,c,V))}
+  ${sec('rev','Weekly reviews',Q.rev.filter(x=>x.team_id===t.id).length,qRevBody(t))}`;
+  $$('#qTeam details.q-sec').forEach(d=>d.addEventListener('toggle',()=>{Q._open[d.dataset.sec]=d.open;}));
+}
+function qScoreBlock(t,c,V,ld){
+  const sc=c.weighted_score;
+  return `<div class="panel" style="margin-top:14px">
+  <div class="br-two">
+    <div><div class="eyebrow">Live calculation · ${V.status==='active'?'metric v'+V.version:'DRAFT v'+V.version+' — provisional'} · ${c.period.start} → ${c.period.end}</div>
+      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <div><div class="q-score${sc==null?' na':''}">${sc!=null?sc.toFixed(1):(c.provisional_score!=null?'prov. '+c.provisional_score.toFixed(1):'N/A')}</div><div class="count-note">weighted score${sc==null&&c.provisional_score!=null?` over ${c.available_weight}% of weight — not usable for an outcome`:''}</div></div>
+        <div>${evPill(c.evidence.state)}<div class="count-note" style="margin-top:4px">${esc(c.evidence.reasons.join('; ')||'minimum evidence satisfied')}</div></div>
+        <div><div class="count-note">recommended</div>${outPill(c.recommended_outcome)}</div>
+        <div><div class="count-note">official</div>${outPill(c.official_outcome)} ${c.qualified_for_rock?'<span class="badge yes">counts toward 3</span>':''}${ld?`<div class="count-note">${fmtTs(ld.decided_at)} · ${esc(ld.reviewer_email||'')}${ld.next_review_date?' · review '+ld.next_review_date:''}</div>`:''}</div>
+      </div>
+      <ul class="clean" style="margin-top:10px">${c.reasons.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
+      ${c.warnings.map(w=>`<div class="q-warn">${esc(w)}</div>`).join('')}
+    </div>
+    <div><h3 class="pt">Gates</h3>${c.gates.map(g=>`<div class="q-gate"><span class="g ${g.passed?'ok':'fail'}">${g.passed?'pass':'FAIL'}</span><div><b>${esc(g.label)}</b><div class="count-note">${esc(g.detail)}</div></div></div>`).join('')}
+      <h3 class="pt" style="margin-top:12px">Evidence progress</h3>
+      <div class="q-mix"><span>entry review ${c.evidence.progress.entry_review?'✓':'—'}</span>${c.evidence.progress.supervised.required?`<span>supervised ${c.evidence.progress.supervised.done}/${c.evidence.progress.supervised.min}</span>`:'<span>supervised: n/a (incumbent)</span>'}<span>estimates ${c.evidence.progress.estimates.done}/${c.evidence.progress.estimates.min}</span><span>completed jobs ${c.evidence.progress.completed_jobs.done}/${c.evidence.progress.completed_jobs.min}</span><span>critical evidence ${c.evidence.progress.critical_evidence?'✓':'—'}</span><span>mature jobs ${c.evidence.progress.quality_mature}</span></div>
+    </div>
+  </div>
+  <div class="twrap" style="margin-top:14px"><table class="q-cat"><thead><tr><th>Category</th><th>Value</th><th>Num / denom</th><th>n · excl · missing</th><th>Target</th><th>Band</th><th>Points</th><th>Weight</th><th>Contribution</th><th>Data</th><th></th></tr></thead><tbody>
+  ${c.categories.map(r=>`<tr><td><b>${esc(r.label)}</b> ${stPill(r.status)}<div class="count-note">${esc(r.formula)}</div>${r.notes.map(n=>`<div class="count-note" style="color:var(--amber)">${esc(n)}</div>`).join('')}</td>
+    <td><span class="q-pts ${ptsCls(r.points)}" style="font-size:15px">${r.key==='revenue'?(r.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents)+'/lead':'N/A')+(r.value!=null?` <span class="count-note">(${pct(r.value)} of baseline)</span>`:''):pct(r.value)}</span></td>
+    <td class="nd">${r.key==='revenue'?cents(r.numerator):r.numerator} / ${r.denominator}</td><td class="nd">${r.n} · ${r.excluded} · ${r.missing}</td><td class="count-note">${esc(r.target)}</td><td class="count-note">${esc(r.band)}</td>
+    <td><span class="q-pts ${ptsCls(r.points)}">${r.points==null?'N/A':r.points}</span></td><td class="nd">${r.weight}%</td><td class="nd">${r.contribution==null?'—':r.contribution.toFixed(1)}</td>
+    <td>${r.complete?'<span class="badge yes">complete</span>':'<span class="badge uncovered">incomplete</span>'}</td>
+    <td><button class="btn ghost sm" data-act="drill" data-key="${r.key}">records</button></td></tr>
+    <tr id="qDrill_${r.key}" style="display:none"><td colspan="11"><div class="q-drill"><b>included (${r.included_ids.length}):</b> ${r.included_ids.join(', ')||'—'}<br><b>excluded (${r.excluded_ids.length}):</b> ${r.excluded_ids.join(', ')||'—'}<br><b>diagnostics:</b> ${esc(JSON.stringify(r.diagnostics))}</div></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+/* --- section bodies --- */
+function qRosterBody(t){
+  const ms=Q.members.filter(m=>m.team_id===t.id);const er=t.entry_review||{};
+  const items=[['identity','Team identity verified'],['members','Members and roles listed'],['territories','Territories confirmed'],['services','Service capabilities confirmed'],['equipment','Equipment verified'],['documents','Required documents and credentials'],['availability','Availability declared'],['payment_compliance','Payment and compliance readiness'],['approvals','Required approvals in place']];
+  return `<div class="q-form">${fld('Person','<input data-f="person_name" list="qTechList2" placeholder="name">')}${fld('Role','<select data-f="role">'+opts([['leader','Leader'],['technician','Technician'],['installer','Installer'],['helper','Helper'],['salesperson','Salesperson']],'technician')+'</select>')}${fld('Active from','<input type="date" data-f="active_from" data-t="date" value="'+today()+'">')}${fld('Credentials (comma)','<input data-f="credentials_text" placeholder="license valid, insurance valid">')}
+    <div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addmember">Add member</button></div></div>
+  <datalist id="qTechList2">${TECHS.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
+  <div class="twrap"><table><thead><tr><th>Person</th><th>Role</th><th>Active</th><th>Credentials</th><th>Approval</th><th></th></tr></thead><tbody>
+  ${ms.map(m=>`<tr><td>${esc(m.person_name)}${m.technician_id?' <span class="badge gray">board technician</span>':''}</td><td>${esc(m.role)}</td><td class="count-note">${m.active_from} → ${fmtD(m.active_to)}</td><td class="count-note">${esc((m.credentials||[]).map(c=>c.name+(c.status?' ('+c.status+')':'')).join(', ')||'—')}</td><td>${m.approval_status==='approved'?`<span class="badge yes">approved</span> <span class="count-note">${esc(m.approved_by||'')}</span>`:`<span class="badge pending">${esc(m.approval_status)}</span>`}</td>
+    <td class="q-row-act">${isMgr()&&m.approval_status!=='approved'?`<button class="btn ghost sm" data-act="approvemember" data-id="${m.id}">Approve</button>`:''}${!m.active_to?`<button class="btn ghost sm" data-act="endmember" data-id="${m.id}">End today</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No members yet.</td></tr>'}</tbody></table></div>
+  <h3 class="pt" style="margin-top:14px">Entry review (§8.A)</h3>
+  <div class="q-form" id="qEntryReview">${items.map(([k,l])=>`<div class="fld"><label><input type="checkbox" data-er="${k}"${er[k]&&er[k].done?' checked':''}> ${l}</label><input data-ern="${k}" placeholder="note / evidence" value="${esc(er[k]&&er[k].note||'')}"></div>`).join('')}</div>
+  <div class="bar tight"><button class="btn ghost sm" data-act="saveentry">Save checklist</button>${isMgr()?(t.entry_review_complete_at?`<span class="count-note">completed ${fmtTs(t.entry_review_complete_at)} by ${esc(t.entry_reviewed_by||'')}</span>`:`<button class="btn sm" data-act="completeentry">Mark entry review complete</button>`):`<span class="count-note">${t.entry_review_complete_at?'completed '+fmtTs(t.entry_review_complete_at):'completion is the manager\'s act'}</span>`}</div>`;
+}
+function qAvailBody(t){
+  const rows=Q.avail.filter(a=>a.team_id===t.id).sort((a,b)=>b.avail_date.localeCompare(a.avail_date));
+  return `<div class="count-note" style="margin-bottom:8px">Declare availability <b>before</b> offers are made. A row is locked once an offer references its date; a later change is a new row with a reason, approved by the manager, and never alters eligibility already recorded.</div>
+  <div class="q-form">${fld('Date','<input type="date" data-f="avail_date" data-t="date" value="'+today()+'">')}${fld('Territory','<select data-f="territory">'+opts(terrList(),'','all')+'</select>')}${fld('Service','<select data-f="service">'+opts(svcList,'','all')+'</select>')}${fld('Available','<select data-f="available" data-t="bool">'+opts([['true','Yes'],['false','No — unavailable']],'true')+'</select>')}${fld('Windows','<input data-f="windows" placeholder="8:00–17:00">')}${fld('Change reason (if late)','<input data-f="change_reason">')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addavail">Declare</button></div></div>
+  <div class="twrap"><table><thead><tr><th>Date</th><th>Scope</th><th>Available</th><th>Windows</th><th>Submitted</th><th>State</th></tr></thead><tbody>
+  ${rows.slice(0,60).map(a=>`<tr><td>${a.avail_date}</td><td class="count-note">${esc(a.territory||'all')} · ${esc(a.service||'all')}</td><td>${a.available?'<span class="badge yes">yes</span>':'<span class="badge rejected">no</span>'}</td><td class="count-note">${esc(a.windows||'')}</td><td class="count-note">${fmtTs(a.submitted_at)}</td><td class="count-note">${a.locked_at?'locked':''}${a.retroactive?' · retroactive (never makes an offer eligible)':''}${a.approved_by?' · change approved by '+esc(a.approved_by):''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">Nothing declared.</td></tr>'}</tbody></table></div>`;
+}
+function qLeadsBody(t,c){
+  const rows=Q.leads.filter(l=>l.team_id===t.id).sort((a,b)=>String(b.assigned_at).localeCompare(String(a.assigned_at)));const ex=id=>Q.ex.find(x=>x.source_table==='qual_leads'&&x.source_id===id);
+  return `<div class="q-form">${fld('Lead ref','<input data-f="lead_ref" class="jobref" placeholder="CRM / job ref">')}${fld('Source','<input data-f="source" placeholder="outbound, inbound, M2 bridge">')}${fld('Territory','<select data-f="territory">'+opts(terrList(),'LA')+'</select>')}${fld('Service','<select data-f="service">'+opts([['installation','Installation'],['cleaning','Cleaning'],['mixed','Mixed'],['other','Other']],'cleaning')+'</select>')}${fld('Assigned (cohort)','<input type="datetime-local" data-f="assigned_at" data-t="ts">')}${fld('Qualified','<select data-f="qualified" data-t="bool">'+opts([['true','Yes'],['false','No']],'true')+'</select>')}${fld('Qualification evidence','<input data-f="qualification_evidence" placeholder="why it counts as qualified">','wide')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addlead">Record lead</button></div></div>
+  <div class="bar tight" style="margin-bottom:8px"><button class="btn ghost sm" data-act="importbridge">Import M2 Bridge opportunities for this team</button><span class="count-note">creates pending leads for Bridge opportunities whose salesperson or technician is a member; nothing is duplicated</span></div>
+  <div class="twrap"><table><thead><tr><th>Lead</th><th>Cohort</th><th>Status</th><th>Estimates</th><th>Sold · collected</th><th>Exclusion</th><th></th></tr></thead><tbody>
+  ${rows.map(l=>{const es=Q.ests.filter(e=>e.lead_id===l.id).sort((a,b)=>a.version-b.version);const x=ex(l.id);return `<tr><td><b>${esc(l.lead_ref)}</b><div class="count-note">${esc(l.territory||'')} · ${esc(l.service)} · ${esc(l.source||'')}${l.qualified===false?' · <b>not qualified</b>':''}</div></td><td class="count-note">${fmtTs(l.assigned_at)}</td><td><span class="badge ${l.status==='won'?'sold':l.status==='pending'?'pending':'cancelled'}">${esc(l.status)}</span>${l.failure_reason?`<div class="count-note">${esc(l.failure_reason)}</div>`:''}</td><td class="count-note">${es.length?es.map(e=>`v${e.version} ${cents(e.price_cents)} ${e.outcome}`).join('<br>'):'—'}</td><td class="count-note">${cents(l.sold_revenue_cents)} · ${cents(l.collected_revenue_cents)}</td><td class="count-note">${x?`${esc(x.status)} · ${esc(x.category)}`:''}</td>
+    <td class="q-row-act"><button class="btn ghost sm" data-act="addest" data-id="${l.id}">+ estimate</button>${l.status==='pending'?`<button class="btn ghost sm" data-act="leadwon" data-id="${l.id}">Won</button><button class="btn ghost sm" data-act="leaddecl" data-id="${l.id}">Declined</button><button class="btn ghost sm" data-act="leadfail" data-id="${l.id}">Team failed</button>`:''}${l.status==='won'?`<button class="btn ghost sm" data-act="leadcollect" data-id="${l.id}">Collected $</button>`:''}${!x?`<button class="btn ghost sm" data-act="excl" data-table="qual_leads" data-id="${l.id}">Exclude…</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="7" class="count-note">No leads yet.</td></tr>'}</tbody></table></div>`;
+}
+function qApptsBody(t){
+  const rows=Q.appts.filter(a=>a.team_id===t.id).sort((a,b)=>String(b.scheduled_at).localeCompare(String(a.scheduled_at)));const leads=Q.leads.filter(l=>l.team_id===t.id);
+  return `<div class="q-form">${fld('Scheduled','<input type="datetime-local" data-f="scheduled_at" data-t="ts">')}${fld('Lead','<select data-f="lead_id">'+opts(leads.map(l=>[l.id,l.lead_ref]),'','—')+'</select>')}${fld('Territory','<select data-f="territory">'+opts(terrList(),'LA')+'</select>')}${fld('Service','<select data-f="service">'+opts(svcList,'cleaning')+'</select>')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addappt">Schedule</button></div></div>
+  <div class="twrap"><table><thead><tr><th>Scheduled</th><th>Lead</th><th>Outcome</th><th>Arrival</th><th>Reason</th><th></th></tr></thead><tbody>
+  ${rows.map(a=>`<tr data-row="${a.id}"><td>${fmtTs(a.scheduled_at)}</td><td class="count-note">${esc((leads.find(l=>l.id===a.lead_id)||{}).lead_ref||'—')}</td><td><select data-ap="outcome">${opts([['scheduled','scheduled'],['attended','attended (on time)'],['late','late'],['no_show','no-show'],['customer_reschedule','customer reschedule (excluded)'],['company_cancel','company cancellation (excluded)'],['force_majeure','force majeure (excluded)']],a.outcome)}</select></td><td><input type="datetime-local" data-ap="arrival_at" value="${a.arrival_at?new Date(a.arrival_at).toISOString().slice(0,16):''}" style="width:170px"></td><td><input data-ap="reason" value="${esc(a.reason||'')}" placeholder="required for no-show / exclusions"></td><td><button class="btn ghost sm" data-act="saveappt" data-id="${a.id}">Save</button></td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No appointments.</td></tr>'}</tbody></table></div>`;
+}
+function qJobsBody(t,V){
+  const rows=Q.jobs.filter(j=>j.team_id===t.id).sort((a,b)=>b.promised_date.localeCompare(a.promised_date));const leads=Q.leads.filter(l=>l.team_id===t.id);
+  return `<div class="q-form">${fld('Job ref','<input data-f="job_ref" class="jobref">')}${fld('Lead','<select data-f="lead_id">'+opts(leads.map(l=>[l.id,l.lead_ref]),'','—')+'</select>')}${fld('Service','<select data-f="service">'+opts([['installation','Installation'],['cleaning','Cleaning'],['mixed','Mixed'],['other','Other']],'cleaning')+'</select>')}${fld('Sold on','<input type="date" data-f="sold_at" data-t="date" value="'+today()+'">')}${fld('Promised date','<input type="date" data-f="promised_date" data-t="date">')}${fld('Revenue ($)','<input data-f="revenue_cents" data-t="cents" placeholder="e.g. 4500">')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addjob">Record job</button></div></div>
+  <div class="count-note" style="margin-bottom:8px">Costs: one per line as <span class="ui">category, amount or unknown, estimated|actual</span>. An unknown cost is never zero — the margin stays uncalculable until it is known. Installation floor ${V?.margin_rules?.installation?.floor_pct??35}% (target ${V?.margin_rules?.installation?.target_pct??40}%), cleaning floor ${V?.margin_rules?.cleaning?.floor_pct??45}%; a mixed job needs a per-service split (<span class="ui">service, revenue, cost</span> lines).</div>
+  ${rows.map(j=>{const m=qualMargin(j,V?.margin_rules);const rs=Q.resched.filter(r=>r.job_id===j.id);const x=Q.ex.find(e=>e.source_table==='qual_jobs'&&e.source_id===j.id);
+    return `<div class="q-cfg-cat" data-row="${j.id}"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(j.job_ref||'(no ref)')}</b> <span class="count-note">${esc(j.service)} · lead ${esc((leads.find(l=>l.id===j.lead_id)||{}).lead_ref||'—')} · sold ${fmtD(j.sold_at)} · revenue ${cents(j.revenue_cents)}${j.cancelled?' · <b>cancelled</b>: '+esc(j.cancel_reason):''}${x?' · exclusion '+esc(x.status):''}</span>
+      <div class="count-note">promise <b>${j.promised_date}</b>${j.current_promise_date!==j.promised_date?` → now <b>${j.current_promise_date}</b> (${rs.length} reschedule${rs.length===1?'':'s'}: ${esc(rs.map(r=>r.from_date+'→'+r.to_date+' '+r.reason).join('; '))})`:''} · completed ${j.completed_at?fmtTs(j.completed_at):'<b>not yet</b>'} · evidence ${j.completion_evidence?'✓ '+esc(j.completion_evidence):'<b>missing</b>'}</div>
+      <div class="count-note">margin — projected ${m.projected?pct(m.projected.margin_pct):'N/A'} · actual ${m.actual?pct(m.actual.margin_pct):'N/A'}${m.floor_pct!=null?` · floor ${m.floor_pct}%${m.target_pct?' / target '+m.target_pct+'%':''}`:''}${m.below_floor===true?' · <b style="color:var(--red)">below floor</b>':m.below_floor===false?' · at or above floor':''}${m.exception_ref?` · <span class="badge uncovered">Sardor exception ${esc(m.exception_ref)} — authorised, still below-floor work</span>`:''}${m.components.length?' · '+m.components.map(c=>`${c.service} ${pct(c.margin_pct)}${c.below_floor?' ↓floor':''}`).join(', '):''}${m.issues.length?` · <span style="color:var(--amber)">${esc(m.issues.join('; '))}</span>`:''}</div></div>
+      <div class="q-row-act">${!j.completed_at&&!j.cancelled?`<button class="btn ghost sm" data-act="complete" data-id="${j.id}">Complete…</button><button class="btn ghost sm" data-act="resched" data-id="${j.id}">Reschedule…</button><button class="btn ghost sm" data-act="canceljob" data-id="${j.id}">Cancel…</button>`:''}<button class="btn ghost sm" data-act="costs" data-id="${j.id}">Costs…</button><button class="btn ghost sm" data-act="exception" data-id="${j.id}">Exception ref…</button><button class="btn ghost sm" data-act="addqe" data-id="${j.id}">+ quality event</button><button class="btn ghost sm" data-act="addcc" data-id="${j.id}">+ compliance check</button>${!x?`<button class="btn ghost sm" data-act="excl" data-table="qual_jobs" data-id="${j.id}">Exclude…</button>`:''}</div></div>
+      <div id="qCosts_${j.id}" style="display:none;margin-top:8px"><textarea data-costs="${j.id}" rows="4" style="width:100%;font-family:var(--mono);font-size:12px">${esc((j.costs||[]).map(c=>`${c.category}, ${c.amount_cents==null||c.status==='unknown'?'unknown':(c.amount_cents/100)}, ${c.status||'estimated'}`).join('\n'))}</textarea>
+        ${j.service==='mixed'?`<div class="count-note">Service split (service, revenue $, cost $ or blank):</div><textarea data-mix="${j.id}" rows="2" style="width:100%;font-family:var(--mono);font-size:12px">${esc((j.service_mix||[]).map(c=>`${c.service}, ${c.revenue_cents!=null?c.revenue_cents/100:''}, ${c.cost_cents!=null?c.cost_cents/100:''}`).join('\n'))}</textarea>`:''}
+        <div class="bar tight" style="margin-top:6px"><button class="btn sm" data-act="savecosts" data-id="${j.id}">Save costs</button></div></div></div>`;}).join('')||'<div class="count-note">No jobs yet.</div>'}`;
+}
+function qCovBody(t){
+  const rows=Q.cov.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.offered_at).localeCompare(String(a.offered_at)));
+  return `<div class="count-note" style="margin-bottom:8px">One row per offer to this team. Eligibility (territory, service, availability declared before the offer) is computed by the database when the offer is recorded and never changes afterwards. Fulfilled = accepted <b>and</b> the contact/arrival obligation met.</div>
+  <div class="q-form">${fld('Offered at','<input type="datetime-local" data-f="offered_at" data-t="ts">')}${fld('Lead ref','<input data-f="lead_ref" class="jobref">')}${fld('Territory','<select data-f="territory">'+opts(terrList(),'LA')+'</select>')}${fld('Service','<select data-f="service">'+opts(svcList,'cleaning')+'</select>')}${fld('Job date','<input type="date" data-f="job_date" data-t="date">')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addcov">Record offer</button></div></div>
+  <div class="bar tight" style="margin-bottom:8px"><button class="btn ghost sm" data-act="importcov">Import from the board's Coverage log</button><span class="count-note">brings in coverage_log rows where a member was offered the job; the dispatcher then records the response</span></div>
+  <div class="twrap"><table><thead><tr><th>Offered</th><th>Lead · scope · job date</th><th>Eligible</th><th>Response</th><th>Contact met</th><th>Reason</th><th></th></tr></thead><tbody>
+  ${rows.map(c=>`<tr data-row="${c.id}"><td class="count-note">${fmtTs(c.offered_at)}</td><td class="count-note">${esc(c.lead_ref||'—')} · ${esc(c.territory||'')} ${esc(c.service||'')} · ${c.job_date}</td><td>${c.eligible?'<span class="badge yes">eligible</span>':`<span class="badge rejected" title="${esc(((c.eligibility||{}).reasons||[]).join('; '))}">not eligible</span>`}</td><td><select data-cv="response">${opts([['pending','pending'],['accepted','accepted'],['declined','declined'],['no_response','no response'],['reassigned','reassigned']],c.response)}</select></td><td><select data-cv="contact_met">${opts([['','?'],['true','yes'],['false','no']],c.contact_met==null?'':String(c.contact_met))}</select></td><td><input data-cv="failure_reason" value="${esc(c.failure_reason||'')}"></td><td class="q-row-act"><button class="btn ghost sm" data-act="savecov" data-id="${c.id}">Save</button>${c.fulfilled?'<span class="badge yes">fulfilled</span>':''}</td></tr>`).join('')||'<tr><td colspan="7" class="count-note">No offers recorded.</td></tr>'}</tbody></table></div>`;
+}
+function qQeBody(t){
+  const rows=Q.qe.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.opened_at).localeCompare(String(a.opened_at)));const jobs=Q.jobs.filter(j=>j.team_id===t.id);
+  return `<div class="count-note" style="margin-bottom:8px">Add events from the job's <b>+ quality event</b> button. A job with several events counts once in the rate; every event and cost stays here. Only the manager rules an issue substantiated.</div>
+  <div class="twrap"><table><thead><tr><th>Opened</th><th>Job</th><th>Type · severity</th><th>Substantiation</th><th>Responsible · cost</th><th>Status</th><th>Evidence</th><th></th></tr></thead><tbody>
+  ${rows.map(e=>`<tr data-row="${e.id}"><td class="count-note">${fmtTs(e.opened_at)}</td><td class="count-note">${esc((jobs.find(j=>j.id===e.job_id)||{}).job_ref||'—')}</td><td>${esc(e.type)} · <b>${esc(e.severity)}</b></td><td>${isMgr()?`<select data-qe="substantiation">${opts([['pending','pending'],['substantiated','substantiated'],['unsubstantiated','unsubstantiated']],e.substantiation)}</select>`:esc(e.substantiation)}</td><td class="count-note">${esc(e.responsible_party||'—')} · ${cents(e.cost_cents)}</td><td><select data-qe="status">${opts([['open','open'],['closed','closed']],e.status)}</select></td><td><input data-qe="evidence" value="${esc(e.evidence||'')}"></td><td><button class="btn ghost sm" data-act="saveqe" data-id="${e.id}">Save</button></td></tr>`).join('')||'<tr><td colspan="8" class="count-note">No customer-quality events.</td></tr>'}</tbody></table></div>`;
+}
+function qCcBody(t){
+  const rows=Q.cc.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.checked_at).localeCompare(String(a.checked_at)));const jobs=Q.jobs.filter(j=>j.team_id===t.id);
+  const reqs=['authorization','approved pricing/discounts','financing disclosure','payment handling','margin approval','safety documentation','estimate acceptance','start authorization','completion evidence'];
+  return `<div class="q-form">${fld('Requirement','<input data-f="requirement" list="qReqList">')}<datalist id="qReqList">${reqs.map(r=>`<option value="${r}">`).join('')}</datalist>${fld('Job','<select data-f="job_id">'+opts(jobs.map(j=>[j.id,j.job_ref||j.id.slice(0,8)]),'','—')+'</select>')}${fld('Critical','<select data-f="critical" data-t="bool">'+opts([['false','no'],['true','yes — critical']],'false')+'</select>')}${fld('Result','<select data-f="result">'+opts([['missing','missing (not a pass)'],['pass','pass'],['fail','fail']],'missing')+'</select>')}${fld('Evidence','<input data-f="evidence" placeholder="required for a pass">')}${fld('Reviewer','<input data-f="reviewer">')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addccform">Record check</button></div></div>
+  <div class="twrap"><table><thead><tr><th>Checked</th><th>Requirement</th><th>Job</th><th>Critical</th><th>Result</th><th>Evidence · reviewer</th></tr></thead><tbody>
+  ${rows.map(c=>`<tr><td class="count-note">${fmtTs(c.checked_at)}</td><td>${esc(c.requirement)}</td><td class="count-note">${esc((jobs.find(j=>j.id===c.job_id)||{}).job_ref||'—')}</td><td>${c.critical?'<span class="badge potentially_lost">critical</span>':'<span class="badge gray">non-critical</span>'}</td><td><span class="badge ${c.result==='pass'?'yes':c.result==='fail'?'cancelled':'uncovered'}">${esc(c.result)}</span></td><td class="count-note">${esc(c.evidence||'—')} · ${esc(c.reviewer||'')}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No checks recorded — critical-compliance evidence is part of the minimum evidence.</td></tr>'}</tbody></table></div>`;
+}
+function qSupBody(t){
+  const rows=Q.sup.filter(x=>x.team_id===t.id).sort((a,b)=>b.observed_at.localeCompare(a.observed_at));const jobs=Q.jobs.filter(j=>j.team_id===t.id);
+  const notes=['sales_handling','workmanship','customer_interaction','documentation','safety','feedback'];
+  return `<div class="q-form">${fld('Observed on','<input type="date" data-f="observed_at" data-t="date" value="'+today()+'">')}${fld('Observer','<input data-f="observer">')}${fld('Job','<select data-f="job_id">'+opts(jobs.map(j=>[j.id,j.job_ref||j.id.slice(0,8)]),'','—')+'</select>')}${fld('Result','<select data-f="result">'+opts([['','—'],['satisfactory','satisfactory'],['needs_correction','needs correction'],['unsatisfactory','unsatisfactory']],'')+'</select>')}${notes.map(n=>fld(n.replace('_',' '),`<input data-note="${n}">`)).join('')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addsup">Record supervised job</button></div></div>
+  <div class="twrap"><table><thead><tr><th>Observed</th><th>Observer</th><th>Job</th><th>Notes</th><th>Result</th><th>Sign-off</th></tr></thead><tbody>
+  ${rows.map(s=>`<tr><td>${s.observed_at}</td><td>${esc(s.observer)}</td><td class="count-note">${esc((jobs.find(j=>j.id===s.job_id)||{}).job_ref||'—')}</td><td class="count-note">${esc(Object.entries(s.notes||{}).filter(([k,v])=>v).map(([k,v])=>k.replace('_',' ')+': '+v).join(' · ')||'—')}</td><td>${esc(s.result||'—')}</td><td>${s.reviewed_at?`<span class="badge yes">signed off</span> <span class="count-note">${esc(s.reviewed_by||'')}</span>`:isMgr()?`<button class="btn ghost sm" data-act="signsup" data-id="${s.id}">Sign off</button>`:'<span class="badge pending">awaiting review</span>'}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No supervised jobs — a new or rebuilt team needs three signed off before the proof period.</td></tr>'}</tbody></table></div>`;
+}
+function qIncBody(t,V){
+  const inc=Q.inc.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.reported_at).localeCompare(String(a.reported_at)));const res=Q.res.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.imposed_at).localeCompare(String(a.imposed_at)));
+  const codes=(V?.critical_events||[]).map(e=>[e.code,e.label]).concat([['other','Other']]);
+  return `<div class="count-note" style="margin-bottom:8px">The software flags a suspected critical event and can restrict the team; it never fabricates a finding. Confirmed or dismissed is the manager's documented review, and disqualification is still a separate official decision.</div>
+  <div class="q-form">${fld('Event','<select data-f="event_code">'+opts(codes,'other')+'</select>')}${fld('Description','<input data-f="description">','wide')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addinc">Report incident</button></div></div>
+  <div class="twrap" style="margin-bottom:12px"><table><thead><tr><th>Reported</th><th>Event</th><th>Description</th><th>Status</th><th>Review</th><th></th></tr></thead><tbody>
+  ${inc.map(i=>`<tr><td class="count-note">${fmtTs(i.reported_at)}</td><td><b>${esc(i.event_code)}</b></td><td>${esc(i.description)}</td><td><span class="badge ${i.status==='confirmed'?'confirmed_lost':i.status==='dismissed'?'gray':'potentially_lost'}">${esc(i.status.replace('_',' '))}</span></td><td class="count-note">${i.review_note?esc(i.review_note)+' · '+esc(i.reviewed_by||''):''}</td><td class="q-row-act">${isMgr()&&!['confirmed','dismissed'].includes(i.status)?`<button class="btn ghost sm" data-act="increview" data-id="${i.id}">Under review</button><button class="btn ghost sm" data-act="incconfirm" data-id="${i.id}">Confirm…</button><button class="btn ghost sm" data-act="incdismiss" data-id="${i.id}">Dismiss…</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No incidents.</td></tr>'}</tbody></table></div>
+  <h3 class="pt">Restrictions</h3>
+  ${isMgr()?`<div class="q-form">${fld('Kind','<input data-f="kind" value="no_new_assignments">')}${fld('Reason','<input data-f="reason">','wide')}${fld('Linked incident','<select data-f="incident_id">'+opts(inc.map(i=>[i.id,i.event_code+' · '+fmtTs(i.reported_at)]),'','—')+'</select>')}${fld('<input type="checkbox" data-f="affects_core_coverage" data-t="bool"> Affects core coverage','')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addres">Impose restriction</button></div></div>`:'<div class="count-note">Only the manager imposes or lifts restrictions.</div>'}
+  <div class="twrap"><table><thead><tr><th>Imposed</th><th>Kind</th><th>Reason</th><th>Core coverage</th><th>Lifted</th><th></th></tr></thead><tbody>
+  ${res.map(r=>`<tr><td class="count-note">${fmtTs(r.imposed_at)} · ${esc(r.imposed_by||'')}</td><td>${esc(r.kind)}</td><td>${esc(r.reason)}</td><td>${r.affects_core_coverage?'<span class="badge potentially_lost">yes</span>':'no'}</td><td class="count-note">${r.lifted_at?fmtTs(r.lifted_at)+' · '+esc(r.lifted_by||'')+' · '+esc(r.lift_reason||''):'<b>active</b>'}</td><td>${isMgr()&&!r.lifted_at?`<button class="btn ghost sm" data-act="liftres" data-id="${r.id}">Lift…</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No restrictions.</td></tr>'}</tbody></table></div>`;
+}
+function qExBody(t){
+  const rows=Q.ex.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.requested_at).localeCompare(String(a.requested_at)));
+  return `<div class="count-note" style="margin-bottom:8px">Every record removed from a denominator is a row here — source, reason, who asked, who approved, when. Only approved exclusions take effect; the source record is never deleted. Exclusion rate for this team: ${rows.filter(x=>x.status==='approved').length} approved of ${rows.length} requested.</div>
+  <div class="twrap"><table><thead><tr><th>Requested</th><th>Source</th><th>Category · reason</th><th>Status</th><th>Decision</th><th></th></tr></thead><tbody>
+  ${rows.map(x=>`<tr><td class="count-note">${fmtTs(x.requested_at)} · ${esc(x.requested_by||'')}</td><td class="count-note">${esc(x.source_table.replace('qual_',''))} ${esc(x.source_id.slice(0,8))}</td><td><b>${esc(x.category)}</b> — ${esc(x.reason)}</td><td><span class="badge ${x.status==='approved'?'yes':x.status==='rejected'?'cancelled':'pending'}">${esc(x.status)}</span></td><td class="count-note">${x.decided_by?esc(x.decided_by)+' · '+fmtTs(x.decided_at)+(x.decision_note?' · '+esc(x.decision_note):''):''}</td><td class="q-row-act">${isMgr()&&x.status==='pending'?`<button class="btn ghost sm" data-act="exapprove" data-id="${x.id}">Approve</button><button class="btn ghost sm" data-act="exreject" data-id="${x.id}">Reject</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No exclusions requested.</td></tr>'}</tbody></table></div>`;
+}
+function qDecBody(t,c,V){
+  const decs=Q.dec.filter(x=>x.team_id===t.id).sort((a,b)=>String(b.decided_at).localeCompare(String(a.decided_at)));const acts=Q.act.filter(x=>x.team_id===t.id).sort((a,b)=>a.due_date.localeCompare(b.due_date));const av=qActiveVersion();
+  const decide=isMgr()?(av?`<div class="panel" style="background:var(--panel-2)"><h3 class="pt">Official decision — freezes the current snapshot (metric v${av.version})</h3>
+    ${c&&c.version.id!==av.id?'<div class="q-warn">The live calculation above uses a draft; the snapshot will be computed with the ACTIVE version.</div>':''}
+    ${c&&c.recommended_outcome==='pending'?`<div class="q-warn">Recommended: none yet — ${esc(c.reasons[0]||'')}. You can still record Coaching, Probation or Disqualify; <b>Pass is refused</b> until the team is Decision Eligible with a definitive score and every gate passed.</div>`:''}
+    <div class="q-form">${fld('Kind','<select data-f="kind">'+opts([['official','Official qualification'],['requalification','Requalification'],['probation_end','End of probation']],'official')+'</select>')}${fld('Official outcome','<select data-f="official_outcome" id="qDecOut">'+opts([['pass','Pass'],['coaching','Coaching'],['probation','Probation'],['disqualify','Disqualify']],c&&c.recommended_outcome!=='pending'?c.recommended_outcome:'coaching')+'</select>')}${fld('Reason','<input data-f="reason" placeholder="why — refers to the evidence">','wide')}${fld('Restrictions (if any)','<input data-f="restrictions">')}${fld('Next review date','<input type="date" data-f="next_review_date" data-t="date" value="'+addDaysIso(today(),28)+'">')}
+      ${fld('Named issue (coaching/probation)','<input data-f="issue" placeholder="e.g. attendance">')}${fld('Corrective action','<input data-f="action_text">','wide')}${fld('Owner','<input data-f="action_owner">')}${fld('Action due','<input type="date" data-f="action_due" data-t="date">')}</div>
+    <div class="bar tight"><button class="btn" data-act="decide">Freeze snapshot and record the decision</button><span class="count-note">records your identity, the time, the period, metric v${av.version} and the frozen evidence</span></div></div>`:'<div class="q-block">No active metric version — activate one in Configuration before recording an official decision.</div>'):'<div class="count-note">Official decisions are recorded by the manager.</div>';
+  return `${decide}
+  <h3 class="pt" style="margin-top:12px">Decision history</h3>
+  <div class="twrap" style="margin-bottom:12px"><table><thead><tr><th>Decided</th><th>Kind</th><th>Recommended → official</th><th>Period · version</th><th>Reason</th><th>Issue / next review</th><th>Snapshot</th></tr></thead><tbody>
+  ${decs.map(d=>{const v=Q.ver.find(x=>x.id===d.version_id);const s=Q.snaps.find(x=>x.id===d.snapshot_id);return `<tr><td class="count-note">${fmtTs(d.decided_at)}<br>${esc(d.reviewer_email||'')} (${esc(d.reviewer_role||'')})</td><td>${esc(d.kind)}</td><td>${outPill(d.recommended_outcome||'pending')} → ${outPill(d.official_outcome)}</td><td class="count-note">${d.period_start} → ${d.period_end}<br>metric v${v?v.version:'?'}</td><td>${esc(d.reason)}${d.restrictions?`<div class="count-note">restrictions: ${esc(d.restrictions)}</div>`:''}</td><td class="count-note">${esc(d.issue||'—')}<br>${d.next_review_date||''}</td><td>${s?`<span class="q-frozen">score ${s.weighted_score!=null?Number(s.weighted_score).toFixed(1):'N/A'} · ${esc(QEV_LABEL[s.evidence_state]||s.evidence_state)}</span> <button class="btn ghost sm" data-act="viewsnap" data-id="${s.id}">view</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="7" class="count-note">No official decision yet.</td></tr>'}</tbody></table></div>
+  <div id="qSnapView"></div>
+  <h3 class="pt">Corrective actions</h3>
+  <div class="twrap"><table><thead><tr><th>Due</th><th>Issue · action</th><th>Owner</th><th>Status</th><th>ClickUp</th><th></th></tr></thead><tbody>
+  ${acts.map(a=>`<tr><td class="${a.status==='open'&&a.due_date<today()?'':''}">${a.due_date}${a.status==='open'&&a.due_date<today()?' <span class="badge cancelled">overdue</span>':''}<div class="count-note">review ${a.next_review_date||'—'}</div></td><td><b>${esc(a.metric_key||'')}</b> ${esc(a.action)}</td><td>${esc(a.owner)}</td><td><span class="badge ${a.status==='done'?'yes':a.status==='open'?'pending':'gray'}">${esc(a.status)}</span>${a.completion_evidence?`<div class="count-note">${esc(a.completion_evidence)} · ${esc(a.closed_by||'')}</div>`:''}</td><td class="count-note">${a.clickup_task_id?esc(a.clickup_task_id):'<button class="btn ghost sm" data-act="clickup" data-id="'+a.id+'">link task</button>'}</td><td>${isMgr()&&a.status==='open'?`<button class="btn ghost sm" data-act="closeact" data-id="${a.id}">Close with evidence…</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="count-note">No corrective actions.</td></tr>'}</tbody></table></div>`;
+}
+function qRevBody(t){
+  const rows=Q.rev.filter(x=>x.team_id===t.id).sort((a,b)=>b.held_at.localeCompare(a.held_at));
+  return `<div class="q-form">${fld('Held on','<input type="date" data-f="held_at" data-t="date" value="'+today()+'">')}${fld('Kind','<select data-f="kind">'+opts([['weekly','Weekly review'],['shadow','Shadow review (no decisions)'],['official','Official review']],'weekly')+'</select>')}${fld('Participants','<input data-f="participants">')}${fld('Observations','<input data-f="observations">','wide')}${fld('Decisions / actions','<input data-f="decisions">','wide')}<div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addrev">Record review</button></div></div>
+  <div class="twrap"><table><thead><tr><th>Held</th><th>Kind</th><th>Participants</th><th>Observations</th><th>Decisions</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.held_at}</td><td>${esc(r.kind)}</td><td class="count-note">${esc(r.participants||'')}</td><td>${esc(r.observations||'')}</td><td>${esc(r.decisions||'')}</td></tr>`).join('')||'<tr><td colspan="5" class="count-note">No reviews recorded.</td></tr>'}</tbody></table></div>`;
+}
+
+/* ---------- Team detail actions (one delegated handler) ---------- */
+function parseCosts(txt){return String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{const [cat,amt,st]=line.split(',').map(x=>(x||'').trim());const unknown=!amt||/^unk/i.test(amt);const c=unknown?null:toC(amt);return {category:cat||'other',amount_cents:c,status:unknown||c==null?'unknown':(st==='actual'?'actual':'estimated')};});}
+function parseMix(txt){return String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{const [svc,rev,cost]=line.split(',').map(x=>(x||'').trim());return {service:svc,revenue_cents:toC(rev),cost_cents:cost?toC(cost):null};});}
+$('#qTeam').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,id=b.dataset.id;const t=qTeam(Q.sel);if(!t)return;const sec=b.closest('details')||$('#qTeam');
+  const ask=(msg,def)=>{const v=window.prompt(msg,def||'');return v==null?null:v.trim();};
+  if(act==='drill'){const r=$('#qDrill_'+b.dataset.key);if(r)r.style.display=r.style.display==='none'?'':'none';return;}
+  if(act==='editteam'){const box=$('#qTeamEdit');box.style.display=box.style.display==='none'?'':'none';box.innerHTML=qTeamForm(t);return;}
+  if(act==='saveteam'){const f=readForm($('#qTeamEdit'));if(!f.name){toast('Name the team',true);return;}await qWrite('qual_teams','update',f,t.id,'Team saved');return;}
+  if(act==='addmember'){const f=readForm(sec);if(!f.person_name){toast('Name the person',true);return;}const tech=TECHS.find(x=>x.name.toLowerCase()===f.person_name.toLowerCase());
+    const creds=String(f.credentials_text||'').split(',').map(s=>s.trim()).filter(Boolean).map(s=>{const m=/^(.*?)\s*\((valid|expired|missing)\)$/i.exec(s);return m?{name:m[1],status:m[2].toLowerCase()}:{name:s,status:'valid'};});delete f.credentials_text;
+    await qWrite('qual_team_members','insert',{...f,team_id:t.id,technician_id:tech?tech.id:null,credentials:creds},null,'Member added');return;}
+  if(act==='approvemember'){await qWrite('qual_team_members','update',{approval_status:'approved'},id,'Member approved');return;}
+  if(act==='endmember'){if(!confirm('End this membership today? History is kept.'))return;await qWrite('qual_team_members','update',{active_to:today()},id,'Membership ended');return;}
+  if(act==='saveentry'||act==='completeentry'){const er={};$$('[data-er]',sec).forEach(cb=>{er[cb.dataset.er]={done:cb.checked,note:$(`[data-ern="${cb.dataset.er}"]`,sec).value.trim()||null};});
+    const p={entry_review:er};if(act==='completeentry'){if(!Object.values(er).every(x=>x.done)){toast('Every item must be checked before the entry review is complete',true);return;}p.entry_review_complete_at=new Date().toISOString();if(t.status==='prospective')p.status='provisional';}
+    await qWrite('qual_teams','update',p,t.id,act==='completeentry'?'Entry review complete — the team is provisional':'Checklist saved');return;}
+  if(act==='addavail'){const f=readForm(sec);if(!f.avail_date){toast('Pick a date',true);return;}await qWrite('qual_availability','insert',{...f,team_id:t.id},null,'Availability declared');return;}
+  if(act==='addlead'){const f=readForm(sec);if(!f.lead_ref){toast('Enter the lead ref',true);return;}if(!f.assigned_at)f.assigned_at=new Date().toISOString();await qWrite('qual_leads','insert',{...f,team_id:t.id},null,'Lead recorded');return;}
+  if(act==='addest'){const l=Q.leads.find(x=>x.id===id);const v=Q.ests.filter(x=>x.lead_id===id).length+1;const p=ask(`Estimate v${v} for ${l.lead_ref} — price ($)`);if(p==null)return;await qWrite('qual_lead_estimates','insert',{lead_id:id,version:v,price_cents:toC(p)},null,`Estimate v${v} added — still one opportunity`);return;}
+  if(act==='leadwon'){const p=ask('Sold revenue ($)');if(p==null)return;const c=toC(p);if(c==null){toast('Enter the amount',true);return;}const est=Q.ests.filter(x=>x.lead_id===id).sort((a,b)=>b.version-a.version)[0];await qWrite('qual_leads','update',{status:'won',sold_revenue_cents:c},id,'Lead won');if(est&&est.outcome==='pending')await sbb.from('qual_lead_estimates').update({outcome:'accepted'}).eq('id',est.id);return;}
+  if(act==='leaddecl'){const r=ask('Customer declined — note (optional)');if(r==null)return;await qWrite('qual_leads','update',{status:'declined',notes:r||null},id,'Recorded as declined by the customer');return;}
+  if(act==='leadfail'){const r=ask('How did the team fail its responsibility? (required)');if(!r){toast('A reason is required',true);return;}await qWrite('qual_leads','update',{status:'team_failed',failure_reason:r},id,'Recorded as team failure — counts against close rate');return;}
+  if(act==='leadcollect'){const p=ask('Collected revenue ($) — reported separately from sold');if(p==null)return;await qWrite('qual_leads','update',{collected_revenue_cents:toC(p)},id,'Collected revenue recorded');return;}
+  if(act==='excl'){const cat=ask('Exclusion category: duplicate | not_qualified | customer_cancel_early | company_cancel | pending_young | customer_reschedule | force_majeure | other','duplicate');if(!cat)return;const r=ask('Reason (required)');if(!r){toast('A reason is required',true);return;}await qWrite('qual_exclusions','insert',{team_id:t.id,source_table:b.dataset.table,source_id:id,category:cat,reason:r},null,'Exclusion requested — the manager approves it');return;}
+  if(act==='exapprove'||act==='exreject'){const n=ask(act==='exapprove'?'Approval note (optional)':'Rejection note (optional)');if(n==null)return;await qWrite('qual_exclusions','update',{status:act==='exapprove'?'approved':'rejected',decision_note:n||null},id,act==='exapprove'?'Exclusion approved':'Exclusion rejected');return;}
+  if(act==='importbridge'){await qImportBridge(t);return;}
+  if(act==='addappt'){const f=readForm(sec);if(!f.scheduled_at){toast('Pick the scheduled time',true);return;}await qWrite('qual_appointments','insert',{...f,team_id:t.id,lead_id:f.lead_id||null},null,'Appointment scheduled');return;}
+  if(act==='saveappt'){const row=b.closest('tr');const p={outcome:$('[data-ap="outcome"]',row).value,reason:$('[data-ap="reason"]',row).value.trim()||null};const ar=$('[data-ap="arrival_at"]',row).value;p.arrival_at=ar?new Date(ar).toISOString():null;await qWrite('qual_appointments','update',p,id,'Appointment saved');return;}
+  if(act==='addjob'){const f=readForm(sec);if(!f.promised_date){toast('Enter the promised date',true);return;}await qWrite('qual_jobs','insert',{...f,team_id:t.id,lead_id:f.lead_id||null,current_promise_date:f.promised_date},null,'Job recorded');return;}
+  if(act==='complete'){const ev=ask('Completion evidence (photo/report reference) — required for a compliant completion');if(ev==null)return;const when=ask('Completed at (YYYY-MM-DD, blank = now)','');if(when==null)return;const ts=when?new Date(when+'T12:00:00').toISOString():new Date().toISOString();await qWrite('qual_jobs','update',{completed_at:ts,completion_evidence:ev||null},id,'Job completed'+(ev?'':' — without evidence it does not count as compliant'));return;}
+  if(act==='resched'){const j=Q.jobs.find(x=>x.id===id);const to=ask('New promise date (YYYY-MM-DD)');if(!to)return;const r=ask('Reason (customer-approved reschedule / scope change)');if(!r){toast('A reason is required',true);return;}await qWrite('qual_job_reschedules','insert',{job_id:id,from_date:j.current_promise_date,to_date:to,reason:r},null,'Reschedule recorded — the original promise date is kept');return;}
+  if(act==='canceljob'){const r=ask('Cancellation reason (required)');if(!r)return;await qWrite('qual_jobs','update',{cancelled:true,cancel_reason:r},id,'Job cancelled');return;}
+  if(act==='costs'){const box=$('#qCosts_'+id);box.style.display=box.style.display==='none'?'':'none';return;}
+  if(act==='savecosts'){const p={costs:parseCosts($(`[data-costs="${id}"]`).value)};const mx=$(`[data-mix="${id}"]`);if(mx)p.service_mix=parseMix(mx.value);await qWrite('qual_jobs','update',p,id,'Costs saved');return;}
+  if(act==='exception'){const r=ask('Authorised margin exception reference (Bridge approval id / Sardor confirmation). Blank clears.');if(r==null)return;await qWrite('qual_jobs','update',{margin_exception_ref:r||null},id,'Exception reference saved — the work stays visible as below-floor');return;}
+  if(act==='addqe'){const type=ask('Type: complaint | callback | refund | damage | corrective_work | other','complaint');if(!type)return;const sev=ask('Severity: low | medium | severe','low');if(!sev)return;const cost=ask('Cost ($, optional)','');if(cost==null)return;const ev=ask('Evidence / description');if(ev==null)return;await qWrite('qual_quality_events','insert',{team_id:t.id,job_id:id,type,severity:sev,cost_cents:toC(cost),evidence:ev||null},null,'Quality event recorded');return;}
+  if(act==='saveqe'){const row=b.closest('tr');const p={status:$('[data-qe="status"]',row).value,evidence:$('[data-qe="evidence"]',row).value.trim()||null};const s=$('[data-qe="substantiation"]',row);if(s)p.substantiation=s.value;await qWrite('qual_quality_events','update',p,id,'Quality event saved');return;}
+  if(act==='addcc'){const req=ask('Requirement (e.g. start authorization, completion evidence)');if(!req)return;const crit=confirm('Is this a CRITICAL check? (OK = critical)');const res=ask('Result: pass | fail | missing','missing');if(!res)return;const ev=ask('Evidence (required for a pass)');if(ev==null)return;await qWrite('qual_compliance_checks','insert',{team_id:t.id,job_id:id,requirement:req,critical:crit,result:res,evidence:ev||null,reviewer:Q.email},null,'Check recorded');return;}
+  if(act==='addccform'){const f=readForm(sec);if(!f.requirement){toast('Name the requirement',true);return;}await qWrite('qual_compliance_checks','insert',{...f,team_id:t.id,job_id:f.job_id||null,reviewer:f.reviewer||Q.email},null,'Check recorded');return;}
+  if(act==='addsup'){const f=readForm(sec);if(!f.observer){toast('Name the observer',true);return;}const notes={};$$('[data-note]',sec).forEach(i=>{if(i.value.trim())notes[i.dataset.note]=i.value.trim();});await qWrite('qual_supervised_jobs','insert',{...f,team_id:t.id,job_id:f.job_id||null,result:f.result||null,notes},null,'Supervised job recorded');return;}
+  if(act==='signsup'){const s=Q.sup.find(x=>x.id===id);let res=s.result;if(!res){res=ask('Result: satisfactory | needs_correction | unsatisfactory','satisfactory');if(!res)return;}await qWrite('qual_supervised_jobs','update',{result:res,reviewed_at:new Date().toISOString()},id,'Signed off');return;}
+  if(act==='addinc'){const f=readForm(sec);if(!f.description){toast('Describe the event',true);return;}await qWrite('qual_incidents','insert',{team_id:t.id,event_code:f.event_code,description:f.description},null,'Incident reported — Luka reviews it; nothing is decided automatically');return;}
+  if(act==='increview'){await qWrite('qual_incidents','update',{status:'under_review'},id,'Under review');return;}
+  if(act==='incconfirm'||act==='incdismiss'){const n=ask(act==='incconfirm'?'Review note confirming the event (required)':'Review note dismissing the event (required)');if(!n)return;await qWrite('qual_incidents','update',{status:act==='incconfirm'?'confirmed':'dismissed',review_note:n},id,act==='incconfirm'?'Confirmed — disqualification is still your separate decision':'Dismissed');return;}
+  if(act==='addres'){const f=readForm(sec);if(!f.reason){toast('A reason is required',true);return;}await qWrite('qual_restrictions','insert',{team_id:t.id,kind:f.kind||'no_new_assignments',reason:f.reason,incident_id:f.incident_id||null,affects_core_coverage:!!f.affects_core_coverage},null,'Restriction imposed');return;}
+  if(act==='liftres'){const r=ask('Reason for lifting (required)');if(!r)return;await qWrite('qual_restrictions','update',{lifted_at:new Date().toISOString(),lift_reason:r},id,'Restriction lifted');return;}
+  if(act==='decide'){await qDecide(t,sec);return;}
+  if(act==='viewsnap'){const s=Q.snaps.find(x=>x.id===id);$('#qSnapView').innerHTML=s?`<div class="panel" style="background:var(--panel-2)"><div class="eyebrow">Frozen snapshot · ${fmtTs(s.created_at)} · ${s.period_start} → ${s.period_end}</div><div class="q-drill" style="max-height:360px">${esc(JSON.stringify(s.computed,null,1))}</div></div>`:'';return;}
+  if(act==='closeact'){const ev=ask('Completion evidence (required)');if(!ev)return;await qWrite('qual_actions','update',{status:'done',completion_evidence:ev},id,'Action closed');return;}
+  if(act==='clickup'){const v=ask('ClickUp task id (kept so the task is never duplicated; closing it there changes nothing here)');if(!v)return;await qWrite('qual_actions','update',{clickup_task_id:v},id,'Linked');return;}
+  if(act==='addrev'){const f=readForm(sec);await qWrite('qual_reviews','insert',{...f,team_id:t.id},null,'Review recorded');return;}
+  if(act==='addcov'){const f=readForm(sec);if(!f.job_date){toast('Enter the job date',true);return;}if(!f.offered_at)f.offered_at=new Date().toISOString();await qWrite('qual_coverage_events','insert',{...f,team_id:t.id},null,'Offer recorded — eligibility frozen');return;}
+  if(act==='savecov'){const row=b.closest('tr');const cm=$('[data-cv="contact_met"]',row).value;await qWrite('qual_coverage_events','update',{response:$('[data-cv="response"]',row).value,contact_met:cm===''?null:cm==='true',failure_reason:$('[data-cv="failure_reason"]',row).value.trim()||null},id,'Offer updated');return;}
+  if(act==='importcov'){await qImportCoverage(t);return;}
+});
+async function qDecide(t,sec){
+  const av=qActiveVersion();if(!av){toast('No active metric version',true);return;}
+  const f=readForm(sec.querySelector('.panel')||sec);
+  if(!f.reason){toast('A reason is required',true);return;}
+  if(['coaching','probation'].includes(f.official_outcome)&&(!f.issue||!f.action_text||!f.action_owner||!f.action_due||!f.next_review_date)){toast(`${QOUT_LABEL[f.official_outcome]} needs a named issue, corrective action, owner, due date and next review date`,true);return;}
+  const c=qCalc(t,av);
+  if(f.official_outcome==='pass'&&(c.evidence.state!=='decision_eligible'||c.weighted_score==null||c.gates.some(g=>!g.passed))){toast('Pass is refused: '+(c.evidence.state!=='decision_eligible'?QEV_LABEL[c.evidence.state]:c.weighted_score==null?'the score is not definitive':'a gate failed'),true);return;}
+  if(!confirm(`Record ${QOUT_LABEL[f.official_outcome]} for ${t.name} on a frozen snapshot (metric v${av.version}, ${c.period.start} → ${c.period.end})?`))return;
+  const {data:snap,error}=await sbb.from('qual_snapshots').insert({team_id:t.id,version_id:av.id,period_start:c.period.start,period_end:c.period.end,computed:c,weighted_score:c.weighted_score,evidence_state:c.evidence.state,recommended_outcome:c.recommended_outcome}).select().single();
+  if(error){toast(qErr(error),true);return;}
+  const r=await sbb.from('qual_decisions').insert({team_id:t.id,snapshot_id:snap.id,version_id:av.id,kind:f.kind||'official',official_outcome:f.official_outcome,reason:f.reason,restrictions:f.restrictions||null,period_start:c.period.start,period_end:c.period.end,next_review_date:f.next_review_date||null,issue:f.issue||null,action_text:f.action_text||null,action_owner:f.action_owner||null,action_due:f.action_due||null}).select();
+  if(r.error){toast(qErr(r.error),true);return;}
+  toast(`${QOUT_LABEL[f.official_outcome]} recorded for ${t.name}`);await qReload();
+}
+async function qImportCoverage(t){
+  const names=Q.members.filter(m=>m.team_id===t.id).map(m=>m.person_name.toLowerCase()).concat(t.leader_name?[t.leader_name.toLowerCase()]:[]);
+  if(!names.length){toast('Add the roster first — offers are matched by member name',true);return;}
+  const {data,error}=await sb.from('coverage_log').select('*');if(error){toast(friendlyErr(error,'coverage_schema.sql'),true);return;}
+  const have=new Set(Q.cov.filter(c=>c.team_id===t.id&&c.coverage_log_id).map(c=>c.coverage_log_id));
+  const rows=(data||[]).filter(r=>!have.has(r.id)&&(r.offered_names||[]).some(n=>names.includes(String(n).toLowerCase()))).map(r=>{const mine=r.final_assignee&&names.includes(String(r.final_assignee).toLowerCase());
+    return {team_id:t.id,coverage_log_id:r.id,offered_at:new Date(`${r.log_date}T${/^\d{1,2}:\d{2}/.test(r.time_local||'')?r.time_local.padStart(5,'0'):'12:00'}:00`).toISOString(),lead_ref:r.lead_ref,territory:r.area||null,service:null,job_date:r.job_date||r.log_date,
+      response:mine?'accepted':'pending',contact_met:mine?true:null,notes:`imported from the Coverage log ${r.log_date}${mine?' — contact obligation assumed met; verify':' — record the response'}`};});
+  if(!rows.length){toast('Nothing new to import for this team');return;}
+  const r=await sbb.from('qual_coverage_events').insert(rows);if(r.error){toast(qErr(r.error),true);return;}
+  toast(`${rows.length} offer(s) imported — eligibility was evaluated against availability declared before each offer`);await qReload();
+}
+async function qImportBridge(t){
+  const names=Q.members.filter(m=>m.team_id===t.id).map(m=>m.person_name.toLowerCase()).concat(t.leader_name?[t.leader_name.toLowerCase()]:[]);
+  if(!names.length){toast('Add the roster first',true);return;}
+  const [o,a]=await Promise.all([sbb.from('bridge_opportunities').select('*'),sbb.from('bridge_assignments').select('*')]);if(o.error||a.error){toast(qErr(o.error||a.error),true);return;}
+  const have=new Set(Q.leads.filter(l=>l.bridge_opportunity_id).map(l=>l.bridge_opportunity_id));
+  const rows=(o.data||[]).filter(op=>!have.has(op.id)).filter(op=>{const asg=(a.data||[]).filter(x=>x.opportunity_id===op.id);return names.includes(String(op.salesperson||'').toLowerCase())||asg.some(x=>names.includes(String(x.performing_technician||'').toLowerCase())||names.includes(String(x.salesperson||'').toLowerCase()));})
+    .map(op=>({team_id:t.id,bridge_opportunity_id:op.id,lead_ref:op.job_ref||op.customer_ref||('bridge #'+op.seq),source:'M2 bridge',territory:op.territory,service:'other',assigned_at:op.created_at,qualified:true,qualification_evidence:'M2 Bridge qualified opportunity (expected revenue ≥ $5,000)',status:'pending',notes:'imported from the Bridge — set service and outcome'}));
+  if(!rows.length){toast('No new Bridge opportunities for this team');return;}
+  const r=await sbb.from('qual_leads').insert(rows);if(r.error){toast(qErr(r.error),true);return;}
+  toast(`${rows.length} Bridge opportunit${rows.length===1?'y':'ies'} imported as pending leads`);await qReload();
+}
+
+/* ---------- Queues ---------- */
+function qRenderQueues(){
+  const V=qCalcVersion();const calcs=Q.teams.filter(t=>t.status!=='inactive').map(t=>({t,c:V?qCalc(t,V):null})).filter(x=>x.c);
+  const li=(x,extra)=>`<li><a href="#" data-open="${x.t.id}"><b>${esc(x.t.name)}</b></a> <span class="count-note">${extra||''}</span></li>`;
+  const q=(title,items,empty)=>`<div class="panel q-queue"><h3 class="pt">${title} <span class="badge ${items.length?'uncovered':'gray'}">${items.length}</span></h3>${items.length?`<ul class="clean">${items.join('')}</ul>`:`<div class="count-note">${empty}</div>`}</div>`;
+  const near=calcs.filter(x=>x.c.evidence.state==='pending_evidence'&&x.c.evidence.progress.estimates.done>=x.c.evidence.progress.estimates.min*0.7);
+  $('#qQueues').innerHTML=`
+  ${q('Pending entry reviews',calcs.filter(x=>x.c.evidence.state==='pending_entry_review').map(x=>li(x,'checklist incomplete or not marked complete')),'none')}
+  ${q('Supervised trials awaiting review',Q.sup.filter(s=>!s.reviewed_at).map(s=>{const t=qTeam(s.team_id);return t?li({t},`${s.observed_at} · ${esc(s.observer)}${s.result?' · '+s.result:' · no result yet'}`):'';}),'none')}
+  ${q('Teams approaching minimum evidence',near.map(x=>li(x,x.c.evidence.reasons.join('; '))),'none')}
+  ${q('Decision eligible — awaiting Luka',calcs.filter(x=>x.c.evidence.state==='decision_eligible'&&(!x.c.last_decision||!x.c.decision_current||x.c.recommended_outcome!==x.c.official_outcome)).map(x=>li(x,`recommended ${QOUT_LABEL[x.c.recommended_outcome]} · official ${QOUT_LABEL[x.c.official_outcome||'none']}`)),'none')}
+  ${q('Critical incidents and restrictions',Q.inc.filter(i=>['suspected','under_review'].includes(i.status)).map(i=>{const t=qTeam(i.team_id);return t?li({t},`${esc(i.event_code)} · ${i.status.replace('_',' ')} · ${fmtTs(i.reported_at)}`):'';}).concat(Q.res.filter(r=>!r.lifted_at).map(r=>{const t=qTeam(r.team_id);return t?li({t},`restriction: ${esc(r.kind)} — ${esc(r.reason)}`):'';})),'none')}
+  ${q('Coaching and probation actions due',Q.act.filter(a=>a.status==='open'&&a.due_date<=addDaysIso(today(),7)).sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(a=>{const t=qTeam(a.team_id);return t?li({t},`${a.due_date}${a.due_date<today()?' OVERDUE':''} · ${esc(a.owner)} · ${esc(a.action)}`):'';}),'none due within 7 days')}
+  ${q('Missing or conflicting data preventing a decision',calcs.flatMap(x=>{const items=[];x.c.categories.filter(c=>!c.complete&&c.denominator>0).forEach(c=>items.push(li(x,`${c.label}: ${c.notes.join('; ')}`)));if(x.c.counts.pending_exclusions)items.push(li(x,`${x.c.counts.pending_exclusions} exclusion(s) awaiting approval`));x.c.categories.filter(c=>c.missing>0).forEach(c=>items.push(li(x,`${c.label}: ${c.missing} record(s) with missing outcome/evidence`)));return items;}),'none')}`;
+  $$('#qQueues [data-open]').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();qOpen(x.dataset.open);}));
+}
+
+/* ---------- Configuration ---------- */
+function qRenderCfg(){
+  const root=$('#qCfg');const av=qActiveVersion();const cv=qCalcVersion();
+  const unresolved=[];if(cv){const chk=(label,x,ref)=>{if(cfgval(x)==null||cfgstat(x)==='unresolved')unresolved.push(`${label} (§18.${ref})${cfgval(x)!=null?' — value proposed, not approved':''}`);};
+    unresolved.push('Exact approved definition of a qualified lead (§18.1) — recorded per lead as qualification evidence; no global rule yet');
+    chk('Revenue credit point',cv.revenue?.credit_point,2);chk('Revenue-per-qualified-lead baseline',cv.revenue?.baseline_cents,3);if(cfgval(cv.revenue?.segmented_by)==null)unresolved.push('Whether revenue efficiency is segmented by service or territory (§18.3)');
+    (cv.categories||[]).filter(c=>['coverage','attendance','completion','quality'].includes(c.key)&&c.status!=='confirmed').forEach(c=>unresolved.push(`${c.label} thresholds are ${c.status} (§18.4)`));
+    chk('Customer-quality observation window',cv.windows?.quality_observation_days,5);chk('On-time grace window',cv.windows?.on_time_grace_minutes,6);chk('Operating timezone',cv.windows?.timezone,7);chk('Week boundary',cv.windows?.week_start,7);
+    chk('Probation duration',cv.outcome_rules?.probation_days,8);if((cv.critical_events||[]).some(e=>e.status!=='confirmed'))unresolved.push('Approved list of automatic critical events (§18.9) — proposed list in use for flagging only');
+    chk('Material membership change restarts qualification',cv.outcome_rules?.membership_change_restarts,10);chk('Decision-age cutoff for pending leads',cv.evidence?.decision_age_days,'—');}
+  root.innerHTML=`
+  <div class="panel"><h3 class="pt">Versions</h3>
+  <div class="twrap"><table><thead><tr><th>Version</th><th>Label</th><th>Status</th><th>Effective</th><th>Approved</th><th>Used in a decision</th><th></th></tr></thead><tbody>
+  ${Q.ver.map(v=>`<tr><td><b>v${v.version}</b></td><td>${esc(v.label)}<div class="count-note">${esc(v.change_note||'')}</div></td><td>${stPill(v.status==='active'?'confirmed':v.status==='draft'?'proposed':'unresolved')} ${esc(v.status)}</td><td class="count-note">${fmtD(v.effective_from)}</td><td class="count-note">${v.approved_by?esc(v.approved_by)+' · '+fmtTs(v.approved_at):'—'}</td><td>${v.used_in_decision?'<span class="badge yes">yes — immutable</span>':'no'}</td>
+    <td class="q-row-act"><button class="btn ghost sm" data-cfg="view" data-id="${v.id}">View</button>${isMgr()?`<button class="btn ghost sm" data-cfg="clone" data-id="${v.id}">New draft from this</button>${v.status==='draft'&&!v.used_in_decision?`<button class="btn ghost sm" data-cfg="edit" data-id="${v.id}">Edit draft</button><button class="btn sm" data-cfg="activate" data-id="${v.id}">Activate</button>`:''}`:''}</td></tr>`).join('')}
+  </tbody></table></div>
+  ${av?'':'<div class="q-block" style="margin-top:10px">No active version. Review draft v'+(cv?cv.version:'?')+' and activate it (manager) to enable official decisions.</div>'}</div>
+  <div id="qCfgEditor"></div>
+  <div class="panel"><h3 class="pt">Business confirmations required before official activation (brief §18)</h3><div class="sub">Surfaced, not guessed. Each becomes resolved by editing a draft version, setting the value and its status to <b>confirmed</b>, then activating.</div>
+  <ul class="clean">${unresolved.map(u=>`<li>${esc(u)}</li>`).join('')||'<li>All confirmed.</li>'}</ul></div>`;
+  root.querySelectorAll('[data-cfg]').forEach(b=>b.addEventListener('click',()=>qCfgAction(b.dataset.cfg,b.dataset.id)));
+}
+async function qCfgAction(act,id){
+  const v=Q.ver.find(x=>x.id===id);if(!v)return;
+  if(act==='view'){Q._cfgDraft={...v,__readonly:true};qRenderCfgEditor();return;}
+  if(act==='clone'){const nv=JSON.parse(JSON.stringify(v));delete nv.id;nv.version=Math.max(...Q.ver.map(x=>x.version))+1;nv.status='draft';nv.label=`v${nv.version} — `;nv.change_note='';nv.approved_by=null;nv.approved_at=null;nv.activated_at=null;nv.used_in_decision=false;nv.effective_from=null;delete nv.created_at;delete nv.created_by;delete nv.updated_at;delete nv.updated_by;Q._cfgDraft=nv;qRenderCfgEditor();return;}
+  if(act==='edit'){Q._cfgDraft=JSON.parse(JSON.stringify(v));qRenderCfgEditor();return;}
+  if(act==='activate'){const errs=qualValidateVersion(v);if(errs.length){toast('Cannot activate: '+errs.join('; '),true);return;}const note=prompt('Change note for activation (required) — what this version establishes',v.change_note||'');if(!note)return;
+    if(!confirm(`Activate metric v${v.version}? The current active version (if any) is superseded; existing decisions stay tied to theirs.`))return;await qWrite('qual_metric_versions','update',{status:'active',change_note:note},id,`Metric v${v.version} is active`);return;}
+}
+function qRenderCfgEditor(){
+  const d=Q._cfgDraft;const box=$('#qCfgEditor');if(!d){box.innerHTML='';return;}const ro=!!d.__readonly;
+  const sv=(x)=>`<select ${ro?'disabled':''} data-st="${x}">${opts([['confirmed','confirmed'],['proposed','proposed'],['unresolved','unresolved']],'')}</select>`;
+  const vs=(path,x,inputHtml)=>`<div class="fld"><label>${esc(path)}</label>${inputHtml}<select ${ro?'disabled':''} data-vs="${x}">${opts([['confirmed','confirmed'],['proposed','proposed'],['unresolved','unresolved']],cfgstat(d[x.split('.')[0]]?.[x.split('.')[1]]))}</select></div>`;
+  const val=(a,b)=>cfgval(d[a]?.[b]);
+  box.innerHTML=`<div class="panel" style="border-color:var(--accent)"><div class="section-head"><h3 class="pt" style="margin:0">${ro?`Metric v${d.version} — read only`:d.id?`Editing draft v${d.version}`:`New draft v${d.version}`}</h3><button class="btn ghost sm" id="qCfgClose">Close</button></div>
+  <div class="q-form">${fld('Label',`<input ${ro?'disabled':''} data-d="label" value="${esc(d.label||'')}">`,'wide')}${fld('Change note (required to activate)',`<input ${ro?'disabled':''} data-d="change_note" value="${esc(d.change_note||'')}">`,'wide')}</div>
+  <h3 class="pt">Categories — weights must total exactly 100</h3>
+  ${(d.categories||[]).map((c,i)=>`<div class="q-cfg-cat"><b>${esc(c.label)}</b> <span class="count-note">${esc(c.key)} · ${esc(c.direction||'higher')}-is-better</span>
+    <div class="q-cfg-grid">${fld('Weight %',`<input ${ro?'disabled':''} data-c="${i}.weight_pct" value="${c.weight_pct}">`)}${fld('100 pts at',`<input ${ro?'disabled':''} data-c="${i}.bands.p100" value="${c.bands?.p100}">`)}${fld('70 pts at',`<input ${ro?'disabled':''} data-c="${i}.bands.p70" value="${c.bands?.p70}">`)}${fld('40 pts at',`<input ${ro?'disabled':''} data-c="${i}.bands.p40" value="${c.bands?.p40}">`)}${fld('Status',`<select ${ro?'disabled':''} data-c="${i}.status">${opts([['confirmed','confirmed'],['proposed','proposed'],['unresolved','unresolved']],c.status||'proposed')}</select>`)}${fld('Target text',`<input ${ro?'disabled':''} data-c="${i}.target" value="${esc(c.target||'')}">`)}</div>
+    <div class="count-note">${esc(c.formula||'')}</div></div>`).join('')}
+  <div class="count-note" id="qCfgTotal"></div>
+  <h3 class="pt" style="margin-top:12px">Evidence minimums</h3><div class="q-form">${fld('Rolling window (days)',`<input ${ro?'disabled':''} data-e="window_days" value="${cfgval(d.evidence?.window_days)??28}">`)}${fld('Min qualified estimates',`<input ${ro?'disabled':''} data-e="min_qualified_estimates" value="${cfgval(d.evidence?.min_qualified_estimates)??10}">`)}${fld('Min completed jobs',`<input ${ro?'disabled':''} data-e="min_completed_jobs" value="${cfgval(d.evidence?.min_completed_jobs)??5}">`)}${fld('Supervised jobs (new/rebuilt)',`<input ${ro?'disabled':''} data-e="supervised_jobs" value="${cfgval(d.evidence?.supervised_jobs)??3}">`)}${vs('Decision-age cutoff for pending leads (days)','evidence.decision_age_days',`<input ${ro?'disabled':''} data-v="evidence.decision_age_days" value="${val('evidence','decision_age_days')??''}" placeholder="unresolved">`)}</div>
+  <h3 class="pt">Windows</h3><div class="q-form">${vs('Customer-quality observation (days)','windows.quality_observation_days',`<input ${ro?'disabled':''} data-v="windows.quality_observation_days" value="${val('windows','quality_observation_days')??''}">`)}${vs('On-time grace (minutes)','windows.on_time_grace_minutes',`<input ${ro?'disabled':''} data-v="windows.on_time_grace_minutes" value="${val('windows','on_time_grace_minutes')??''}" placeholder="unresolved">`)}${vs('Timezone','windows.timezone',`<input ${ro?'disabled':''} data-v="windows.timezone" value="${esc(val('windows','timezone')??'')}">`)}${vs('Week start','windows.week_start',`<input ${ro?'disabled':''} data-v="windows.week_start" value="${esc(val('windows','week_start')??'')}">`)}</div>
+  <h3 class="pt">Revenue efficiency</h3><div class="q-form">${vs('Baseline: sold revenue per qualified lead ($)','revenue.baseline_cents',`<input ${ro?'disabled':''} data-v="revenue.baseline_cents" data-cents="1" value="${val('revenue','baseline_cents')!=null?val('revenue','baseline_cents')/100:''}" placeholder="unresolved — blocks official scoring">`)}${vs('Credit point (sold | completed | collected)','revenue.credit_point',`<input ${ro?'disabled':''} data-v="revenue.credit_point" value="${esc(val('revenue','credit_point')??'sold')}">`)}${vs('Segmented by (none | service | territory | both)','revenue.segmented_by',`<input ${ro?'disabled':''} data-v="revenue.segmented_by" value="${esc(val('revenue','segmented_by')??'')}" placeholder="unresolved">`)}</div>
+  <h3 class="pt">Outcome rules</h3><div class="q-form">${fld('Pass ≥',`<input ${ro?'disabled':''} data-o="pass_min" value="${cfgval(d.outcome_rules?.pass_min)??80}">`)}${fld('Coaching ≥',`<input ${ro?'disabled':''} data-o="coaching_min" value="${cfgval(d.outcome_rules?.coaching_min)??70}">`)}${fld('Probation ≥',`<input ${ro?'disabled':''} data-o="probation_min" value="${cfgval(d.outcome_rules?.probation_min)??60}">`)}${fld('Consecutive coaching → probation',`<input ${ro?'disabled':''} data-o="coaching_repeat_to_probation" value="${cfgval(d.outcome_rules?.coaching_repeat_to_probation)??2}">`)}${vs('Probation duration (days)','outcome_rules.probation_days',`<input ${ro?'disabled':''} data-v="outcome_rules.probation_days" value="${val('outcome_rules','probation_days')??''}" placeholder="unresolved">`)}${vs('Membership change restarts qualification (true/false)','outcome_rules.membership_change_restarts',`<input ${ro?'disabled':''} data-v="outcome_rules.membership_change_restarts" value="${val('outcome_rules','membership_change_restarts')??''}" placeholder="unresolved">`)}</div>
+  <h3 class="pt">Margin guardrails (confirmed)</h3><div class="q-form">${fld('Installation target %',`<input ${ro?'disabled':''} data-m="installation.target_pct" value="${d.margin_rules?.installation?.target_pct??40}">`)}${fld('Installation floor %',`<input ${ro?'disabled':''} data-m="installation.floor_pct" value="${d.margin_rules?.installation?.floor_pct??35}">`)}${fld('Cleaning floor %',`<input ${ro?'disabled':''} data-m="cleaning.floor_pct" value="${d.margin_rules?.cleaning?.floor_pct??45}">`)}</div>
+  <h3 class="pt">Automatic critical events (code | label | status per line)</h3><textarea ${ro?'disabled':''} id="qCfgCrit" rows="6" style="width:100%;font-family:var(--mono);font-size:12px">${esc((d.critical_events||[]).map(e=>`${e.code} | ${e.label} | ${e.status||'proposed'}`).join('\n'))}</textarea>
+  ${ro?'':`<div class="bar tight" style="margin-top:12px"><button class="btn" id="qCfgSave">${d.id?'Save draft':'Create draft v'+d.version}</button><span class="count-note">validation: weights total 100, bands strictly ordered — the database checks it again</span></div>`}</div>`;
+  const total=()=>{const t=$$('[data-c$=".weight_pct"]',box).reduce((s,i)=>s+Number(i.value||0),0);$('#qCfgTotal').innerHTML=Math.abs(t-100)<1e-9?`<span style="color:var(--accent)">weights total 100 ✓</span>`:`<span style="color:var(--red)">weights total ${t} — must be exactly 100</span>`;};total();
+  box.addEventListener('input',e=>{if(e.target.matches('[data-c$=".weight_pct"]'))total();});
+  $('#qCfgClose').onclick=()=>{Q._cfgDraft=null;qRenderCfgEditor();};
+  if(!ro)$('#qCfgSave').onclick=async()=>{
+    const n=JSON.parse(JSON.stringify(d));delete n.__readonly;
+    n.label=$('[data-d="label"]',box).value.trim();n.change_note=$('[data-d="change_note"]',box).value.trim()||null;
+    $$('[data-c]',box).forEach(i=>{const [idx,...path]=i.dataset.c.split('.');let o=n.categories[Number(idx)];for(let k=0;k<path.length-1;k++){o[path[k]]=o[path[k]]||{};o=o[path[k]];}const last=path[path.length-1];o[last]=(last==='status'||last==='target')?i.value:Number(i.value);});
+    n.evidence=n.evidence||{};$$('[data-e]',box).forEach(i=>{n.evidence[i.dataset.e]=Number(i.value);});
+    n.outcome_rules=n.outcome_rules||{};$$('[data-o]',box).forEach(i=>{n.outcome_rules[i.dataset.o]=Number(i.value);});
+    n.margin_rules={installation:{target_pct:Number($('[data-m="installation.target_pct"]',box).value),floor_pct:Number($('[data-m="installation.floor_pct"]',box).value)},cleaning:{floor_pct:Number($('[data-m="cleaning.floor_pct"]',box).value)},status:'confirmed'};
+    $$('[data-v]',box).forEach(i=>{const [a,b]=i.dataset.v.split('.');n[a]=n[a]||{};let v=i.value.trim();const st=$(`[data-vs="${i.dataset.v}"]`,box).value;
+      if(v==='')v=null;else if(i.dataset.cents)v=toC(v);else if(/^-?\d+(\.\d+)?$/.test(v))v=Number(v);else if(v==='true'||v==='false')v=v==='true';
+      n[a][b]={value:v,status:st};});
+    n.critical_events=$('#qCfgCrit').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [code,label,status]=l.split('|').map(x=>(x||'').trim());return {code,label:label||code,status:status||'proposed'};});
+    const errs=qualValidateVersion(n);if(errs.length){toast(errs.join('; '),true);return;}
+    const id=n.id;delete n.id;delete n.created_at;delete n.created_by;delete n.updated_at;delete n.updated_by;
+    const r=await qWrite('qual_metric_versions',id?'update':'insert',n,id,id?'Draft saved':`Draft v${n.version} created`);if(r){Q._cfgDraft=null;}
+  };
+}
+
+/* ---------- Definitions (static) ---------- */
+function qRenderDef(){
+  const V=qCalcVersion();const cats=V?V.categories:[];
+  $('#qDef').innerHTML=`<div class="eyebrow">Definitions · Team Qualification · M4</div><h2>How a team qualifies</h2>
+  <p class="sub">This is the standard every team is judged by — incumbents, candidates and a rebuilt team led by the former technician alike. The numbers here come from the metric version in force (${V?`v${V.version}, ${V.status}`:'none'}); thresholds marked <span class="br-pill proposed">proposed</span> are design defaults awaiting Luka's approval and <span class="br-pill unresolved">unresolved</span> values are not guessed.</p>
+  <div class="panel"><h3 class="pt">1 · Two layers</h3><p><b>Weighted performance score</b> across seven categories, and <b>non-negotiable gates</b> — every critical compliance check passed, no unresolved severe customer or safety incident, no active restriction, no confirmed critical event. A high score never overrides a failed gate.</p></div>
+  <div class="panel"><h3 class="pt">2 · The seven categories</h3><div class="twrap"><table><thead><tr><th>Category</th><th>Weight</th><th>Formula</th><th>Numerator</th><th>Denominator</th><th>Target</th><th>Bands 100 / 70 / 40</th><th>Status</th></tr></thead><tbody>
+  ${cats.map(c=>`<tr><td><b>${esc(c.label)}</b></td><td>${c.weight_pct}%</td><td>${esc(c.formula||'')}</td><td>${esc(c.numerator||'')}</td><td>${esc(c.denominator||'')}</td><td>${esc(c.target||'')}</td><td class="count-note">${c.direction==='lower'?'≤':'≥'} ${c.bands?.p100} / ${c.bands?.p70} / ${c.bands?.p40}</td><td>${stPill(c.status)}</td></tr>`).join('')}</tbody></table></div>
+  <p class="count-note" style="margin-top:8px">Every rate shows numerator, denominator, sample size, excluded and missing counts, and drills down to the source records. A zero denominator is <b>N/A</b> — never 0% or 100%. Missing evidence, unknown costs and unrecorded outcomes never become a pass or a zero.</p></div>
+  <div class="panel"><h3 class="pt">3 · Evidence states</h3><ul class="clean"><li><b>Pending Entry Review</b> — identity, roster, territories, services, equipment, documents, availability, payment/compliance readiness and approvals not yet verified by the manager.</li><li><b>Supervised Trial</b> — a new or rebuilt team has fewer than ${cfgval(V?.evidence?.supervised_jobs)??3} supervised jobs signed off.</li><li><b>Pending Evidence</b> — fewer than ${cfgval(V?.evidence?.min_qualified_estimates)??10} qualified estimates or ${cfgval(V?.evidence?.min_completed_jobs)??5} completed jobs in the rolling ${cfgval(V?.evidence?.window_days)??28} days, no critical-compliance evidence, or no job matured through the customer-quality window.</li><li><b>Decision Eligible</b> — minimum evidence satisfied.</li></ul><p>A team that is not Decision Eligible sees its provisional values but cannot receive Pass and never counts toward the Rock's three-team target.</p></div>
+  <div class="panel"><h3 class="pt">4 · Outcomes and precedence</h3><ol><li>Data completeness and evidence eligibility.</li><li>Critical gates and active restrictions.</li><li>Category results and weighted score.</li><li>Repeated-coaching and probation-history rules.</li><li>A recommended outcome with reasons.</li><li><b>Luka's signed decision</b> — the only official outcome.</li></ol>
+  <ul class="clean"><li><b>Pass</b> — score ≥ ${cfgval(V?.outcome_rules?.pass_min)??80}, no 0-point band, every gate passed, minimum evidence met, no unresolved severe incident.</li><li><b>Coaching</b> — score ${cfgval(V?.outcome_rules?.coaching_min)??70}–${(cfgval(V?.outcome_rules?.pass_min)??80)-0.1}, or one recoverable category below its passing standard. Needs a named issue, corrective action, owner, due date and next review.</li><li><b>Probation</b> — score ${cfgval(V?.outcome_rules?.probation_min)??60}–${(cfgval(V?.outcome_rules?.coaching_min)??70)-0.1}, a 0-point band, coaching in two consecutive periods for the same issue, or a material recoverable problem. Needs an improvement plan and a review deadline.</li><li><b>Disqualify</b> — score below ${cfgval(V?.outcome_rules?.probation_min)??60}, a failed probation plan, inability to sell and work safely, or a confirmed critical event after documented review.</li></ul>
+  <p class="count-note">The software recommends; it never decides. Timers expiring never pass, restrict or disqualify anyone.</p></div>
+  <div class="panel"><h3 class="pt">5 · The process</h3><p><b>A. Entry review</b> → <b>B. Supervised trial</b> (three observed jobs, team stays provisional) → <b>C. Proof period</b> (minimum sample across the rolling window) → <b>D. Weekly review</b> (refresh, reconcile, coach) → <b>E. Official decision</b> on a frozen snapshot tied to the metric version → <b>F. Requalification</b> after probation, a material roster change, expired credentials or a serious incident, never overwriting the prior decision → <b>G. Former technician returns</b>: the rebuilt team starts at Entry Review with no waiver.</p></div>
+  <div class="panel"><h3 class="pt">6 · Who does what</h3><ul class="clean"><li><b>Dispatcher</b> — records leads, estimates, appointments, jobs, costs, coverage offers and responses, availability, quality events, compliance checks, supervised-job notes; requests exclusions.</li><li><b>Manager (Luka)</b> — completes entry reviews, approves members, signs off supervised jobs, rules on substantiation, approves exclusions, imposes/lifts restrictions, confirms incidents, activates metric versions, records official decisions, closes corrective actions.</li><li><b>Sardor</b> — authorised margin exceptions are recorded against the job by reference; they keep the job visible as below-floor work and never improve a score.</li><li><b>Technicians</b> — do not sign in here; they see their results through the manager. Nobody edits a calculated total: corrections happen in the source record or through an approved exclusion.</li></ul></div>
+  <div class="panel"><h3 class="pt">7 · When a button refuses</h3><ul class="clean"><li><i>"Pass refused: the team is Pending Evidence"</i> — the sample is short; extend the window rather than invent performance.</li><li><i>"weighted score is not definitive"</i> — a category is N/A or the revenue baseline is unresolved; resolve the source records or the configuration.</li><li><i>"weights must total exactly 100"</i> / <i>"bands overlap"</i> — fix the draft; nothing is normalised silently.</li><li><i>"availability row is locked"</i> — an offer already referenced that date; add a correction row with a reason.</li><li><i>"original promise date is immutable"</i> — record a customer-approved reschedule instead.</li><li><i>"Only the manager…"</i> — the action is a business decision reserved to Luka's role.</li></ul></div>`;
+}
+
+/* ---------- page boot ---------- */
+(function init(){
+  applyTheme(localStorage.getItem(LS.theme)||'light');
+  $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+  $('#qConnect').onclick=()=>{const url=$('#qCfgUrl').value.trim(),key=$('#qCfgKey').value.trim();if(!url||!key){toast('Both fields are needed',true);return;}saveConf({url,key});location.reload();};
+  const c=loadConf();
+  if(!c||!c.url||!c.key){$('#qSetup').style.display='';$('#qGate').style.display='none';return;}
+  /* Two clients, as in bridge.html: `sb` reads the open tables as anon and never holds a session; `sbb` holds the
+     shared Bridge sign-in under its own storage key, so nothing else on this origin changes principal. */
+  sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  sbb=window.supabase.createClient(c.url,c.key,{auth:{storageKey:'adc_bridge_auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'pkce'}});
+  bootQual();
+})();
+</script>
+</body>
+</html>
