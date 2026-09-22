@@ -160,82 +160,107 @@ const em=r=>r.error&&r.error.message||'';
   r=await fake.from('qual_exclusions').update({status:'pending'}).eq('id',ex1.id); T('DB: a decided exclusion is not reopened',/not reopened/.test(em(r)));
   T('audit: sensitive actions were logged (versions, teams, availability, exclusions, decisions, actions, incidents)',['qual_metric_versions','qual_teams','qual_availability','qual_exclusions','qual_decisions','qual_actions','qual_incidents'].every(t=>db.qual_audit.some(a=>a.table_name===t)),[...new Set(db.qual_audit.map(a=>a.table_name))]);
 
-  console.log('— page: gate, roles, flows —');
+  console.log('— page: gate, roles, flows (redesign: sheets, section pages, guided entry) —');
   // the page holds the fake created at boot; reset its database IN PLACE so page and assertions read the same rows
   await fake.auth.signOut(); await tick(60);
   Object.keys(db).forEach(k=>delete db[k]); Object.assign(db,makeDb());
-  T('no session → sign-in gate, body hidden, why-strip visible',vis('#qGate')&&!vis('#qBody')&&/Why one scorecard/.test($('.br-why').textContent));
-  signIn('someone@homealliance.com'); await tick(100); T('non-member told so',vis('#qNotMember')&&!vis('#qBody'));
+  const shown=sel=>{const e=$(sel);return !!e&&!e.classList.contains('hide');};
+  const sheetOpen=()=>!!$('#qSheet');
+  const sheet=async(values,opts)=>{ // fill the open sheet and press primary (or secondary)
+    if(!sheetOpen())throw new Error('no sheet open');
+    for(const [k,v] of Object.entries(values||{})){const e=$(`#qSheet [data-f="${k}"]`);if(!e)throw new Error('sheet has no field '+k);e.value=v;e.dispatchEvent(new w.Event('input',{bubbles:true}));e.dispatchEvent(new w.Event('change',{bubbles:true}));}
+    $(opts&&opts.secondary?'#qSheetSecondary':'#qSheetPrimary').click(); await tick(220); };
+  const sheetNote=()=>($('#qSheetNote')||{}).textContent||'';
+  const act=async(sel)=>{const b=$(sel);if(!b)throw new Error('no element '+sel);b.click();await tick(200);};
+  const section=async(key)=>{await act(`#qTeam [data-section="${key}"]`);};
+  T('no session → sign-in gate, body hidden',shown('#qGate')&&!shown('#qBody')&&shown('#qGateForm'));
+  signIn('someone@homealliance.com'); await tick(100); T('non-member told so',shown('#qNotMember')&&!shown('#qBody')&&/Not a member/.test($('#qGateTitle').textContent));
   signIn('luka.m@homealliance.com'); await tick(200);
-  T('manager signed in → body shown, identity displayed, version badge says no active version',vis('#qBody')&&/luka\.m@homealliance\.com · manager/.test($('#qWho').textContent)&&/no active/.test($('#qVerBadge').textContent),$('#qVerBadge').textContent);
-  T('blockers banner: no active version + baseline unresolved surfaced (§15.12)',/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/.test($('#qBlockers').textContent));
-  T('overview renders KPIs with 0/3 qualified',$$('#qOver .kpi').length===5&&/0/.test($('#qOver .kpi .v').textContent));
-  // create a team via the Teams tab
-  w.showQualTab('qteams'); await tick(40); $('#qNewTeam').click(); await tick(20);
-  setv('[data-f="name"]','Donat team',$('#qNewTeamForm')); setv('[data-f="team_type"]','incumbent',$('#qNewTeamForm')); setv('[data-f="leader_name"]','3 LA Donat',$('#qNewTeamForm')); setv('[data-f="territories"]','LA',$('#qNewTeamForm')); setv('[data-f="services"]','cleaning, installation',$('#qNewTeamForm'));
-  $('#qNewTeamForm [data-act="saveteam"]').click(); await tick(200);
-  const tm=db.qual_teams[0]; T('team created from the form and opened on the Team tab',!!tm&&tm.name==='Donat team'&&tm.territories.join()==='LA'&&$('#tab-qteam').classList.contains('on')&&/Donat team/.test($('#qTeam').textContent),toast());
-  T('team detail shows the live block: Pending Entry Review, no recommendation, gates listed',/Pending Entry Review/.test($('#qTeam').textContent)&&$$('#qTeam .q-gate').length===4);
-  // roster
-  const roster=$('#qTeam details[data-sec="roster"]'); roster.open=true;
-  setv('[data-f="person_name"]','3 LA Donat',roster); setv('[data-f="role"]','leader',roster); roster.querySelector('[data-act="addmember"]').click(); await tick(200);
-  T('member added and linked to the board technician',db.qual_team_members.length===1&&db.qual_team_members[0].technician_id==='t2',db.qual_team_members[0]);
-  let ro=$('#qTeam details[data-sec="roster"]'); ro.querySelector('[data-act="approvemember"]').click(); await tick(200); T('manager approves the member (approver stamped)',db.qual_team_members[0].approval_status==='approved'&&db.qual_team_members[0].approved_by==='luka.m@homealliance.com');
-  ro=$('#qTeam details[data-sec="roster"]'); ro.querySelector('[data-act="completeentry"]').click(); await tick(120); T('entry review cannot be completed with unchecked items',/Every item/.test(toast()));
-  ro=$('#qTeam details[data-sec="roster"]'); [...ro.querySelectorAll('[data-er]')].forEach(cb=>cb.checked=true); ro.querySelector('[data-act="completeentry"]').click(); await tick(200);
-  T('entry review complete → team provisional, reviewer stamped, evidence state moves on',db.qual_teams[0].status==='provisional'&&db.qual_teams[0].entry_reviewed_by==='luka.m@homealliance.com'&&!/Pending Entry Review/.test($('#qTeam .q-ev').textContent));
+  T('manager signed in → body shown, identity + role, version badge warns no active version',shown('#qBody')&&/luka\.m · manager/.test($('#qWho').textContent)&&/no active version/.test($('#qVerBadge').textContent)&&$('#qVerBadge').classList.contains('warn'));
+  T('why-strip and blockers rendered (§15.12): no active version + baseline unresolved',/Why one scorecard/.test($('.why').textContent)&&/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/i.test($('#qBlockers').textContent));
+  T('overview: hero ring says 0 of 3 qualified; outcome and evidence breakdowns present',!!$('#qOver .ring')&&/0/.test($('#qOver .ring .v').textContent)&&/of 3 qualified/.test($('#qOver').textContent)&&/By official outcome/.test($('#qOver').textContent)&&/By evidence state/.test($('#qOver').textContent));
+  // new team via sheet
+  w.showQualTab('qteams'); await tick(40); $('#qNewTeam').click(); await tick(60);
+  T('“+ New team” opens a sheet, not a form',sheetOpen()&&/New team/.test($('#qSheet h2').textContent));
+  await sheet({}); T('sheet validation: a team needs a name (sheet stays open, note shown)',sheetOpen()&&/Name the team/.test(sheetNote()));
+  await sheet({name:'Donat team',team_type:'incumbent',leader_name:'3 LA Donat',territories:'LA',services_sel:'both'});
+  const tm=db.qual_teams[0]; T('team created from the sheet and opened on the Team tab',!!tm&&tm.name==='Donat team'&&tm.territories.join()==='LA'&&tm.services.length===2&&!sheetOpen()&&$('#tab-qteam').classList.contains('on')&&/Donat team/.test($('#qTeam').textContent),toast());
+  T('team page: Pending Entry Review, four gates, guided-entry steps, records list',/Pending Entry Review/.test($('#qTeam').textContent)&&$$('#qTeam .gate').length===4&&$$('#qTeam .step').length===4&&$$('#qTeam [data-section]').length===13);
+  // roster section: add member, approve, entry review
+  await section('roster'); T('records → Roster opens a section page with a back link and “+ Member”',/Roster and entry review/.test($('#qTeam h1').textContent)&&!!$('#qTeam .backlink')&&!!$('#qTeam [data-act="add"][data-id="roster"]'));
+  await act('#qTeam [data-act="add"][data-id="roster"]'); await sheet({person_name:'3 LA Donat',role:'leader'});
+  T('member added and linked to the board technician',db.qual_team_members.length===1&&db.qual_team_members[0].technician_id==='t2'&&db.qual_team_members[0].role==='leader',toast());
+  await act('#qTeam [data-act="approvemember"]'); T('manager approves the member (approver stamped)',db.qual_team_members[0].approval_status==='approved'&&db.qual_team_members[0].approved_by==='luka.m@homealliance.com');
+  await act('#qTeam [data-act="completeentry"]'); T('entry review cannot be completed with unchecked items',/Every item/.test(toast()));
+  $$('#qEntryReview [data-er]').forEach(cb=>cb.checked=true); await act('#qTeam [data-act="completeentry"]');
+  T('entry review complete → team provisional, reviewer stamped',db.qual_teams[0].status==='provisional'&&db.qual_teams[0].entry_reviewed_by==='luka.m@homealliance.com'&&/Completed/.test($('#qEntryReview').textContent));
   // availability + offer + import
-  let av=$('#qTeam details[data-sec="avail"]'); setv('[data-f="avail_date"]','2026-10-01',av); av.querySelector('[data-act="addavail"]').click(); await tick(200); T('availability declared',db.qual_availability.length===1);
-  let cv=$('#qTeam details[data-sec="cov"]'); setv('[data-f="job_date"]','2026-10-01',cv); setv('[data-f="territory"]','LA',cv); setv('[data-f="service"]','cleaning',cv); cv.querySelector('[data-act="addcov"]').click(); await tick(200);
-  T('offer recorded and eligible; availability locked',db.qual_coverage_events.length===1&&db.qual_coverage_events[0].eligible===true&&!!db.qual_availability[0].locked_at,toast());
-  cv=$('#qTeam details[data-sec="cov"]'); cv.querySelector('[data-act="importcov"]').click(); await tick(250);
-  T('import from the Coverage log: the row naming Donat becomes an offer (accepted, note says verify), deduped by log id',db.qual_coverage_events.length===2&&db.qual_coverage_events[1].coverage_log_id==='cl-1'&&db.qual_coverage_events[1].response==='accepted'&&/verify/.test(db.qual_coverage_events[1].notes),toast());
-  cv=$('#qTeam details[data-sec="cov"]'); cv.querySelector('[data-act="importcov"]').click(); await tick(200); T('second import finds nothing new',/Nothing new/.test(toast()));
-  // lead → estimate → won
-  let ld=$('#qTeam details[data-sec="leads"]'); setv('[data-f="lead_ref"]','A1B2C3',ld); setv('[data-f="service"]','installation',ld); ld.querySelector('[data-act="addlead"]').click(); await tick(200); T('lead recorded (pending, qualified)',db.qual_leads.length===1&&db.qual_leads[0].status==='pending');
-  w.__prompt=()=>'7500'; ld=$('#qTeam details[data-sec="leads"]'); ld.querySelector('[data-act="addest"]').click(); await tick(200); ld=$('#qTeam details[data-sec="leads"]'); ld.querySelector('[data-act="addest"]').click(); await tick(200);
-  T('two estimate versions, still one lead',db.qual_lead_estimates.length===2&&db.qual_leads.length===1);
-  w.__prompt=()=>'7200'; ld=$('#qTeam details[data-sec="leads"]'); ld.querySelector('[data-act="leadwon"]').click(); await tick(250); T('lead won at $7,200; latest estimate marked accepted',db.qual_leads[0].status==='won'&&db.qual_leads[0].sold_revenue_cents===720000&&db.qual_lead_estimates.find(e=>e.version===2).outcome==='accepted');
-  // job with unknown cost
-  let jb=$('#qTeam details[data-sec="jobs"]'); setv('[data-f="job_ref"]','J-100',jb); setv('[data-f="service"]','installation',jb); setv('[data-f="promised_date"]','2026-09-30',jb); setv('[data-f="revenue_cents"]','7200',jb); jb.querySelector('[data-act="addjob"]').click(); await tick(200);
+  await act('#qTeam .backlink'); await section('avail'); await act('#qTeam [data-act="add"][data-id="avail"]'); await sheet({avail_date:'2026-10-01'}); T('availability declared',db.qual_availability.length===1&&/available/.test($('#qTeam .pill').textContent));
+  await act('#qTeam .backlink'); await section('cov'); await act('#qTeam [data-act="add"][data-id="cov"]'); await sheet({job_date:'2026-10-01',territory:'LA',service:'cleaning'});
+  T('offer recorded and eligible; availability locked; row says Eligible',db.qual_coverage_events.length===1&&db.qual_coverage_events[0].eligible===true&&!!db.qual_availability[0].locked_at&&/Eligible offer/.test($('#qTeam').textContent),toast());
+  await act('#qTeam [data-act="importcov"]'); T('import from the Coverage log: the row naming Donat becomes an offer (accepted, note says verify), deduped by log id',db.qual_coverage_events.length===2&&db.qual_coverage_events[1].coverage_log_id==='cl-1'&&db.qual_coverage_events[1].response==='accepted'&&/verify/.test(db.qual_coverage_events[1].notes),toast());
+  await act('#qTeam [data-act="importcov"]'); T('second import finds nothing new',/Nothing new/.test(toast()));
+  await act('#qTeam [data-act="covresp"]'); await sheet({response:'declined'}); T('a decline without a reason is refused inside the sheet',sheetOpen()&&/reason is required/.test(sheetNote())); await sheet({failure_reason:'on another job'}); T('decline saved with its reason',db.qual_coverage_events.find(c=>c.response==='declined')?.failure_reason==='on another job');
+  // leads section: add via the lead sheet (with estimate), add estimate v2, mark won
+  await act('#qTeam .backlink'); await section('leads'); await act('#qTeam [data-act="add"][data-id="leads"]');
+  T('“+ Lead” opens the lead sheet (no guided-entry dots outside the flow)',sheetOpen()&&/New lead/.test($('#qSheet h2').textContent)&&!$('#qSheet .dots'));
+  await sheet({lead_ref:'A1B2C3',service:'installation',estimate_cents:'7500'}); T('lead recorded (pending, qualified) with estimate v1 from the same sheet',db.qual_leads.length===1&&db.qual_leads[0].status==='pending'&&db.qual_lead_estimates.length===1&&db.qual_lead_estimates[0].price_cents===750000,toast());
+  await act('#qTeam [data-act="addest"]'); await sheet({price_cents:'7200'}); T('T11: estimate v2 added — still one lead',db.qual_lead_estimates.length===2&&db.qual_leads.length===1);
+  await act('#qTeam [data-act="leadwon"]'); T('Won sheet pre-fills the latest estimate',sheetOpen()&&$('#qSheet [data-f="sold_revenue_cents"]').value==='7200'); await sheet({}); T('lead won at $7,200; latest estimate marked accepted',db.qual_leads[0].status==='won'&&db.qual_leads[0].sold_revenue_cents===720000&&db.qual_lead_estimates.find(e=>e.version===2).outcome==='accepted');
+  // jobs: add, costs with unknown, reschedule
+  await act('#qTeam .backlink'); await section('jobs'); await act('#qTeam [data-act="add"][data-id="jobs"]'); await sheet({job_ref:'J-100',service:'installation',promised_date:'2026-09-30',revenue_cents:'7200'});
   T('job recorded with current promise = promised',db.qual_jobs.length===1&&db.qual_jobs[0].current_promise_date==='2026-09-30');
-  jb=$('#qTeam details[data-sec="jobs"]'); jb.querySelector(`[data-costs="${db.qual_jobs[0].id}"]`).value='materials, 2000, estimated\nhelper, unknown, estimated'; jb.querySelector('[data-act="savecosts"]').click(); await tick(200);
-  T('T8 page: unknown cost saved as unknown; job shows margin N/A with the reason',db.qual_jobs[0].costs[1].status==='unknown'&&/margin — projected N\/A/.test($('#qTeam details[data-sec="jobs"]').textContent)&&/not treated as zero/.test($('#qTeam details[data-sec="jobs"]').textContent));
-  w.__prompt=(m)=>/New promise/.test(m)?'2026-10-03':'customer travelling'; jb=$('#qTeam details[data-sec="jobs"]'); jb.querySelector('[data-act="resched"]').click(); await tick(200);
-  T('reschedule via the page: original kept, current moved, listed on the job',db.qual_jobs[0].promised_date==='2026-09-30'&&db.qual_jobs[0].current_promise_date==='2026-10-03'&&/2026-09-30→2026-10-03/.test($('#qTeam details[data-sec="jobs"]').textContent));
-  // configuration: activate v1
-  w.showQualTab('qcfg'); await tick(60); T('configuration lists v1 draft with activate/edit for the manager and the §18 checklist',/v1/.test($('#qCfg').textContent)&&!!$('#qCfg [data-cfg="activate"]')&&/§18/.test($('#qCfg').textContent)&&/baseline/.test($('#qCfg').textContent));
-  $('#qCfg [data-cfg="edit"]').click(); await tick(40); T('draft editor opens with weights totalling 100',/weights total 100/.test($('#qCfgTotal').textContent));
-  $('#qCfgEditor [data-c="0.weight_pct"]').value='25'; $('#qCfgEditor [data-c="0.weight_pct"]').dispatchEvent(new w.Event('input',{bubbles:true})); T('editor flags a 105 total live',/105/.test($('#qCfgTotal').textContent));
+  await act('#qTeam [data-act="costs"]'); await sheet({costs_text:'materials, 2000, estimated\nhelper, unknown, estimated'});
+  T('T8 page: unknown cost saved as unknown; the row says the margin is not calculable and unknown is not zero',db.qual_jobs[0].costs[1].status==='unknown'&&/not treated as zero/.test($('#qTeam').textContent));
+  await act('#qTeam [data-act="resched"]'); await sheet({to_date:'2026-10-03'}); T('reschedule needs a reason (sheet stays open)',sheetOpen()&&/reason is required/.test(sheetNote())); await sheet({reason:'customer travelling'});
+  T('reschedule via the sheet: original kept, current moved, shown on the row',db.qual_jobs[0].promised_date==='2026-09-30'&&db.qual_jobs[0].current_promise_date==='2026-10-03'&&/→ Oct 3/.test($('#qTeam').textContent));
+  // guided entry chain: lead → appointment → job → completion
+  await act('#qTeam .backlink'); await act('#qTeam [data-act="step"][data-id="lead"]'); T('guided entry step 1 opens with progress dots',sheetOpen()&&$$('#qSheet .dots span').length===4&&/step 1 of 4/.test($('#qSheet .eyebrow').textContent));
+  await sheet({lead_ref:'B2C3D4',service:'cleaning'}); T('step 1 saved the lead and chained to step 2 (appointment for that lead)',db.qual_leads.length===2&&sheetOpen()&&/Book appointment/.test($('#qSheet h2').textContent)&&$('#qSheet [data-f="lead_id"]').value===db.qual_leads[1].id);
+  await sheet({scheduled_at:'2026-09-24T09:00',outcome:'attended'}); T('step 2 saved the appointment and chained to step 3 (job)',db.qual_appointments.length===1&&db.qual_appointments[0].outcome==='attended'&&sheetOpen()&&/Create job/.test($('#qSheet h2').textContent));
+  await sheet({job_ref:'J-101',promised_date:'2026-09-25',revenue_cents:'640'}); T('step 3 saved the job and chained to step 4 (completion)',db.qual_jobs.length===2&&sheetOpen()&&/Record completion/.test($('#qSheet h2').textContent));
+  await sheet({completed_at:'2026-09-25T15:20',completion_evidence:'photos #7',cost_labor:'200',cost_materials:'80'}); const j2=db.qual_jobs.find(j=>j.job_ref==='J-101');
+  T('step 4 recorded completion with evidence and two actual costs; chain ends',!sheetOpen()&&!!j2.completed_at&&j2.completion_evidence==='photos #7'&&j2.costs.length===2&&j2.costs.every(c=>c.status==='actual'),j2);
+  T('“Continue where you left off” lists the job with an unknown cost',/Enter costs/.test($('#qTeam').textContent));
+  // configuration: activate v1 via sheet, edit draft, clone to v2
+  w.showQualTab('qcfg'); await tick(60); T('configuration lists v1 draft with activate/edit and the §18 checklist',/v1/.test($('#qCfg').textContent)&&!!$('#qCfg [data-cfg="activate"]')&&/§18/.test($('#qCfg').textContent)&&/baseline/i.test($('#qCfg').textContent));
+  $('#qCfg [data-cfg="edit"]').click(); await tick(40); T('draft editor opens with weights totalling 100 and segmented status controls',/Weights total 100/.test($('#qCfgTotal').textContent)&&$$('#qCfgEditor [data-stseg]').length>0);
+  $('#qCfgEditor [data-c="0.weight_pct"]').value='25'; $('#qCfgEditor [data-c="0.weight_pct"]').dispatchEvent(new w.Event('input',{bubbles:true})); T('editor flags a 105 total live',/105/.test($('#qCfgTotal').textContent)&&$('#qCfgTotal').classList.contains('bad'));
   $('#qCfgSave').click(); await tick(100); T('T2 page: saving an invalid draft is refused',/must be exactly 100/.test(toast())&&db.qual_metric_versions[0].categories[0].weight_pct===20);
-  $('#qCfgEditor [data-c="0.weight_pct"]').value='20'; $('#qCfgSave').click(); await tick(200); T('valid draft saved (no change in substance)',!/must be/.test(toast())&&db.qual_metric_versions.length===1);
-  w.__prompt=()=>'Activated after review — baseline still unresolved'; $('#qCfg [data-cfg="activate"]').click(); await tick(250);
-  T('v1 activated by the manager; badge updates; blockers keep only the baseline warning',db.qual_metric_versions[0].status==='active'&&/metric v1 active/.test($('#qVerBadge').textContent)&&!/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/.test($('#qBlockers').textContent));
+  $('#qCfgEditor [data-c="0.weight_pct"]').value='20'; $('#qCfgSave').click(); await tick(200); T('valid draft saved',!/must be/.test(toast())&&db.qual_metric_versions.length===1);
+  $('#qCfg [data-cfg="activate"]').click(); await tick(60); T('Activate opens a confirmation sheet asking for the change note',sheetOpen()&&/Activate metric v1/.test($('#qSheet h2').textContent));
+  await sheet({change_note:''}); T('activation without a note stays in the sheet',sheetOpen()&&/change note is required/.test(sheetNote())); await sheet({change_note:'Activated after review — baseline still unresolved'});
+  T('v1 activated by the manager; badge updates; only the baseline blocker remains',db.qual_metric_versions[0].status==='active'&&/metric v1/.test($('#qVerBadge').textContent)&&!$('#qVerBadge').classList.contains('warn')&&!/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/i.test($('#qBlockers').textContent));
   $('#qCfg [data-cfg="clone"]').click(); await tick(40); T('new draft from v1 proposes v2',/New draft v2/.test($('#qCfgEditor').textContent));
-  $('#qCfgEditor [data-v="revenue.baseline_cents"]').value='1000'; $('#qCfgEditor [data-vs="revenue.baseline_cents"]').value='confirmed'; $('#qCfgEditor [data-d="label"]').value='v2 — baseline $1,000/lead'; $('#qCfgSave').click(); await tick(250);
-  T('T18: v2 draft saved with the baseline in cents; v1 stays active and untouched',db.qual_metric_versions.length===2&&db.qual_metric_versions[1].revenue.baseline_cents.value===100000&&db.qual_metric_versions[1].status==='draft'&&db.qual_metric_versions[0].status==='active');
-  // decision flow on the team
-  w.qOpen(tm.id); await tick(100); const dsec=$('#qTeam details[data-sec="dec"]'); dsec.open=true;
-  setv('[data-f="official_outcome"]','pass',dsec); setv('[data-f="reason"]','looks good',dsec); dsec.querySelector('[data-act="decide"]').click(); await tick(150);
-  T('T6 page: Pass refused for a team without evidence — nothing written',/Pass is refused/.test(toast())&&db.qual_snapshots.length===0&&db.qual_decisions.length===0,toast());
-  let ds=$('#qTeam details[data-sec="dec"]'); setv('[data-f="official_outcome"]','coaching',ds); setv('[data-f="reason"]','thin sample; one no-show',ds); ds.querySelector('[data-act="decide"]').click(); await tick(150);
-  T('T20 page: Coaching without the corrective-action fields refused',/needs a named issue/.test(toast())&&db.qual_decisions.length===0);
-  ds=$('#qTeam details[data-sec="dec"]'); setv('[data-f="issue"]','attendance',ds); setv('[data-f="action_text"]','ride-along with Tom',ds); setv('[data-f="action_owner"]','Tom',ds); setv('[data-f="action_due"]',new Date(Date.now()+3*86400000).toISOString().slice(0,10),ds); setv('[data-f="next_review_date"]','2026-10-21',ds); ds.querySelector('[data-act="decide"]').click(); await tick(300);
-  T('T19 page: snapshot frozen with v1 and Coaching recorded with identity, period, version; action created',db.qual_snapshots.length===1&&db.qual_decisions.length===1&&db.qual_decisions[0].reviewer_email==='luka.m@homealliance.com'&&db.qual_decisions[0].version_id==='ver-1'&&db.qual_snapshots[0].computed.version.version===1&&db.qual_actions.length===1,toast());
+  $('#qCfgEditor [data-v="revenue.baseline_cents"]').value='1000'; $('#qCfgEditor [data-stseg="v:revenue.baseline_cents"][data-sv="confirmed"]').click(); $('#qCfgEditor [data-d="label"]').value='v2 — baseline $1,000/lead'; $('#qCfgSave').click(); await tick(250);
+  T('T18: v2 draft saved with the baseline in cents and status confirmed; v1 stays active',db.qual_metric_versions.length===2&&db.qual_metric_versions[1].revenue.baseline_cents.value===100000&&db.qual_metric_versions[1].revenue.baseline_cents.status==='confirmed'&&db.qual_metric_versions[1].status==='draft'&&db.qual_metric_versions[0].status==='active');
+  // decision via sheet
+  w.qOpen(tm.id); await tick(100); await act('#qTeam [data-act="decide"]'); T('“Record decision” opens the decision sheet with the frozen-snapshot subtitle',sheetOpen()&&/Record decision/.test($('#qSheet h2').textContent)&&/metric v1/.test($('#qSheet .hd .s').textContent));
+  await sheet({official_outcome:'pass',reason:'looks good'}); T('T6 page: Pass refused inside the sheet for a team without evidence — nothing written',sheetOpen()&&/Pass is refused/.test(sheetNote())&&db.qual_snapshots.length===0&&db.qual_decisions.length===0);
+  await sheet({official_outcome:'coaching',reason:'thin sample; one no-show'}); T('T20 page: Coaching without the corrective-action fields refused',sheetOpen()&&/needs a named issue/.test(sheetNote())&&db.qual_decisions.length===0);
+  await sheet({issue:'attendance',action_text:'ride-along with Tom',action_owner:'Tom',action_due:new Date(Date.now()+3*86400000).toISOString().slice(0,10),next_review_date:'2026-10-21'});
+  T('T19 page: snapshot frozen with v1 and Coaching recorded with identity, period, version; action created',!sheetOpen()&&db.qual_snapshots.length===1&&db.qual_decisions.length===1&&db.qual_decisions[0].reviewer_email==='luka.m@homealliance.com'&&db.qual_decisions[0].version_id==='ver-1'&&db.qual_snapshots[0].computed.version.version===1&&db.qual_actions.length===1,toast());
   T('T19: the frozen snapshot carries the full calculation (categories with source ids, gates, evidence)',Array.isArray(db.qual_snapshots[0].computed.categories)&&db.qual_snapshots[0].computed.categories.length===7&&Array.isArray(db.qual_snapshots[0].computed.gates)&&!!db.qual_snapshots[0].computed.evidence);
-  T('page shows the official Coaching pill and the frozen snapshot summary',$$('#qTeam .q-out.coaching').length>=1&&/score/.test($('#qTeam details[data-sec="dec"]').textContent));
-  T('T18 page: v1 is now marked used/immutable in Configuration',db.qual_metric_versions[0].used_in_decision===true);
+  T('team page shows the official Coaching pill and the decision date',$$('#qTeam .pill.coaching').length>=1&&/Decided/.test($('#qTeam').textContent));
+  await section('dec'); T('Decisions section lists the decision and its corrective action with “View snapshot”',/Coaching/.test($('#qTeam').textContent)&&/ride-along with Tom/.test($('#qTeam').textContent)&&!!$('#qTeam [data-act="viewsnap"]'));
+  await act('#qTeam [data-act="viewsnap"]'); T('snapshot viewer shows the frozen JSON',/Frozen snapshot/.test($('#qSnapView').textContent)&&/weighted_score/.test($('#qSnapView').textContent));
+  T('T18 page: v1 is now marked used/immutable',db.qual_metric_versions[0].used_in_decision===true);
+  // category drill-down
+  await act('#qTeam .backlink'); await act('#qTeam [data-drill="sales"]'); T('T16: a category row drills down to formula, sample and source ids',!!$('#qTeam .drill')&&/Formula/.test($('#qTeam .drill').textContent)&&/included/.test($('#qTeam .drill').textContent));
   // queues + comparison + overview
-  w.showQualTab('qqueue'); await tick(60); T('queues render seven panels; coaching action due appears',$$('#qQueues .q-queue').length===7&&/ride-along/.test($('#qQueues').textContent));
-  w.showQualTab('qteams'); await tick(60); T('comparison table: one row, Coaching official, evidence state, N/A cells',$$('#qTeams tbody tr').length===1&&/Coaching/.test($('#qTeams').textContent)&&/N\/A/.test($('#qTeams').textContent));
-  setv('#qfOut','pass'); await tick(40); T('filter by outcome hides the row without changing the stored decision',$$('#qTeams tbody tr').length===1&&/No teams match/.test($('#qTeams').textContent)&&db.qual_decisions[0].official_outcome==='coaching'); setv('#qfOut',''); await tick(40);
-  w.showQualTab('qover'); await tick(60); T('overview: 0/3 qualified (coaching does not count), 1 team in Coaching',/Coaching: <b>1<\/b>|Coaching: 1/.test($('#qOver').innerHTML.replace(/<\/?b>/g,''))&&/0/.test($('#qOver .kpi .v').textContent));
+  w.showQualTab('qqueue'); await tick(60); T('queues render seven cards; the coaching action due appears',$$('#qQueues > .card').length===7&&/ride-along/.test($('#qQueues').textContent));
+  w.showQualTab('qteams'); await tick(60); T('comparison: one row, Coaching official, evidence dot, N/A cells',$$('#qTeams a.row').length===1&&/Coaching/.test($('#qTeams').textContent)&&/N\/A/.test($('#qTeams').textContent));
+  setv('#qfOut','pass'); await tick(40); T('filter by outcome hides the row without changing the stored decision',$$('#qTeams a.row').length===0&&/No teams match/.test($('#qTeams').textContent)&&db.qual_decisions[0].official_outcome==='coaching'); setv('#qfOut',''); await tick(40);
+  w.showQualTab('qover'); await tick(60); T('overview: 0 of 3 qualified (coaching does not count), Coaching counted once',/0/.test($('#qOver .ring .v').textContent)&&/Coaching/.test($('#qOver .counts').textContent));
   // dispatcher view
   signIn('tom@5starair.pro'); await tick(250); w.qOpen(tm.id); await tick(120);
-  T('dispatcher: no decision form, no approve buttons, can still record operational data',!$('#qTeam [data-act="decide"]')&&!$('#qTeam [data-act="approvemember"]')&&!!$('#qTeam [data-act="addlead"]')&&/tom@5starair\.pro · dispatcher/.test($('#qWho').textContent));
+  T('dispatcher: no “Record decision”, records and guided entry available',!$('#qTeam [data-act="decide"]')&&$$('#qTeam .step').length===4&&/tom · dispatcher/.test($('#qWho').textContent));
+  await section('leads'); T('dispatcher may add leads',!!$('#qTeam [data-act="add"][data-id="leads"]'));
+  await act('#qTeam .backlink'); await section('roster'); T('dispatcher: no approve button, no “Mark entry review complete”',!$('#qTeam [data-act="approvemember"]')&&!$('#qTeam [data-act="completeentry"]'));
+  await act('#qTeam .backlink'); await section('dec'); T('dispatcher: Decisions section has no add button',!$('#qTeam [data-act="add"][data-id="dec"]'));
   w.showQualTab('qcfg'); await tick(60); T('dispatcher: configuration read-only',!$('#qCfg [data-cfg="activate"]')&&!$('#qCfg [data-cfg="edit"]')&&!!$('#qCfg [data-cfg="view"]'));
-  w.showQualTab('qdef'); await tick(40); T('Definitions tab renders formulas, evidence states, outcomes and roles',/seven categories/i.test($('#qDef').textContent)&&/Decision Eligible/.test($('#qDef').textContent)&&/When a button refuses/.test($('#qDef').textContent));
-  await fake.auth.signOut(); await tick(80); T('sign out → gate again',vis('#qGate')&&!vis('#qBody'));
+  w.showQualTab('qdef'); await tick(40); T('Definitions tab renders categories, evidence states, outcomes, process, roles and refusals',/seven categories/i.test($('#qDef').textContent)&&/Decision Eligible/.test($('#qDef').textContent)&&/When a button refuses/.test($('#qDef').textContent)&&/Former technician returns/.test($('#qDef').textContent));
+  await fake.auth.signOut(); await tick(80); T('sign out → gate again',shown('#qGate')&&!shown('#qBody'));
   T('zero console / jsdom errors',errors.length===0,errors);
   if(cssWarn.length)console.log(`  (jsdom CSS parser warnings, not app errors: ${cssWarn.length})`);
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);
