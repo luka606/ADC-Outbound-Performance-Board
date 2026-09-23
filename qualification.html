@@ -175,6 +175,16 @@ textarea.in{resize:vertical;min-height:70px}
 .def p.foot2{margin:0 18px 18px;font-size:13px;color:var(--ink2)}
 .def .row{font-size:14px;align-items:start}.def .row .m{color:var(--ink2)}
 .def .k{width:30px;height:30px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+/* sop */
+.ui{display:inline-block;background:var(--card2);border:1px solid var(--sep);border-radius:7px;padding:0 7px;font-size:.92em;white-space:nowrap}
+.def table{width:100%;border-collapse:collapse;font-size:14px}.def th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink2);padding:8px 10px;border-bottom:1px solid var(--sep)}.def td{padding:9px 10px;border-bottom:1px solid var(--sep);vertical-align:top}.def tr:last-child td{border-bottom:0}
+.def .card.pad p{margin:8px 0}.def .card.pad ul,.def .card.pad ol{margin:6px 0;padding-left:22px}.def .card.pad li{margin:4px 0}
+.def .stp{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px 20px;border-top:1px solid var(--sep)}.def .stp:first-child{border-top:0}.def .stp .k{width:30px;height:30px}
+.def .rl{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:9px 20px;border-top:1px solid var(--sep);font-size:14px}.def .rl:first-child{border-top:0}
+.def .why2{background:var(--accent-soft);border-radius:14px;padding:14px 18px;margin:0 0 18px;font-size:14.5px}.def .why2 b{color:var(--accent)}
+.def label.ck{display:flex;gap:10px;align-items:flex-start;padding:9px 20px;border-top:1px solid var(--sep);font-size:14.5px}.def label.ck:first-child{border-top:0}.def label.ck input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.def i.msg{color:var(--red)}
+@media(max-width:640px){.def table{display:block;overflow-x:auto}}
 /* sheet */
 .sheetback{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.32);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;padding:24px;animation:qaFade .2s ease}
 .sheet{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--card);border-radius:22px;box-shadow:var(--shadow-lg);animation:qaIn .28s cubic-bezier(.2,.9,.3,1.05)}
@@ -214,6 +224,7 @@ textarea.in{resize:vertical;min-height:70px}
     <button data-tab="qqueue">Queues</button>
     <button data-tab="qcfg">Configuration</button>
     <button data-tab="qdef">Definitions</button>
+    <button data-tab="qsop">SOP</button>
   </nav>
   <div class="hdr-right">
     <span id="qWho"></span>
@@ -238,7 +249,7 @@ textarea.in{resize:vertical;min-height:70px}
 </div></div>
 
 <div id="qBody" class="hide">
-<div class="wrap"><div class="why"><span class="k">Why one scorecard</span><span class="t">Every team — incumbent, candidate or rebuilt — is judged by the same seven weighted categories and by gates no score can override. Only a current <b>Pass</b> on enough evidence counts toward the Rock's three.</span><a href="#" id="qWhyDef">Definitions ›</a></div></div>
+<div class="wrap"><div class="why"><span class="k">Why one scorecard</span><span class="t">Every team — incumbent, candidate or rebuilt — is judged by the same seven weighted categories and by gates no score can override. Only a current <b>Pass</b> on enough evidence counts toward the Rock's three.</span><a href="#" id="qWhyDef">Definitions ›</a><a href="#" id="qWhySop">SOP ›</a></div></div>
 <main id="qualRoot">
   <div id="qBlockers" class="notes"></div>
   <section class="tab on" id="tab-qover"><div class="phead"><h1 class="pt">Overview</h1><span class="sub2" id="qOverMeta"></span></div><div id="qOver"></div></section>
@@ -260,6 +271,7 @@ textarea.in{resize:vertical;min-height:70px}
   <section class="tab" id="tab-qqueue"><div class="phead"><h1 class="pt">Queues</h1><span class="sub2">What is waiting on whom. Nothing here changes an outcome by itself.</span></div><div id="qQueues" class="queues"></div></section>
   <section class="tab" id="tab-qcfg"><div class="phead"><h1 class="pt">Configuration</h1><span class="sub2">A version used in a decision is immutable. Weights must total exactly 100 — nothing is normalised silently.</span></div><div id="qCfg"></div></section>
   <section class="tab" id="tab-qdef"><div id="qDef" class="def"></div></section>
+  <section class="tab" id="tab-qsop"><div id="qSop" class="def"></div></section>
 </main>
 </div>
 <div id="qSheetRoot"></div>
@@ -647,6 +659,7 @@ function showQualTab(name){
   $$('#navQual button').forEach(x=>x.classList.toggle('on',x.dataset.tab===name));
   $$('#qualRoot .tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
   if(name==='qdef'){qRenderDef();return;}
+  if(name==='qsop'){qRenderSop();return;}   // static; readable before data loads, like the Bridge's SOP tab
   if(!Q.loaded)return;
   qRenderBlockers();
   if(name==='qover')qRenderOver();
@@ -657,6 +670,7 @@ function showQualTab(name){
 }
 $('#navQual').addEventListener('click',e=>{const b=e.target.closest('button');if(b){Q.section=null;showQualTab(b.dataset.tab);}});
 $('#qWhyDef').addEventListener('click',e=>{e.preventDefault();showQualTab('qdef');});
+$('#qWhySop').addEventListener('click',e=>{e.preventDefault();showQualTab('qsop');});
 function qOpen(id,section){Q.sel=id;Q.section=section||null;Q.drill=null;showQualTab('qteam');history.replaceState(null,'',location.pathname+'?team='+encodeURIComponent(id));window.scrollTo(0,0);}
 /* one delegated handler for navigation-ish attributes anywhere in the page */
 document.addEventListener('click',e=>{
@@ -1110,7 +1124,7 @@ function qRenderQueues(){
 function qRenderCfg(){
   const root=$('#qCfg');const av=qActiveVersion();const cv=qCalcVersion();
   const unresolved=[];if(cv){const chk=(label,x,ref,sub)=>{const v=cfgval(x),st=cfgstat(x);const ok=v!=null&&st==='confirmed';unresolved.push({label,ref,ok,sub:sub||(v==null?'Unresolved — not guessed':`${typeof v==='object'?JSON.stringify(v):v} — ${st}`)});};
-    unresolved.push({label:'Exact approved definition of a qualified lead',ref:1,ok:false,sub:'Recorded per lead as qualification evidence; no global rule yet'});
+    {const d=cv.evidence?.qualified_lead_definition;const v=cfgval(d);unresolved.push({label:'Exact approved definition of a qualified lead',ref:1,ok:v!=null&&cfgstat(d)==='confirmed',sub:v?`${v} — ${cfgstat(d)}`:'Unresolved — written once in the version, then recorded per lead as evidence'});}
     chk('Revenue credit point',cv.revenue?.credit_point,2);chk('Revenue-per-qualified-lead baseline',cv.revenue?.baseline_cents,3,cfgval(cv.revenue?.baseline_cents)!=null?`${cents(cfgval(cv.revenue?.baseline_cents))} per qualified lead — ${cfgstat(cv.revenue?.baseline_cents)}`:null);chk('Revenue segmented by service or territory',cv.revenue?.segmented_by,3);
     const th=(cv.categories||[]).filter(c=>['coverage','attendance','completion','quality'].includes(c.key));unresolved.push({label:'Coverage, attendance, completion and quality thresholds',ref:4,ok:th.every(c=>c.status==='confirmed'),sub:th.map(c=>`${c.label.split(' ')[0]} ${c.status}`).join(' · ')});
     chk('Customer-quality observation window (days)',cv.windows?.quality_observation_days,5);chk('On-time grace window (minutes)',cv.windows?.on_time_grace_minutes,6);unresolved.push({label:'Operating timezone and week boundary',ref:7,ok:cfgstat(cv.windows?.timezone)==='confirmed'&&cfgstat(cv.windows?.week_start)==='confirmed',sub:`${cfgval(cv.windows?.timezone)||'—'} · ${cfgval(cv.windows?.week_start)||'—'} — ${cfgstat(cv.windows?.timezone)}`});
@@ -1154,6 +1168,7 @@ function qRenderCfgEditor(){
       <div class="row cfgv"><span style="font-weight:500">Min qualified estimates</span>${inp('data-e="min_qualified_estimates"',cfgval(d.evidence?.min_qualified_estimates)??10)}<span></span></div>
       <div class="row cfgv"><span style="font-weight:500">Min completed jobs</span>${inp('data-e="min_completed_jobs"',cfgval(d.evidence?.min_completed_jobs)??5)}<span></span></div>
       <div class="row cfgv"><span style="font-weight:500">Supervised jobs (new / rebuilt)</span>${inp('data-e="supervised_jobs"',cfgval(d.evidence?.supervised_jobs)??3)}<span></span></div>
+      ${vrow('Qualified lead — the approved definition','evidence.qualified_lead_definition',`<textarea class="in sm" data-v="evidence.qualified_lead_definition" data-text="1" rows="3"${dis} placeholder="unresolved — e.g. a lead with a confirmed appointment and a documented need for installation or cleaning" style="text-align:left;min-height:64px">${esc(val('evidence','qualified_lead_definition')??'')}</textarea>`,cfgstat(d.evidence?.qualified_lead_definition),'§18.1')}
       ${vrow('Decision-age cutoff for pending leads (days)','evidence.decision_age_days',inp('data-v="evidence.decision_age_days"',val('evidence','decision_age_days')??'','unresolved',val('evidence','decision_age_days')==null?'bad':''),cfgstat(d.evidence?.decision_age_days),'')}</div></div>
     <div><div class="eyebrow ind">Windows</div><div class="card list">
       ${vrow('Customer-quality observation (days)','windows.quality_observation_days',inp('data-v="windows.quality_observation_days"',val('windows','quality_observation_days')??''),cfgstat(d.windows?.quality_observation_days),'§18.5')}
@@ -1189,7 +1204,7 @@ function qRenderCfgEditor(){
     n.outcome_rules=n.outcome_rules||{};$$('[data-o]',box).forEach(i=>{n.outcome_rules[i.dataset.o]=Number(i.value);});
     n.margin_rules={installation:{target_pct:Number($('[data-m="installation.target_pct"]',box).value),floor_pct:Number($('[data-m="installation.floor_pct"]',box).value)},cleaning:{floor_pct:Number($('[data-m="cleaning.floor_pct"]',box).value)},status:'confirmed'};
     $$('[data-v]',box).forEach(i=>{const [a,b]=i.dataset.v.split('.');n[a]=n[a]||{};let v=i.value.trim();const st=$(`[data-st-for="v:${i.dataset.v}"]`,box).value;
-      if(v==='')v=null;else if(i.dataset.cents)v=toC(v);else if(/^-?\d+(\.\d+)?$/.test(v))v=Number(v);else if(v==='true'||v==='false')v=v==='true';
+      if(v==='')v=null;else if(i.dataset.text){}else if(i.dataset.cents)v=toC(v);else if(/^-?\d+(\.\d+)?$/.test(v))v=Number(v);else if(v==='true'||v==='false')v=v==='true';
       n[a][b]={value:v,status:st};});
     n.critical_events=$('#qCfgCrit').value.split('\n').map(s=>s.trim()).filter(Boolean).map(l=>{const [code,label,status]=l.split('|').map(x=>(x||'').trim());return {code,label:label||code,status:status||'proposed'};});
     const errs=qualValidateVersion(n);if(errs.length){toast(errs.join('; '),true);return;}
@@ -1204,7 +1219,7 @@ function qRenderDef(){
   const card=(n,title,body,tight)=>`<div class="eyebrow ind">${n} · ${title}</div>${body}`;
   const list=(rows,cls,tight)=>`<div class="card list${tight?' tight':''}">${rows.join('')}</div>`;
   $('#qDef').innerHTML=`<div class="eyebrow acc">Definitions · M4</div><h1 class="pt" style="margin:2px 0 8px">How a team qualifies</h1>
-  <p class="lead">The same standard for incumbents, candidates and a rebuilt team led by the former technician. Numbers come from ${V?`metric v${V.version} (${V.status})`:'no metric version'}. <span class="pill proposed">proposed</span> thresholds await Luka's approval; <span class="pill unresolved">unresolved</span> values are never guessed.</p>
+  <p class="lead">${cfgval(E.qualified_lead_definition)?`<b>Qualified lead:</b> ${esc(cfgval(E.qualified_lead_definition))} <span class="pill ${cfgstat(E.qualified_lead_definition)}">${cfgstat(E.qualified_lead_definition)}</span><br>`:''}The same standard for incumbents, candidates and a rebuilt team led by the former technician. Numbers come from ${V?`metric v${V.version} (${V.status})`:'no metric version'}. <span class="pill proposed">proposed</span> thresholds await Luka's approval; <span class="pill unresolved">unresolved</span> values are never guessed.</p>
   ${card(1,'Two layers',`<div class="card text"><b>Weighted performance score</b> across seven categories, and <b>non-negotiable gates</b>: every critical compliance check passed, no unresolved severe incident, no active restriction, no confirmed critical event. A high score never overrides a failed gate.</div>`)}
   ${card(2,'The seven categories',list(cats.map(c=>`<div class="row" style="grid-template-columns:minmax(0,1fr) 60px 170px 100px"><span><span class="t">${esc(c.label)}</span><span class="s">${esc(c.formula||'')}</span></span><span class="num" style="font-size:18px;font-weight:700;text-align:right">${c.weight_pct}%</span><span class="m" style="font-size:13px">${esc(c.target||'')}<span class="s num">bands ${c.direction==='lower'?'≤':'≥'} ${c.bands?.p100} / ${c.bands?.p70} / ${c.bands?.p40}</span></span><span style="text-align:right">${stPill(c.status)}</span></div>`),'',true)+`<p class="foot2">Every rate shows numerator, denominator, sample size, excluded and missing counts, and drills down to source records. A zero denominator is <b>N/A</b> — never 0% or 100%. Missing evidence, unknown costs and unrecorded outcomes never become a pass or a zero.</p>`)}
   ${card(3,'Evidence states',list([['pending_entry_review','Identity, roster, territories, services, equipment, documents, availability, payment and compliance readiness not yet verified by the manager.'],['supervised_trial',`A new or rebuilt team has fewer than ${cfgval(E.supervised_jobs)??3} supervised jobs signed off.`],['pending_evidence',`Fewer than ${cfgval(E.min_qualified_estimates)??10} qualified estimates or ${cfgval(E.min_completed_jobs)??5} completed jobs in the rolling ${cfgval(E.window_days)??28} days, no critical-compliance evidence, or no job matured through the quality window.`],['decision_eligible','Minimum evidence satisfied. Only here can a Pass be recorded.']].map(([k,tx])=>`<div class="row" style="grid-template-columns:8px 170px minmax(0,1fr)">${evDot(k)}<b>${esc(QEV_LABEL[k])}</b><span class="m">${esc(tx)}</span></div>`)))}
@@ -1212,6 +1227,101 @@ function qRenderDef(){
   ${card(5,'The process',list([['A','Entry review','identity, roster, documents, readiness verified by the manager.'],['B','Supervised trial','three observed jobs; the team stays provisional.'],['C','Proof period','minimum sample across the rolling window.'],['D','Weekly review','refresh, reconcile, coach.'],['E','Official decision','on a frozen snapshot tied to the metric version.'],['F','Requalification','after probation, a material roster change, expired credentials or a serious incident; never overwrites the prior decision.'],['G','Former technician returns','the rebuilt team starts at Entry Review with no waiver.']].map(([k,l,tx])=>`<div class="row" style="grid-template-columns:30px minmax(0,1fr)"><span class="k">${k}</span><span style="padding-top:4px"><b>${l}</b> <span class="m">— ${esc(tx)}</span></span></div>`)))}
   ${card(6,'Who does what',list([['Dispatcher','Records leads, estimates, appointments, jobs, costs, coverage offers and responses, availability, quality events, compliance checks and supervised-job notes; requests exclusions.'],['Manager · Luka','Completes entry reviews, approves members, signs off supervised jobs, rules on substantiation, approves exclusions, imposes and lifts restrictions, confirms incidents, activates versions, records official decisions, closes actions.'],['Sardor','Authorised margin exceptions are recorded against the job by reference; they keep the job visible as below-floor work and never improve a score.'],['Technicians','Do not sign in; they see results through the manager. Nobody edits a calculated total — corrections happen in the source record or through an approved exclusion.']].map(([l,tx])=>`<div class="row" style="grid-template-columns:130px minmax(0,1fr)"><b>${l}</b><span class="m">${esc(tx)}</span></div>`)))}
   ${card(7,'When a button refuses',list([['Pass refused: the team is Pending Evidence','The sample is short; extend the window rather than invent performance.'],['Weighted score is not definitive','A category is N/A or the revenue baseline is unresolved; fix the source records or the configuration.'],['Weights must total exactly 100 · bands overlap','Fix the draft; nothing is normalised silently.'],['Availability row is locked','An offer already referenced that date; add a correction row with a reason.'],['Original promise date is immutable','Record a customer-approved reschedule instead.'],['Only the manager…','The action is a business decision reserved to Luka’s role.']].map(([m,tx])=>`<div class="row" style="grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr)"><i style="color:var(--red)">"${esc(m)}"</i><span class="m">${esc(tx)}</span></div>`)))}`;
+}
+
+/* ---------- SOP (static) — the dispatcher's procedure, ADC-QUAL-001. Source of truth: the vault note; this copy names the role, not the person. ---------- */
+function qRenderSop(){
+  const sec=(n,title,body)=>`<div class="eyebrow ind">${n} · ${title}</div>${body}`;
+  const card=b=>`<div class="card pad" style="margin-bottom:18px">${b}</div>`;
+  const list=b=>`<div class="card list" style="margin-bottom:18px">${b}</div>`;
+  const row=(cells,cols)=>`<div class="row" style="grid-template-columns:${cols}">${cells}</div>`;
+  const ui=x=>`<span class="ui">${x}</span>`;
+  $('#qSop').innerHTML=`<div class="eyebrow acc">SOP ADC-QUAL-001 · v1.0 · for the ADC dispatcher</div><h1 class="pt" style="margin:2px 0 6px">How to record the day</h1>
+  <div class="sub2" style="margin-bottom:16px">Effective 24 Sep 2026 · owner: the ADC manager · review Dec 2026 · source of truth: the vault note <em>SOP — Team Qualification records for the dispatcher</em></div>
+  <div class="why2"><b>Why this exists.</b> Every ADC team — the ones we have and the ones we hire — is judged by one scorecard: sales, revenue, coverage, attendance, completion, customer quality and compliance. <b>The scorecard is never typed in.</b> It is calculated from the records you enter. Record the day faithfully and the numbers are fair; leave a record out and the page shows <b>N/A</b> or "missing", never a guess. Your records are what the manager decides on, so accuracy matters more than speed.</div>
+
+  ${sec(1,'What you can and cannot do',card(`<p><b>You record.</b> Leads and estimate versions · appointments and their outcome · jobs, promise dates, completion and costs · coverage offers and the team's response · availability · quality events · compliance checks · supervised-job notes · suspected incidents · exclusion <em>requests</em> · weekly review notes.</p>
+    <p><b>The manager decides.</b> Completing a team's entry review · approving members · signing off supervised jobs · ruling whether a customer issue is substantiated · approving exclusions · restrictions · activating the metric version · the official outcome (Pass / Coaching / Probation / Disqualify).</p>
+    <p><b>Nobody edits a score.</b> If a percentage looks wrong, fix the record behind it (every category row drills down to the exact records it counted) or request an exclusion. The database refuses edits to calculated totals for everyone, including the manager.</p>`))}
+
+  ${sec(2,'Sign in',card(`<ol><li>Board → brand menu (top-left) → ${ui('Team Qualification ↗')}, or open ${ui('…/qualification.html')} directly.</li>
+    <li>If you are already signed in to the <b>M2 Bridge</b> on this device, you are in. Otherwise enter your work email → ${ui('Send sign-in link')} → open the email link <em>on the same device</em>.</li>
+    <li>The header shows your name and <b>dispatcher</b>. If it says "not a member", tell the manager — nothing else will work.</li>
+    <li>Do not sign out at the end of the day; the session is shared with the Bridge.</li></ol>`))}
+
+  ${sec(3,'Before a team can be scored',card(`<p>A team appears on ${ui('Teams')}. The manager creates it (${ui('+ New team')}); you may add members.</p>
+    <ol><li>${ui('Teams')} → tap the team → <b>Records → Roster and entry review</b>.</li>
+    <li>${ui('+ Member')} for each person: name (pick the board technician so the record links), role, start date, credentials. The manager approves them.</li>
+    <li>Tick the entry-review items you can verify and ${ui('Save checklist')}. Only the manager can press ${ui('Mark entry review complete')}.</li>
+    <li>Until then the team stays <span class="pill">Pending Entry Review</span>. You can still record everything; it just is not scored officially.</li></ol>
+    <div class="note" style="margin-top:10px"><span class="dot"></span><span><b>New or rebuilt team?</b> <span class="m">It also needs three <b>supervised jobs</b> signed off by the manager before its proof period (§11). A rebuilt team led by a former technician follows exactly the same path — no shortcut.</span></span></div>`))}
+
+  ${sec(4,'The daily routine — four steps',`<div class="card list" style="margin-bottom:8px">
+    ${[['1','Lead','when a lead is assigned to the team. Lead reference, assigned time, territory, service, qualified yes/no with the evidence, estimate amount if one was already given. '+ui('Save · book appointment')+' continues; '+ui('Save only')+' stops here.'],['2','Appointment','the visit you scheduled for that lead. Scheduled time; outcome '+ui('Not yet')+' until it happens, then come back and record '+ui('Attended on time')+' / '+ui('Late')+' / '+ui('No-show')+'.'],['3','Job','once the customer bought. Job reference, service, <b>original promise date</b> (locked after save), sold revenue.'],['4','Completion','when the work is done. Completed time, <b>completion evidence</b> (photo set / checklist reference), labor and materials cost. Leave a cost <b>blank if you do not know it</b> — never type 0.']].map(([n,l,t])=>`<div class="stp"><span class="k">${n}</span><span><b>${l}</b> — ${t}</span></div>`).join('')}</div>
+    ${card(`<p>Open the team → the <b>Today · guided entry</b> card walks one job through its life in four chained sheets. Do it <b>the same day</b>; a record entered days later is still true, but a missing one shows as "missing" in the meantime.</p>
+    <p>Under the steps, <b>Continue where you left off</b> lists what is half-done: leads with no appointment, jobs past their promise date with no completion, jobs with an unknown cost, appointments with no outcome. Clear it before you leave.</p>
+    <div class="note"><span class="dot"></span><span><b>Which team?</b> <span class="m">The lead's assigned team, not the technician who ended up driving. If the job was reassigned, that is a <b>coverage offer</b> to the new team (§8), and the original team's lead gets its outcome (§5).</span></span></div>`)}`)}
+
+  ${sec(5,'Leads and estimates',card(`<p><b>Records → Leads and estimates</b>. One row per opportunity. A revised estimate is ${ui('+ Estimate')} on the same row — <b>never a second lead</b>; the sales rate counts opportunities, not paper.</p>
+    <table><tr><th>When</th><th>Button</th><th>Enter</th></tr>
+    <tr><td>Customer bought</td><td>${ui('Won')}</td><td>Sold amount (pre-filled from the latest estimate — correct it if different) and when.</td></tr>
+    <tr><td>Customer said no</td><td>${ui('Declined')}</td><td>Optional note. Counts against close rate — that is correct.</td></tr>
+    <tr><td>The team did not inspect, estimate, follow up or show up</td><td>${ui('Failed')}</td><td>What happened. Counts against close rate — required by policy.</td></tr>
+    <tr><td>Money arrived</td><td>${ui('Collected')}</td><td>Collected amount — reported separately from sold.</td></tr>
+    <tr><td>Lead should not count at all (duplicate, not qualified, cancelled before the team could act, company cancellation)</td><td>${ui('Exclude…')}</td><td>Category and reason. It stays <span class="pill pending">pending</span> until the manager approves; only then does it leave the rate.</td></tr></table>
+    <p><b>Qualified?</b> Until the manager confirms the written definition in Configuration, use this: the customer has a real need for installation or cleaning and agreed to a visit or a quote. Write the evidence in the field. A lead you mark <em>not qualified</em> is kept but never counted.</p>`))}
+
+  ${sec(6,'Appointments',card(`<p><b>Records → Appointments</b>. One row per scheduled visit the team was responsible for. Record the outcome the same day via ${ui('Outcome…')}:</p>
+    <ul><li><span class="pill attended">attended</span> on time · <span class="pill late">late</span> (enter the arrival time) · <span class="pill no_show">no-show</span>. <b>A no-show needs a reason</b>; without one it is "unexplained" and caps the team's attendance band.</li>
+    <li>Customer rescheduled, company cancelled, or force majeure: choose it under <b>Exclusion (documented)</b> and give the reason — these do not count against the team, and the reason is kept with the record.</li>
+    <li>An appointment left at ${ui('Not yet')} after its time <b>counts as not attended</b> until you record it.</li></ul>`))}
+
+  ${sec(7,'Jobs, promise dates, completion, costs',card(`<p><b>Records → Jobs</b>. Row buttons:</p>
+    <table><tr><th>Button</th><th>Use it when</th><th>Rule</th></tr>
+    <tr><td>${ui('Complete')}</td><td>Work finished</td><td>Time, <b>evidence</b>, costs. No evidence = not compliant, even if done on time.</td></tr>
+    <tr><td>${ui('Reschedule')}</td><td>Customer approved a new date</td><td>New date + reason. The original promise date stays on record forever; the team is judged by the new one.</td></tr>
+    <tr><td>${ui('Costs')}</td><td>You learn a cost, or a cost changes</td><td>One line each: ${ui('materials, 1200, actual')} · ${ui('labor, unknown, estimated')}. Unknown stays unknown — the margin shows N/A rather than a wrong number. Sardor's margin-exception reference goes here too; it authorises the job and never lifts the margin.</td></tr>
+    <tr><td>${ui('Cancel')}</td><td>Job will not happen</td><td>Reason required.</td></tr>
+    <tr><td>${ui('+ Quality event')} / ${ui('+ Check')}</td><td>Anything customer-quality or compliance about this job</td><td>See §9 and §10.</td></tr></table>
+    <p>Margins: installation at least <b>35%</b> (target 40%), duct cleaning at least <b>45%</b>. Projected (estimated costs) and actual (actual costs) are shown separately; "below floor" is flagged. A <b>mixed</b> job needs the service split (service, revenue, cost per line) in the Costs sheet or the floors cannot be checked.</p>`))}
+
+  ${sec(8,'Coverage offers and availability',card(`<p>The same work you already do under the coverage SOP (ADC-DSR-001), seen from the team's side. Two rules make it fair:</p>
+    <ol><li><b>Availability first.</b> <b>Records → Availability</b> → ${ui('+ Availability')} for the dates the team told you it works — <em>before</em> you offer jobs. An offer on a date with no declared availability is <b>not eligible</b>: it never counts against the team, and never for it.</li>
+    <li><b>Every offer is a record.</b> On Friday press ${ui('Import from Coverage log')} (it pulls the offers you logged on the board's Coverage tab and skips ones already imported), or add one with ${ui('+ Offer')}. Then ${ui('Response…')} on each row: accepted / declined / no response / reassigned, whether the team met its contact-or-arrival obligation, and the reason if it did not accept. An offer left <span class="pill pending">pending</span> counts as unfulfilled.</li></ol>
+    <p>Once an offer references a date, that day's availability row is <b>locked</b>. If the team later says it was unavailable, add a new row with the reason — the manager approves it — and the offer keeps the eligibility it had. Nobody can make a declined job disappear by editing availability afterwards.</p>`))}
+
+  ${sec(9,'Quality events',card(`<p>Complaint, callback, refund, damage, corrective work or other — record it on the job (${ui('+ Quality event')}) or under <b>Records → Quality events</b> the day you learn of it: type, severity (low / medium / <b>severe</b>), cost if any, who is responsible, and the evidence (ticket, call, photos). Leave <b>substantiation</b> alone — the manager rules on it; until then it counts neither for nor against. A <b>severe</b> open event blocks any Pass by itself, so report it the same day.</p>
+    <p>Several events on one job are fine — the job counts once in the rate; the events and their costs stay visible.</p>`))}
+
+  ${sec(10,'Compliance checks',card(`<p>For every job, record the required checks (${ui('+ Check')} on the job, or <b>Records → Compliance checks</b>): authorization · approved pricing / discounts · financing disclosure · payment handling · margin approval · safety documentation · estimate acceptance · <b>start authorization</b> · <b>completion evidence</b>. Mark whether the check is <b>critical</b> (start authorization, payment handling, safety documentation, margin approval), the result <span class="pill pass">pass</span> / <span class="pill fail">fail</span> / <span class="pill missing">missing</span>, and the evidence. <b>A pass without evidence is refused.</b> Missing is honest — use it rather than guessing; it counts as not passed until the evidence exists.</p>`))}
+
+  ${sec(11,'Supervised jobs, incidents, exclusions',card(`<p><b>Supervised jobs</b> (new or rebuilt teams): after each observed job, <b>Records → Supervised jobs</b> → ${ui('+ Supervised job')}: date, observer, the job, notes on sales handling, workmanship, customer interaction, documentation, safety, feedback given. The manager signs it off.</p>
+    <p><b>Incidents:</b> if you suspect a critical event — unsafe work, payment mishandling, unauthorised pricing or job start, license/insurance failure, abandoning a job, severe harm — record it under <b>Records → Incidents and restrictions</b> → ${ui('+ Incident')} <em>and tell the manager immediately</em>. You are flagging, not judging.</p>
+    <p><b>Exclusions:</b> ${ui('Exclude…')} on a lead or job creates a request with category and reason. It changes nothing until approved. Never delete or overwrite a record to make a rate look better — request the exclusion instead.</p>`))}
+
+  ${sec(12,'Weekly routine (Friday, 30 minutes)',card(`<ol><li>Each team → <b>Records → Coverage offers</b> → ${ui('Import from Coverage log')}; record responses on every pending offer.</li>
+    <li>Each team → <b>Today · guided entry</b> → clear "Continue where you left off".</li>
+    <li>${ui('Queues')} → <b>Missing or conflicting data preventing a decision</b>: fix each item (missing outcome, missing evidence, unknown cost). What you cannot fix, write in the weekly review note.</li>
+    <li>Each team → <b>Records → Weekly reviews</b> → ${ui('+ Review')}: kind <b>weekly</b>, who was present, observations, actions.</li>
+    <li>Tell the manager what needs a ruling: pending exclusions, quality events awaiting substantiation, supervised jobs awaiting sign-off.</li></ol>`))}
+
+  ${sec(13,'Rules that never bend',list([['no','Never type <b>0</b> for a cost, arrival time or outcome you do not know. Leave it blank / not yet; the page shows N/A or missing.'],['no','Never create a second lead for a revised estimate — '+ui('+ Estimate')+' on the same lead.'],['no','Never change a promise date by re-creating the job — use '+ui('Reschedule')+' with the reason.'],['no','Never declare availability after the offer to change the result — the offer keeps the eligibility it had.'],['no','Never mark a compliance check passed without the evidence reference.'],['ok','Always record the same day; times you type are <b>Pacific time</b>, whatever your computer&#39;s clock says.'],['ok','Always give the reason when the sheet asks — no-show, decline, reschedule, cancellation, exclusion. The reason is part of the record.'],['ok','Always attach the record to the <b>assigned team</b>, then record reassignments as coverage offers.']].map(([k,t])=>`<div class="rl"><span class="g ${k==='ok'?'ok':'fail'}" style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700">${k==='ok'?'✓':'✕'}</span><span>${t}</span></div>`).join('')))}
+
+  ${sec(14,'When a button refuses',card(`<table><tr><th>Message</th><th>What it means</th><th>What you do</th></tr>
+    <tr><td><i class="msg">A reason is required</i></td><td>No-show, decline, reschedule, cancel or exclusion without a reason</td><td>Write the reason; the sheet stays open.</td></tr>
+    <tr><td><i class="msg">A pass needs evidence</i></td><td>Compliance check marked pass, no evidence</td><td>Add the reference, or mark it missing.</td></tr>
+    <tr><td><i class="msg">This availability row is locked</i></td><td>An offer already references that date</td><td>Add a new availability row with the reason; the manager approves it.</td></tr>
+    <tr><td><i class="msg">The original promise date is immutable</i></td><td>You tried to edit the promise date</td><td>Use ${ui('Reschedule')}.</td></tr>
+    <tr><td><i class="msg">An estimate version is never edited</i></td><td>You tried to change a saved estimate</td><td>${ui('+ Estimate')} for the new version.</td></tr>
+    <tr><td><i class="msg">Only the manager…</i></td><td>Approval, sign-off, ruling, restriction, decision, configuration</td><td>Tell the manager; it is his step.</td></tr>
+    <tr><td><i class="msg">Setup step missing</i> / <i class="msg">permission denied</i></td><td>Not signed in, or not a member</td><td>Sign in again (§2); if it persists, tell the manager.</td></tr></table>
+    <p>A refusal is the system doing its job. Do not work around it in another record.</p>`))}
+
+  ${sec(15,'Glossary',list([['Qualified lead','An opportunity that counts in the sales and revenue rates. Marked per lead with evidence until the manager confirms the definition.'],['Estimate version','Each price given for the same lead: v1, v2, v3 — one opportunity.'],['Promise date','The date we promised the customer. Original is locked; reschedules move the current one.'],['Eligible offer','A coverage offer inside the team&#39;s territory and service, on a day it declared available <em>before</em> the offer.'],['Fulfilled','Accepted <em>and</em> the contact/arrival obligation met.'],['Exclusion','A record removed from a rate with a reason, only after the manager approves. The record itself is never deleted.'],['Evidence state','Pending Entry Review → Supervised Trial → Pending Evidence → Decision Eligible. How far the team is from being judged; not an outcome.'],['Outcome','Pass · Coaching · Probation · Disqualify — the manager&#39;s official decision on a frozen snapshot of the records.'],['N/A','The rate has nothing to divide by yet. Not 0%, not 100%.']].map(([k,t])=>row(`<b>${k}</b><span class="m">${t}</span>`,'150px minmax(0,1fr)')).join('')))}
+
+  ${sec(16,'Checklists',`<div class="card list" style="margin-bottom:12px"><div class="qh"><b>Every day, before you close</b></div>${['Every lead assigned today is recorded (step 1) with qualified yes/no and evidence','Every appointment that happened today has its outcome; no-shows have a reason','Every job sold today exists with its original promise date and revenue','Every job finished today has completion time, evidence, and the costs you know (blank if unknown)','Availability declared for the days the teams told you about','Any complaint, callback, refund or damage recorded as a quality event','Any suspected critical event recorded and the manager told','"Continue where you left off" is empty for each team'].map(t=>`<label class="ck"><input type="checkbox"><span>${t}</span></label>`).join('')}</div>
+    <div class="card list" style="margin-bottom:18px"><div class="qh"><b>Every Friday</b></div>${['Coverage log imported for each team; every offer has a response','Compliance checks recorded for the week&#39;s jobs, critical ones flagged, evidence attached','Queues → "Missing or conflicting data" cleared or noted','Weekly review note recorded per team','The manager told what needs a ruling'].map(t=>`<label class="ck"><input type="checkbox"><span>${t}</span></label>`).join('')}</div>`)}
+  <p class="sub2">Checkboxes here are a reading aid — they are not saved. The record is what you enter on the Team page.</p>`;
 }
 
 /* ---------- page boot ---------- */

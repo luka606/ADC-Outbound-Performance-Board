@@ -321,7 +321,8 @@ attendance 10 · completion 15 · customer quality 15 · compliance 10), bands 1
 evidence states (Pending Entry Review → Supervised Trial → Pending Evidence → Decision Eligible) and four official
 outcomes — Pass · Coaching · Probation · Disqualify — recorded only by the manager on a **frozen evidence snapshot**
 tied to the metric version in force. Six tabs: Overview · Teams (comparison) · Team (detail, every source record,
-drill-downs, the decision form) · Queues · Configuration (versions) · Definitions.
+drill-downs, the decision form) · Queues · Configuration (versions) · Definitions · **SOP** (the dispatcher's
+procedure, ADC-QUAL-001, readable before data loads — names the role, never the person).
 
 **Design (2026-09-23).** The page follows the claude.ai/design project *Team Qualification* — an Apple-system look:
 one accent, grouped inset lists, segmented controls, ring and bar scores, and **sheets instead of browser prompts** for
