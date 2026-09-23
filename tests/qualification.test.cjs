@@ -262,6 +262,8 @@ const em=r=>r.error&&r.error.message||'';
   await act('#qTeam .backlink'); await section('roster'); T('dispatcher: no approve button, no “Mark entry review complete”',!$('#qTeam [data-act="approvemember"]')&&!$('#qTeam [data-act="completeentry"]'));
   await act('#qTeam .backlink'); await section('dec'); T('dispatcher: Decisions section has no add button',!$('#qTeam [data-act="add"][data-id="dec"]'));
   w.showQualTab('qcfg'); await tick(60); T('dispatcher: configuration read-only',!$('#qCfg [data-cfg="activate"]')&&!$('#qCfg [data-cfg="edit"]')&&!!$('#qCfg [data-cfg="view"]'));
+  w.showQualTab('qsop'); await tick(40); T('SOP tab renders the dispatcher procedure: the four steps, the Friday routine, refusals and checklists; names the role, never the person',$('#tab-qsop').classList.contains('on')&&/How to record the day/.test($('#qSop').textContent)&&/Lead/.test($('#qSop .stp').textContent)&&/Friday/.test($('#qSop').textContent)&&/When a button refuses/.test($('#qSop').textContent)&&$$('#qSop label.ck').length===13&&!/Vasyl|Tom\b|5starair/.test($('#qSop').textContent));
+  $('#qWhySop').click(); await tick(20); T('“SOP ›” in the why-strip opens the SOP tab',$('#tab-qsop').classList.contains('on'));
   w.showQualTab('qdef'); await tick(40); T('Definitions tab renders categories, evidence states, outcomes, process, roles and refusals',/seven categories/i.test($('#qDef').textContent)&&/Decision Eligible/.test($('#qDef').textContent)&&/When a button refuses/.test($('#qDef').textContent)&&/Former technician returns/.test($('#qDef').textContent));
   await fake.auth.signOut(); await tick(80); T('sign out → gate again',shown('#qGate')&&!shown('#qBody'));
   T('zero console / jsdom errors',errors.length===0,errors);
