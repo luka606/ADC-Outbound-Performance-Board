@@ -4,7 +4,7 @@ Replaces the per-agent Google Sheet with a single web app: agents enter daily nu
 everything saves to Supabase, and you review it in Meeting / Scorecard / Admin views.
 
 ## What's in the box
-- `index.html` — the board (one self-contained file, no build step)
+- `index.html` — the board (one self-contained file, no build step) — the AR LE Tower's shell: sidebar workspaces, glass header, Apple tokens
 - `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; opened from the brand dropdown)
 - `qualification.html` — the **Team Qualification** scorecard (M4) as its own page (shares the Bridge sign-in; opened from the brand dropdown)
 - `schema.sql` — core Outbound tables (agents, daily reports, bookings, settings, weekly
@@ -15,14 +15,16 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 - `crm_sync_schema.sql` — the `crm_*` columns on `bookings` that the CRM sync writes
 - `coverage_schema.sql` — the **Coverage** tab: `coverage_log`, `coverage_days`, and the approved-list
   fields on `technicians` (run after `jobs_schema.sql`)
+- `job_assignments_review.sql` — the Daily Meeting's **Correct** verdict on `job_assignments` (`justified`, stamped by trigger)
+  and the overload threshold in `app_settings` (run after `jobs_schema.sql`)
 - `bridge_schema.sql` — the **M2 Bridge** workspace: twelve `bridge_*` tables, the role allowlist and
   the release gates (run after `coverage_schema.sql`; needs Supabase Auth — see below)
 - `qualification_schema.sql` — the **Team Qualification** scorecard: twenty-one `qual_*` tables (versioned metric
   configuration, teams, source records, exclusions, immutable snapshots, official decisions, audit) — run after
   `bridge_schema.sql`; reuses its roles
 - `scripts/crm-sync.mjs` — reconciles each booking's job reference against the CRM
-- `tests/` — jsdom suites (`npm install && npm test`): the Bridge brief's §10 scenarios and the Qualification brief's
-  25 acceptance tests, each run against an in-memory database that mirrors the schema's rules
+- `tests/` — jsdom suites (`npm install && npm test`): the board's shell and Daily Meeting, the Bridge brief's §10
+  scenarios and the Qualification brief's 25 acceptance tests, each against an in-memory database that mirrors the schema's rules
 
 The SQL files do not overlap, and each is idempotent — safe to re-run at any time.
 
@@ -244,15 +246,24 @@ available for printing or sharing outside the app.
 
 
 ## Job Assignment workspace
-Third workspace in the brand dropdown (**Job Assignment**). Run **`jobs_schema.sql`** once in
-Supabase to create its two tables (`technicians`, `job_assignments`), then **`coverage_schema.sql`**
-for the Coverage tab. Four tabs:
+Sidebar workspace **Job Assignment** with five tabs — **Meeting · Daily Entry · Breakdown · Technicians · Coverage** —
+in the same shell as the AR LE Tower's Dispatch Board (2026-09-29).
 
-1. **Today's Assignment** — pick a date, choose **job type (ADC / DVC)**, technician, and the
-   number of jobs, then Assign. Assigning the same technician + type for that date updates the
-   number rather than duplicating it. Below, the day's rows are listed with editable counts and
-   Remove, plus KPI cards (jobs assigned, ADC, DVC, technicians assigned, avg jobs/tech).
-2. **Breakdown** — totals over **This week / Last week / This month / Last month / Custom**
+**Meeting (Daily Meeting).** The Tower's Meeting page, one card per **technician** (ADC has one dispatcher and
+records jobs per technician per day): KPI tiles (jobs assigned · ADC · DVC · technicians assigned · % ADC ·
+*Not yet reviewed* → *Correctly assigned* once a verdict exists · flagged rows); sort pills (Jobs · ADC share ↑/↓ ·
+Flags); ranked cards with avatar, ADC/DVC mix bar and the team-average tick, **Jobs · ADC share · Correct**, and a
+↗ that opens the technician's day. Dashed rows list approved technicians with no entries. Flags are derived,
+never stored: a technician not on the approved list (or not on the roster), and an overload at
+`app_settings.job_overload_threshold` (default 4). In the day view the **admin** marks each assignment
+*Correct* / *Not correct*; the verdict is `job_assignments.justified`, stamped with who and when by a trigger
+(`job_assignments_review.sql`). Everyone else sees the verdict as a badge. Today / Yesterday pills, date picker,
+Refresh.
+
+**Daily Entry.** The assign form (date · job type ADC/DVC · technician · # of jobs) and the editable table for
+that date — one row per technician per type per day (upsert on `date, technician, job_type`).
+
+**Breakdown** — totals over **This week / Last week / This month / Last month / Custom**
    (with From/To), filterable by job type and technician. Shows KPIs, a by-technician table
    (ADC, DVC, total, days assigned, avg/day, share %), share-of-jobs and jobs-by-day bars, a
    full assignment list, and CSV export.
