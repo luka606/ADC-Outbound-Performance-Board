@@ -2542,7 +2542,7 @@ function renderJMeetView(){
     const corr=s.reviewed?fmtPct(s.correctPct):'—';
     const corrCls=!s.reviewed?'tp-none':(s.unj?'tp-bad':'tp-good');
     const done=s.completed+s.lost>0;
-    const compCls=!done?'tp-none':s.lost?'tp-bad':'tp-good';
+    const compCls=!done?'tp-none':(s.completed===s.jobs?'tp-good':'');   // green only when every expected job completed; lost is called out in the legend
     return `<button class="lb-row${s.flags?' flagged':''}" data-tech-open="${esc(s.name)}" aria-haspopup="dialog">
       <span class="lb-rank">#${i+1}</span>
       <span class="lb-avatar">${esc(initials(shortName(s.name)))}</span>
@@ -2587,7 +2587,7 @@ function lineHtml(l,r){
   return `<div class="jl${lost?' lost':''}" data-line="${esc(l.id)}">
     <div class="jl-h"><span class="k">Job ${l.seq}</span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span>${l.job_ref?`<span class="jobref count-note">${esc(l.job_ref)}</span>`:''}<span class="jl-state ${esc(l.outcome)}">${outcomeLabel(l.outcome)}</span></div>
     <div class="seg glass-inset jl-seg">${OUTCOMES.map(([k,lab])=>`<button type="button" class="${l.outcome===k?'on':''}" data-oc="${k}">${lab}</button>`).join('')}</div>
-    <div class="jl-cm${showCm?'':' hide'}"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref placeholder="job ref (optional)" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
+    <div class="jl-cm${showCm?'':' hide'}"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref placeholder="job ref" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
     <div class="jl-err hide" data-err></div>
     <div class="jl-stamp">${l.updated_by&&l.outcome!=='pending'?`${esc(l.updated_by)} · ${fmtStamp(l.updated_at)}`:''}</div>
   </div>`;
