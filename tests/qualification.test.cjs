@@ -273,5 +273,17 @@ const em=r=>r.error&&r.error.message||'';
   await fake.auth.signOut(); await tick(80); T('sign out → gate again',shown('#qGate')&&!shown('#qBody'));
   T('zero console / jsdom errors',errors.length===0,errors);
   if(cssWarn.length)console.log(`  (jsdom CSS parser warnings, not app errors: ${cssWarn.length})`);
-  console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);
+    // 2026-09-30: the baseline is visible wherever the revenue row is read, and every amber note says where to act
+  signIn('luka.m@homealliance.com'); await tick(150);
+  { const v2=db.qual_metric_versions[1]; const ra=await fake.from('qual_metric_versions').update({status:'active',change_note:'v2 live — baseline $1,000'}).eq('id',v2.id); await w.qReload(); await tick(150);
+    T('v2 (baseline $1,000 confirmed) activated for the display checks',!ra.error&&db.qual_metric_versions[1].status==='active',ra.error&&ra.error.message);
+    w.qOpen(tm.id); await tick(150); const D=w.document;
+    const row=[...D.querySelectorAll('#qTeam .row.cat')].find(x=>/Revenue efficiency/.test(x.textContent));
+    T('revenue row shows the approved baseline on the row itself, and drops "(baseline unresolved)"',!!row&&/baseline \$1,000\/lead/.test(row.textContent)&&/\$1,000 baseline|baseline \$1,000/.test(row.textContent)&&!/baseline unresolved/.test(row.textContent),row&&row.textContent.replace(/\s+/g,' '));
+    await act('#qTeam [data-drill="revenue"]'); const dr=$('#qTeam .drill').textContent;
+    T('drill-down: Baseline $1,000 per qualified lead · confirmed · metric v2 · dollar bands',/Baseline/.test(dr)&&/\$1,000 per qualified lead · confirmed · metric v2/.test(dr)&&/bands at \$1,000 \/ \$850 \/ \$700/.test(dr),dr.replace(/\s+/g,' ').slice(0,400));
+    const cov=[...D.querySelectorAll('#qTeam .row.cat')].find(x=>/Coverage reliability/.test(x.textContent));
+    if(cov&&/zero denominator/.test(cov.textContent)){await act('#qTeam [data-drill="coverage"]');T('a zero-denominator row drills to a "Where to act" line naming the section',/Where to act/.test($('#qTeam .drill').textContent)&&/Coverage offers/.test($('#qTeam .drill').textContent));}
+    w.showQualTab('qteams'); await tick(100); T('teams table chip shows the baseline next to the lead count',/of \$1,000/.test($('#qTeams').textContent),$('#qTeams').textContent.replace(/\s+/g,' ').slice(0,300)); }
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);
 })().catch(e=>{console.error('TEST CRASH',e);process.exit(2);});
