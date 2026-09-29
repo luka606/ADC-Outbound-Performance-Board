@@ -350,6 +350,11 @@ tied to the metric version in force. Six tabs: Overview · Teams (comparison) ·
 drill-downs, the decision form) · Queues · Configuration (versions) · Definitions · **SOP** (the dispatcher's
 procedure, ADC-QUAL-001, readable before data loads — names the role, never the person).
 
+**Every lead recorded in Team Qualification is a qualified lead** (Luka, 2026-09-30). The lead sheet has no yes/no
+and no evidence field any more; the engine ignores the old `qualified` flag on `qual_leads`; a lead that should not
+count leaves the rates through an approved exclusion (category *not qualified*). The §18.1 checklist item is satisfied
+by this rule unless a different written definition is stored in the version.
+
 **Design (2026-09-23).** The page follows the claude.ai/design project *Team Qualification* — an Apple-system look:
 one accent, grouped inset lists, segmented controls, ring and bar scores, and **sheets instead of browser prompts** for
 every entry. The Team page is a summary (score ring, official vs recommended, gates, seven categories with drill-down,
