@@ -2354,7 +2354,11 @@ async function boot(){
   if(sessionStorage.getItem(LS.adminSession)==='1'){STATE.isAdmin=true;document.body.classList.add('admin-on');$('#adminBtn').textContent='Admin ✓';}
   renderNav();await loadAll();render();
   /* Come back to the workspace that was open last time — except Office Sales, whose PIN prompt must be a click, not a page load. */
-  try{const w=localStorage.getItem(LS.ws);if(w&&w!=='sales'&&w!==WS&&WS_DEF[w])setWorkspace(w);}catch(e){}
+  try{
+    const q=new URLSearchParams(location.search).get('ws');   // ?ws=adc|sales|jobs — the pages' sidebars link here; it was a click, so Sales may prompt
+    if(q&&WS_DEF[q]){history.replaceState(null,'',location.pathname);if(q!==WS)setWorkspace(q);return;}
+    const w=localStorage.getItem(LS.ws);if(w&&w!=='sales'&&w!==WS&&WS_DEF[w])setWorkspace(w);
+  }catch(e){}
 }
 /* =========================================================================
    WORKSPACE SWITCHER  (ADC Outbound  ·  Office Sales)

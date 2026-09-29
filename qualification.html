@@ -8,8 +8,114 @@
 <style>
 /* ===== Team Qualification · design from claude.ai/design "Team Qualification.dc.html" (2026-09-23) — Apple-system look:
    calm surfaces, one accent, SF type, grouped inset lists, segmented controls, sheets instead of prompts. ===== */
-:root{--bg:#F2F2F7;--card:#FFFFFF;--card2:#F4F4F6;--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.22);--ink:#1C1C1E;--ink2:#6B6B71;--ink3:#A0A0A6;--sep:rgba(60,60,67,.12);--sep2:rgba(60,60,67,.3);--glass:rgba(242,242,247,.84);--accent:#0E9F6E;--accent-soft:#E3F5EC;--blue:#2F6BE0;--blue-soft:#E7EEFC;--amber:#B25E07;--amber-soft:#FBEEDA;--red:#C93B2E;--red-soft:#FBE6E3;--shadow:0 1px 2px rgba(0,0,0,.03),0 6px 20px rgba(0,0,0,.04);--shadow-lg:0 20px 60px rgba(0,0,0,.18);--on-accent:#fff}
-[data-theme="dark"]{--bg:#0C0D0F;--card:#1B1C1F;--card2:#26272B;--fill:rgba(120,120,128,.22);--fill2:rgba(120,120,128,.34);--ink:#F2F2F7;--ink2:#A3A3AA;--ink3:#6C6C74;--sep:rgba(84,84,88,.45);--sep2:rgba(84,84,88,.8);--glass:rgba(12,13,15,.78);--accent:#34C48B;--accent-soft:#14342A;--blue:#6E9FF5;--blue-soft:#182643;--amber:#E9A23B;--amber-soft:#33250F;--red:#E5705F;--red-soft:#3A1E1A;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);--shadow-lg:0 24px 70px rgba(0,0,0,.6)}
+:root{
+  /* Apple system greys. The old palette was tinted green to sit with an emerald
+     accent; with a blue accent that tint read as a colour cast on every neutral
+     surface. These are the platform's own: systemGroupedBackground, label,
+     secondaryLabel, tertiaryLabel, separator. */
+  --bg:#F2F2F7; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(0,122,255,.05), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#EFEFF4; --glass:rgba(255,255,255,.72);
+  --ink:#1C1C1E; --ink-2:#55555A; --ink-3:#8E8E93; --line:#D9D9DE; --line-2:#EBEBF0;
+  /* --accent is INTERACTIVE (controls, selection, links, focus).
+     --ok is POSITIVE STATUS (on time, A tier, yes, connected, working today).
+     These used to be one token, so turning the UI Apple-blue would have turned
+     every "on time" chip blue and broken the good/caution/bad language. Two
+     different jobs that happened to share a value. */
+  --accent:#007AFF; --accent-hi:#3395FF; --accent-deep:#0057B8;
+  --accent-soft:#E7F0FF; --on-accent:#FFFFFF;
+  /* Apple's ACCESSIBLE variants, not the vivid ones. systemRed #FF3B30 and
+     systemOrange #FF9500 are tuned for fills and glyphs; as body text on white
+     they fail contrast, and every one of these is used as text here. */
+  --ok:#248A3D; --ok-deep:#1B6E30; --ok-soft:#E3F5E8;
+  --amber:#B25000; --amber-soft:#FFF0E0;
+  --red:#D70015; --red-soft:#FFE5E7;
+  --blue:#0040DD; --blue-soft:#E4ECFF;
+  /* Fifth status hue, for the Portfolio's "in progress": ~45° from both the
+     interactive blue and the positive green, so a teal pill is never read as
+     a button or as "done". Foreground/soft pair like the others. */
+  --teal:#0F8F84; --teal-soft:#E0F4F1;
+  --lux:#8944AB; --lux-soft:#F4E9FA;
+  /* The half-shift stripe. Soft washes of the two status colours rather than
+     the solid fills the old chip used — solid red/amber stripes at chip size
+     read as noise, and white text on them failed in both themes. */
+  --stripe-soft:repeating-linear-gradient(45deg, rgba(215,0,21,.14) 0 6px, rgba(178,80,0,.14) 6px 12px);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.18);
+  --focus:0 0 0 3.5px rgba(0,122,255,.25);
+  /* iOS "system fill": translucent, so a segmented track or an avatar reads
+     correctly on a white card AND on a tinted panel. --panel-2 is opaque and
+     reads as a grey block on top of white. */
+  --fill-1:rgba(118,118,128,.12); --fill-2:rgba(118,118,128,.06);
+  /* A tighter elevation than --shadow, with an explicit hairline ring. */
+  --shadow-hair:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.05);
+  /* ---- Liquid glass ----
+     Real refraction is not available to CSS. What IS available, and what does
+     most of the work, is: a translucent tint, a blur that also boosts
+     saturation so colour bleeds through (vibrancy), a bright specular line
+     along the top inner edge where light catches, and a faint rim. Kept as
+     tokens so light and dark differ where they must — in dark the specular is
+     much weaker, because a bright edge on a dark surface reads as a mistake. */
+  --glass-bg:rgba(255,255,255,.62);
+  --glass-blur:saturate(180%) blur(22px);
+  --glass-hi:rgba(255,255,255,.65);
+  --glass-rim:rgba(0,0,0,.09);
+  --glass-shadow:0 1px 2px rgba(0,0,0,.06),0 10px 30px rgba(0,0,0,.10);
+  /* The lighter blur, for recessed tracks rather than floating panels.
+     --glass-lift and --glass-raised exist to delete two dark-theme .seg
+     overrides that only existed because the shadow was written as a literal
+     rgba() — which is also the design system's first anti-pattern. */
+  --glass-blur-2:saturate(160%) blur(10px);
+  --glass-lift:0 1px 3px rgba(0,0,0,.14);
+  --glass-raised:var(--panel);
+  /* -apple-system first, so macOS and iOS render in SF and the app stops
+     looking like a web page. Inter is the cross-platform fallback. Display type
+     is the SAME family at heavier weight and tighter tracking — that is how the
+     system does headings; a separate display face reads as "branded website". */
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Inter',system-ui,sans-serif;
+  --disp:var(--sans);
+  --r:14px; --r-sm:12px; --r-xs:9px;
+  /* Shell geometry. Deliberately in :root only and NOT mirrored in the dark
+     block — these are measurements, not colours. */
+  --sb-w:214px; --sb-rail:60px; --topbar-h:52px;
+}
+[data-theme="dark"]{
+  --bg:#1C1C1E; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(10,132,255,.10), transparent 60%);
+  --panel:#2C2C2E; --panel-2:#3A3A3C; --glass:rgba(30,30,32,.72);
+  --ink:#F2F2F7; --ink-2:#AEAEB2; --ink-3:#8E8E93; --line:#3A3A3C; --line-2:#2F2F31;
+  --accent:#0A84FF; --accent-hi:#409CFF; --accent-deep:#0060DF;
+  --accent-soft:#10243B; --on-accent:#FFFFFF;
+  /* The vivid systemColors are correct here: on a dark surface they are legible
+     as text, which is the whole reason Apple ships two sets. */
+  --ok:#30D158; --ok-deep:#6EE787; --ok-soft:#14321F;
+  --amber:#FF9F0A; --amber-soft:#3A2A0B;
+  --red:#FF453A; --red-soft:#3A1A18;
+  --blue:#0A84FF; --blue-soft:#12243C;
+  --teal:#2FC4B2; --teal-soft:#0F2F2B;
+  --lux:#BF5AF2; --lux-soft:#2C1A3A;
+  --stripe-soft:repeating-linear-gradient(45deg, rgba(255,69,58,.24) 0 6px, rgba(255,159,10,.24) 6px 12px);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.36);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.6);
+  --focus:0 0 0 3.5px rgba(10,132,255,.32);
+  --fill-1:rgba(142,142,147,.22); --fill-2:rgba(142,142,147,.10);
+  --shadow-hair:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.45);
+  --glass-bg:rgba(44,44,46,.62);
+  --glass-blur:saturate(180%) blur(22px);
+  --glass-hi:rgba(255,255,255,.13);
+  --glass-rim:rgba(255,255,255,.10);
+  --glass-shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px rgba(0,0,0,.5);
+  --glass-blur-2:saturate(160%) blur(10px);
+  --glass-lift:0 1px 3px rgba(0,0,0,.5);
+  --glass-raised:var(--panel-2);
+}
+/* aliases so shared component code reads naturally (kept from the ADC build) */
+:root{--brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--ok); --green-soft:var(--ok-soft); --radius:var(--r); --radius-sm:var(--r-sm)}
+/* Team Qualification's own token names, aliased to the Tower's (index.html) so the page's CSS stays as designed */
+:root{--card:var(--panel);--card2:var(--panel-2);--fill:var(--fill-1);--fill2:rgba(118,118,128,.22);--ink2:var(--ink-2);--ink3:var(--ink-3);--sep:var(--line-2);--sep2:var(--line)}
+[data-theme="dark"]{--fill2:rgba(142,142,147,.34)}
+html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
 body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
@@ -22,15 +128,85 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)!important;out
 .tab{display:none}.tab.on{display:block;animation:qaFade .25s ease}
 .hide{display:none!important}
 .num{font-variant-numeric:tabular-nums}
-/* header */
-header{position:sticky;top:0;z-index:40;height:60px;display:flex;align-items:center;gap:18px;padding:0 22px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--sep)}
-.brand{display:flex;align-items:center;gap:10px;color:var(--ink);white-space:nowrap}.brand:hover{text-decoration:none}
-.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3)}.brand .dot.live{background:var(--accent);box-shadow:0 0 8px var(--accent)}
-.brand b{font-weight:600;font-size:14.5px;letter-spacing:-.1px}.brand .back{font-size:12px;color:var(--ink2);font-weight:500}
-nav.segnav{display:flex;gap:2px;background:var(--fill);border-radius:10px;padding:3px;overflow:auto}
-nav.segnav button{border:0;border-radius:8px;padding:6px 11px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s;background:transparent;color:var(--ink2)}
-nav.segnav button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);white-space:nowrap;min-width:0}
+/* ============ shell: sidebar + header (Tower) ============ */
+.shell{display:flex;align-items:flex-start;min-height:100vh}
+.sidebar{position:sticky;top:0;flex:none;width:var(--sb-w);height:100vh;display:flex;flex-direction:column;
+  border-right:1px solid var(--line);transition:width .18s}
+/* min-width:0 is load-bearing. Without it the wide .twrap tables in Database
+   and Sales Log blow this flex item out and crush the sidebar. */
+.content{flex:1;min-width:0}
+.sb-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.sb-top{display:flex;align-items:center;gap:8px;padding:13px 12px 9px;font-family:var(--disp);
+  font-weight:600;font-size:13px;letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
+.sb-nav{flex:1;min-height:0;overflow-y:auto;padding:2px 8px 12px}
+.sb-toggle{flex:none;display:flex;padding:4px;border:none;border-radius:6px;background:none;color:var(--ink-3)}
+.sb-toggle:hover{background:var(--line-2);color:var(--ink-2)}
+.sb-toggle .sb-ic{color:inherit}
+/* Collapsed rail. Everything textual is .sb-word, so one rule hides the lot and
+   a new label cannot forget to opt in. */
+body.sb-rail .sidebar{width:var(--sb-rail)}
+body.sb-rail .sb-word,body.sb-rail .sb-lbl,body.sb-rail .sb-count,
+body.sb-rail .sb-kids,body.sb-rail .sb-sec{display:none}
+body.sb-rail .sb-ws{justify-content:center;padding:9px 0;gap:0}
+body.sb-rail .sb-top{justify-content:center;padding:13px 0 9px}
+body.sb-rail .sb-nav{padding:2px 6px 12px}
+body.sb-rail .sb-foot{padding:10px 0;text-align:center}
+body.sb-rail .sb-status{justify-content:center;margin:0}
+.sb-sec{padding:9px 9px 5px;font-size:11px;font-weight:600;letter-spacing:.01em;color:var(--ink-3)}
+.sb-group{display:block}
+.sb-ws{width:100%;display:flex;align-items:center;gap:9px;padding:7px 9px;margin-bottom:1px;border:none;
+  border-radius:8px;background:none;color:var(--ink);font-size:13px;font-weight:500;text-align:left;transition:.12s}
+.sb-ws:hover{background:var(--line-2)}
+a.sb-ws{text-decoration:none;color:var(--ink)}
+.sb-ws.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+.sb-ic{width:15px;height:15px;flex:none;color:var(--accent);
+  fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.sb-ws.on .sb-ic{color:var(--on-accent)}
+.sb-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Collapsed groups stay in the DOM. setAdmin and initMorning reach for
+   #pdsrsBtn / #mrLogBtn regardless of which workspace is open, so hiding by
+   removing nodes would make those lookups null and silently break gating. */
+.sb-group:not(.open) .sb-kids{display:none}
+.sb-kids{margin:1px 0 5px 17px;padding-left:8px;border-left:1px solid var(--line)}
+.sb-tab{width:100%;display:flex;align-items:center;gap:7px;padding:5px 9px;margin-bottom:1px;border:none;
+  border-radius:7px;background:none;color:var(--ink-2);font-size:12.5px;font-weight:500;text-align:left;transition:.12s}
+.sb-tab:hover{background:var(--line-2);color:var(--ink)}
+/* Tinted, not filled. Two accent-filled rows stacked — the workspace and its
+   active tab — is unreadable. */
+.sb-tab.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sb-tab .count-note{margin-left:auto;font-size:9.5px}
+.sb-count{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.sb-ws.on .sb-count{color:var(--on-accent);opacity:.85}
+.sb-foot{flex:none;padding:10px 12px 12px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:9.5px;color:var(--ink-3);line-height:1.7}
+.sb-status{display:flex;align-items:center;gap:7px;margin-bottom:3px;
+  font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--ink-2)}
+/* Styled by id, not by a .dot descendant rule: the connection light no longer
+   lives inside .brand, and .dot is already taken by the availability tiles. */
+#connDot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#connDot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+/* ============ toolbar ============ */
+header{color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:var(--topbar-h);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:600;font-size:13.5px;letter-spacing:-.01em;text-transform:none;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
+.hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
+#themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+.tb-title{display:flex;flex-direction:column;justify-content:center;line-height:1.18;min-width:0}
+.tb-sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
+.glass-edge{background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  box-shadow:inset 0 1px 0 var(--glass-hi)}
+.glass-inset{background:var(--fill-1);
+  backdrop-filter:var(--glass-blur-2);-webkit-backdrop-filter:var(--glass-blur-2)}
+@media (prefers-reduced-transparency: reduce){
+  .glass-edge{background:var(--panel);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+  .glass-inset{background:var(--panel-2);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+/* pages: the connection light keeps its .live toggle from the page's own JS */
+#connDot:not(.live){background:var(--red);box-shadow:0 0 8px var(--red)}
 .hdr-right #qWho{overflow:hidden;text-overflow:ellipsis;max-width:180px}
 .verpill{background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:2px 9px;font-weight:600;font-size:11.5px}.verpill.warn{background:var(--amber-soft);color:var(--amber)}
 .hbtn{background:var(--fill);color:var(--ink);border:0;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}.hbtn:hover{text-decoration:none;background:var(--fill2)}
@@ -44,7 +220,7 @@ main{max-width:1180px;margin:0 auto;padding:18px 24px 100px}
 .note{display:flex;gap:12px;align-items:center;background:var(--amber-soft);border-radius:12px;padding:11px 16px;font-size:13.5px}
 .note .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:none}.note>span{flex:1}.note b{color:var(--amber)}.note .m{color:var(--ink2)}.note a{font-weight:600;color:var(--amber);white-space:nowrap}
 .note.red{background:var(--red-soft)}.note.red .dot,.note.red a,.note.red b{color:var(--red);background:var(--red)}.note.red a,.note.red b{background:none}
-.note.ok{background:var(--accent-soft)}.note.ok .dot{background:var(--accent)}.note.ok b,.note.ok a{color:var(--accent)}
+.note.ok{background:var(--ok-soft)}.note.ok .dot{background:var(--ok)}.note.ok b,.note.ok a{color:var(--ok)}
 .phead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
 h1.pt{margin:0;font-size:30px;font-weight:700;letter-spacing:-.5px}
 .sub2{font-size:12.5px;color:var(--ink2)}
@@ -61,10 +237,10 @@ a.row:hover,.row.link:hover{background:var(--card2);text-decoration:none;cursor:
 .rowhead{display:grid;gap:14px;padding:10px 20px 8px;font-size:11.5px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.4px;align-items:end}
 .chev{color:var(--ink3);font-size:18px;text-align:right}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink3);flex:none}
-.dot.pass,.dot.decision_eligible,.dot.ok{background:var(--accent)}.dot.coaching,.dot.supervised_trial,.dot.blue{background:var(--blue)}.dot.probation,.dot.pending_evidence,.dot.amber{background:var(--amber)}.dot.disqualify,.dot.red{background:var(--red)}.dot.pending_entry_review,.dot.none,.dot.pending{background:var(--ink3)}
+.dot.pass,.dot.decision_eligible,.dot.ok{background:var(--ok)}.dot.coaching,.dot.supervised_trial,.dot.blue{background:var(--blue)}.dot.probation,.dot.pending_evidence,.dot.amber{background:var(--amber)}.dot.disqualify,.dot.red{background:var(--red)}.dot.pending_entry_review,.dot.none,.dot.pending{background:var(--ink3)}
 /* pills */
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--fill);color:var(--ink2);white-space:nowrap}
-.pill.pass,.pill.confirmed,.pill.active,.pill.won,.pill.approved,.pill.completed,.pill.attended,.pill.satisfactory,.pill.done,.pill.eligible,.pill.yes{background:var(--accent-soft);color:var(--accent)}
+.pill.pass,.pill.confirmed,.pill.active,.pill.won,.pill.approved,.pill.completed,.pill.attended,.pill.satisfactory,.pill.done,.pill.eligible,.pill.yes{background:var(--ok-soft);color:var(--ok)}
 .pill.coaching,.pill.proposed,.pill.draft,.pill.due,.pill.scheduled,.pill.under_review,.pill.supervised{background:var(--blue-soft);color:var(--blue)}
 .pill.probation,.pill.pending,.pill.open,.pill.late,.pill.needs_correction,.pill.missing,.pill.suspected,.pill.warn{background:var(--amber-soft);color:var(--amber)}
 .pill.disqualify{background:var(--red);color:#fff}
@@ -72,8 +248,8 @@ a.row:hover,.row.link:hover{background:var(--card2);text-decoration:none;cursor:
 .pill.none{background:transparent;border:1px dashed var(--sep2);color:var(--ink2)}
 .pill.lg{font-size:13px;padding:4px 12px}
 /* points colours */
-.c100{color:var(--accent)}.c70{color:var(--blue)}.c40{color:var(--amber)}.c0{color:var(--red)}.cna{color:var(--ink3)}
-.bg100{background:var(--accent)}.bg70{background:var(--blue)}.bg40{background:var(--amber)}.bg0{background:var(--red)}.bgna{background:var(--ink3)}
+.c100{color:var(--ok)}.c70{color:var(--blue)}.c40{color:var(--amber)}.c0{color:var(--red)}.cna{color:var(--ink3)}
+.bg100{background:var(--ok)}.bg70{background:var(--blue)}.bg40{background:var(--amber)}.bg0{background:var(--red)}.bgna{background:var(--ink3)}
 /* buttons */
 .btn{background:var(--accent);color:#fff;border:0;border-radius:99px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;line-height:1.3}
 .btn:hover{filter:brightness(1.05);text-decoration:none}
@@ -126,7 +302,7 @@ textarea.in{resize:vertical;min-height:70px}
 .evline{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--sep);font-size:13.5px}.evline span.m{color:var(--ink2)}
 .gate{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--sep)}
 .gate .g{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
-.g.ok{background:var(--accent-soft);color:var(--accent)}.g.fail{background:var(--red-soft);color:var(--red)}
+.g.ok{background:var(--ok-soft);color:var(--ok)}.g.fail{background:var(--red-soft);color:var(--red)}
 .gate .t{font-size:14px;font-weight:600}.gate .d{display:block;font-size:12.5px;color:var(--ink2)}.gate.fail .d{color:var(--red)}
 .tgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;margin-bottom:16px;align-items:start}
 .cat{grid-template-columns:minmax(0,1.4fr) 110px 90px 90px 16px}
@@ -215,21 +391,54 @@ textarea.in{resize:vertical;min-height:70px}
 </style>
 </head>
 <body>
-<header>
-  <a class="brand" href="index.html" title="Back to the board"><span class="dot live" id="connDot"></span><b>Team Qualification</b><span class="back">‹ Board</span></a>
-  <nav class="segnav" id="navQual">
-    <button data-tab="qover" class="on">Overview</button>
-    <button data-tab="qteams">Teams</button>
-    <button data-tab="qteam">Team</button>
-    <button data-tab="qqueue">Queues</button>
-    <button data-tab="qcfg">Configuration</button>
-    <button data-tab="qdef">Definitions</button>
-    <button data-tab="qsop">SOP</button>
+<svg class="sb-sprite" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-board" viewBox="0 0 16 16"><path d="M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z"/></symbol>
+  <symbol id="ic-sales" viewBox="0 0 16 16"><path d="M3 13.2V8.4M8 13.2V2.8M13 13.2V6.2"/></symbol>
+  <symbol id="ic-phone" viewBox="0 0 16 16"><path d="M4.2 2.4 6 2.6l1 2.6-1.5 1.2a7.4 7.4 0 0 0 4.1 4.1l1.2-1.5 2.6 1 .2 1.8a1.4 1.4 0 0 1-1.5 1.2C7.9 12.6 3.4 8.1 3 4.1a1.4 1.4 0 0 1 1.2-1.7Z"/></symbol>
+  <symbol id="ic-cal" viewBox="0 0 16 16"><path d="M2.5 4.5h11v9h-11zM2.5 7.4h11M5.5 2.6v3M10.5 2.6v3"/></symbol>
+  <symbol id="ic-house" viewBox="0 0 16 16"><path d="M2.4 7.2 8 2.6l5.6 4.6M3.8 8.4v5h8.4v-5"/></symbol>
+  <symbol id="ic-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.9"/><path d="M8 1.2v1.5M8 13.3v1.5M1.2 8h1.5M13.3 8h1.5M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 16 16"><path d="M8 2.2 13.6 5 8 7.8 2.4 5zM2.4 8l5.6 2.8L13.6 8M2.4 11l5.6 2.8L13.6 11"/></symbol><symbol id="ic-bell" viewBox="0 0 16 16"><path d="M4.2 6.8a3.8 3.8 0 0 1 7.6 0c0 2.5 1 3.6 1 3.6H3.2s1-1.1 1-3.6zM6.5 12.2a1.6 1.6 0 0 0 3 0"/></symbol>
+  <symbol id="ic-rail" viewBox="0 0 16 16"><path d="M2.5 3.2h11v9.6h-11zM6.4 3.2v9.6"/></symbol>
+  <symbol id="ic-locker" viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="11.6" height="11.6" rx="2.6"/><circle cx="8" cy="6.5" r="1.9"/><path d="M4.9 12.3c.5-1.8 1.7-2.7 3.1-2.7s2.6.9 3.1 2.7"/></symbol><symbol id="ic-people" viewBox="0 0 16 16"><circle cx="6" cy="5.2" r="2.4"/><path d="M1.8 13.4c0-2.3 1.9-3.8 4.2-3.8s4.2 1.5 4.2 3.8"/><path d="M11 3.2a2.2 2.2 0 0 1 0 4.3M12 9.9c1.4.4 2.4 1.6 2.4 3.5"/></symbol>
+  <symbol id="ic-pin" viewBox="0 0 16 16"><path d="M8 14s4.4-4.3 4.4-7.4a4.4 4.4 0 1 0-8.8 0C3.6 9.7 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/></symbol>
+</defs></svg>
+
+<div class="shell">
+<aside class="sidebar glass-edge">
+  <div class="sb-top"><button class="sb-toggle" id="sbToggle" aria-label="Collapse sidebar" aria-expanded="true"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-rail"/></svg></button><span class="sb-word">Home Alliance</span></div>
+  <nav class="sb-nav" id="sbNav" aria-label="Workspaces">
+    <div class="sb-sec">Workspaces</div>
+    <a class="sb-ws" href="index.html?ws=adc"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-phone"/></svg><span class="sb-lbl">ADC Outbound</span></a>
+    <a class="sb-ws" href="index.html?ws=sales"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-sales"/></svg><span class="sb-lbl">Office Sales</span></a>
+    <a class="sb-ws" href="index.html?ws=jobs"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-board"/></svg><span class="sb-lbl">Job Assignment</span></a>
+    <div class="sb-sec">Pages</div>
+    <a class="sb-ws" href="bridge.html"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-layers"/></svg><span class="sb-lbl">M2 Bridge ↗</span></a>
+    <div class="sb-group open" data-wsgroup="qualification">
+      <button class="sb-ws on" type="button"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-people"/></svg><span class="sb-lbl">Team Qualification</span></button>
+      <div class="sb-kids" id="navQual">
+        <button class="sb-tab on" data-tab="qover">Overview</button>
+        <button class="sb-tab" data-tab="qteams">Teams</button>
+        <button class="sb-tab" data-tab="qteam">Team</button>
+        <button class="sb-tab" data-tab="qqueue">Queues</button>
+        <button class="sb-tab" data-tab="qcfg">Configuration</button>
+        <button class="sb-tab" data-tab="qdef">Definitions</button>
+        <button class="sb-tab" data-tab="qsop">SOP</button>
+      </div>
+    </div>
   </nav>
+  <div class="sb-foot">
+    <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
+    <div class="sb-word">build 2026-09-29</div>
+  </div>
+</aside>
+<div class="content">
+<header class="glass-edge">
+  <div class="tb-title"><span class="brand" id="wsLabel">TEAM QUALIFICATION</span><span class="tb-sub">Home Alliance · ADC</span></div>
   <div class="hdr-right">
+    <span id="hdrDate"></span>
     <span id="qWho"></span>
     <span id="qVerBadge" class="verpill"></span>
-    <a class="hbtn" href="bridge.html" title="M2 Bridge (same sign-in)">Bridge ↗</a>
     <button class="hbtn" id="qSignOut" title="Sign out (shared with the Bridge)">Sign out</button>
     <button class="hbtn icon" id="themeBtn" title="Toggle dark mode">◐</button>
   </div>
@@ -273,12 +482,13 @@ textarea.in{resize:vertical;min-height:70px}
   <section class="tab" id="tab-qdef"><div id="qDef" class="def"></div></section>
   <section class="tab" id="tab-qsop"><div id="qSop" class="def"></div></section>
 </main>
+</div></div>
 </div>
 <div id="qSheetRoot"></div>
 <div class="toast" id="toast"></div>
 <script>
 /* ---------- shared helpers (mirrors index.html; kept in sync by hand — a shared script file is the next step if more pages appear) ---------- */
-const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme'};
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme',sidebar:'adc_sidebar'};
 let sb=null;
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -294,6 +504,11 @@ const today=()=>iso(nowPST()); const todayStr=today;
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');if(b){b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';}localStorage.setItem(LS.theme,t);}
+/* Tower shell: collapsible rail (shared key with the board) and the header date */
+function setSidebar(railed){document.body.classList.toggle('sb-rail',railed);const t=$('#sbToggle');if(t){t.setAttribute('aria-expanded',String(!railed));t.setAttribute('aria-label',railed?'Expand sidebar':'Collapse sidebar');}try{localStorage.setItem('adc_sidebar',railed?'1':'0');}catch(e){}}
+$('#sbToggle').addEventListener('click',()=>setSidebar(!document.body.classList.contains('sb-rail')));
+try{setSidebar(localStorage.getItem('adc_sidebar')==='1');}catch(e){}
+$('#hdrDate').textContent=nowPST().toDateString();
 function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
 function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
 const WS='qualification';
@@ -753,8 +968,8 @@ function qRenderOver(){
       <div class="mini">${byEv.map(e=>`<div><span class="dot ${e.k}"></span><span class="f">${esc(QEV_LABEL[e.k])}</span><b class="num">${e.n}</b></div>`).join('')}</div></div>
   </div>
   <div class="grid2">
-    <div class="card pad"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="eyebrow">Territory × service without a qualified team</div><b style="color:var(${gaps?'--red':'--accent'});font-size:13px">${gaps} gap${gaps===1?'':'s'}</b></div>
-      <div class="mini">${pairRows.map(p=>`<div><b style="width:70px">${esc(p.tr)}</b><span class="f" style="color:var(--ink2)">${esc(p.sv)}</span><span style="font-size:12.5px;font-weight:600;color:var(${p.q.length?'--accent':'--red'})">${p.q.length?esc(p.q.map(x=>x.t.name).join(', ')):'0 qualified teams'}</span></div>`).join('')||'<div class="sub2" style="padding-top:8px">No team declares territories and services yet.</div>'}</div></div>
+    <div class="card pad"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="eyebrow">Territory × service without a qualified team</div><b style="color:var(${gaps?'--red':'--ok'});font-size:13px">${gaps} gap${gaps===1?'':'s'}</b></div>
+      <div class="mini">${pairRows.map(p=>`<div><b style="width:70px">${esc(p.tr)}</b><span class="f" style="color:var(--ink2)">${esc(p.sv)}</span><span style="font-size:12.5px;font-weight:600;color:var(${p.q.length?'--ok':'--red'})">${p.q.length?esc(p.q.map(x=>x.t.name).join(', ')):'0 qualified teams'}</span></div>`).join('')||'<div class="sub2" style="padding-top:8px">No team declares territories and services yet.</div>'}</div></div>
     <div class="card pad"><div class="eyebrow">Needs attention</div>
       <div class="mini">${attention.map(a=>`<a href="#" data-tab="qqueue" style="display:grid;grid-template-columns:8px minmax(0,1fr) auto 14px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--sep);font-size:13.5px;color:var(--ink)"><span class="dot ${a.cls}"></span><span>${esc(a.label[0].toUpperCase()+a.label.slice(1))}</span><b class="num">${a.n}</b><span class="chev" style="font-size:16px">›</span></a>`).join('')}</div></div>
   </div>
@@ -792,7 +1007,7 @@ function qRenderTeams(){
   <div class="rowhead" style="grid-template-columns:${cols};gap:12px"><span>Team</span><span>Official · evidence</span><span style="text-align:right">Score</span>${cats.map(k=>{const c=V.categories.find(x=>x.key===k);return `<span title="${esc(c.label)}">${esc(short[k]||c.label)}<span style="display:block;font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink3)">${c.weight_pct}%</span></span>`;}).join('')}<span>Next review</span><span></span></div>
   ${rows.map(({t,c})=>{const ld=qLastDec(t.id);return `<a class="row" href="#" data-team="${t.id}" style="grid-template-columns:${cols};gap:12px"><span style="min-width:0"><span class="t" style="font-size:15px">${esc(t.name)}</span><span class="s">${qCode(t)} · ${TYPE_LABEL[t.team_type]||''} · ${esc(t.leader_name||'—')}</span><span class="s" style="font-size:12px">${esc((t.territories||[]).join(', ')||'—')} · ${esc((t.services||[]).join(' · ')||'—')}</span></span>
     <span>${outPill(c?c.official_outcome:null)}<span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);margin-top:5px">${c?evDot(c.evidence.state)+esc(QEV_LABEL[c.evidence.state]):''}</span></span>
-    <span style="text-align:right"><span class="num" style="font-size:21px;font-weight:700;letter-spacing:-.4px;color:var(${c&&c.weighted_score!=null?'--ink':'--ink2'})">${c&&c.weighted_score!=null?c.weighted_score.toFixed(1):c&&c.provisional_score!=null?c.provisional_score.toFixed(1):'N/A'}</span><span class="s" style="font-size:11px;font-weight:600;color:var(${c&&c.trend!=null?(c.trend>=0?'--accent':'--red'):'--ink3'})">${c&&c.trend!=null?(c.trend>0?'▲ ':'▼ ')+Math.abs(c.trend).toFixed(1)+' vs prior':c&&c.weighted_score==null&&c.provisional_score!=null?'provisional':'—'}</span></span>
+    <span style="text-align:right"><span class="num" style="font-size:21px;font-weight:700;letter-spacing:-.4px;color:var(${c&&c.weighted_score!=null?'--ink':'--ink2'})">${c&&c.weighted_score!=null?c.weighted_score.toFixed(1):c&&c.provisional_score!=null?c.provisional_score.toFixed(1):'N/A'}</span><span class="s" style="font-size:11px;font-weight:600;color:var(${c&&c.trend!=null?(c.trend>=0?'--ok':'--red'):'--ink3'})">${c&&c.trend!=null?(c.trend>0?'▲ ':'▼ ')+Math.abs(c.trend).toFixed(1)+' vs prior':c&&c.weighted_score==null&&c.provisional_score!=null?'provisional':'—'}</span></span>
     ${cats.map(k=>{const r=c?c.categories.find(x=>x.key===k):null;return `<span><span class="num ${r?ptsCls(r.points):'cna'}" style="font-size:14px;font-weight:600">${r?(r.key==='revenue'&&r.value==null&&r.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents):pct(r.value)):'—'}</span><span class="s num" style="font-size:11px">${r?(r.key==='revenue'?`${r.denominator} leads`:`${r.numerator} / ${r.denominator}`):''}</span></span>`;}).join('')}
     <span class="sub2">${ld&&ld.next_review_date?fmtD(ld.next_review_date):'—'}<span class="s" style="font-size:11.5px">${c?`${c.counts.active_restrictions} restr · ${c.counts.open_actions} actions`:''}</span></span><span class="chev">›</span></a>`;}).join('')||'<div class="empty">No teams match.</div>'}
   </div></div>`;
@@ -869,7 +1084,7 @@ function qRenderTeam(){
             <div class="ids"><span style="background:transparent;padding-left:0"><b>included ${r.included_ids.length}</b></span>${r.included_ids.slice(0,40).map(i=>`<span>${esc(String(i).slice(0,8))}</span>`).join('')}${r.included_ids.length>40?`<span>+${r.included_ids.length-40}</span>`:''}${r.excluded_ids.length?`<span style="background:transparent"><b>excluded ${r.excluded_ids.length}</b></span>${r.excluded_ids.map(i=>`<span>${esc(String(i).slice(0,8))}</span>`).join('')}`:''}</div>
             <details style="margin-top:8px"><summary class="sub2" style="cursor:pointer">diagnostics</summary><div class="sub2 num" style="word-break:break-all;margin-top:4px">${esc(JSON.stringify(r.diagnostics))}</div></details></div>`:''}</div>`;}).join('')}</div></div>
     <div><div class="eyebrow ind">Evidence progress</div>
-      <div class="card list">${(()=>{const p=c.evidence.progress;const EP=(label,done,min,ok)=>{const pc=min?Math.min(100,done/min*100):(ok?100:0);const good=min?done>=min:ok;return `<div class="evp"><div class="h"><b>${label}</b><span class="num" style="color:var(${good?'--accent':pc>0?'--amber':'--ink3'})">${min?`${done} / ${min}`:(ok?'Done':'Not yet')}</span></div><div class="track"><div style="width:${pc}%;background:var(${good?'--accent':pc>0?'--amber':'--ink3'})"></div></div></div>`;};
+      <div class="card list">${(()=>{const p=c.evidence.progress;const EP=(label,done,min,ok)=>{const pc=min?Math.min(100,done/min*100):(ok?100:0);const good=min?done>=min:ok;return `<div class="evp"><div class="h"><b>${label}</b><span class="num" style="color:var(${good?'--ok':pc>0?'--amber':'--ink3'})">${min?`${done} / ${min}`:(ok?'Done':'Not yet')}</span></div><div class="track"><div style="width:${pc}%;background:var(${good?'--ok':pc>0?'--amber':'--ink3'})"></div></div></div>`;};
         return EP('Entry review',p.entry_review?1:0,0,p.entry_review)+(p.supervised.required?EP('Supervised jobs',p.supervised.done,p.supervised.min):'')+EP('Qualified estimates',p.estimates.done,p.estimates.min)+EP('Completed jobs',p.completed_jobs.done,p.completed_jobs.min)+EP('Critical compliance evidence',p.critical_evidence?1:0,0,p.critical_evidence)+EP('Jobs through quality window',p.quality_mature,1);})()}</div></div>
   </div>`:'<div class="note red" style="margin-bottom:16px"><span class="dot"></span><span>No metric version — nothing to compute.</span></div>'}
   <div class="eyebrow ind">Today · guided entry</div>
@@ -1132,7 +1347,7 @@ function qRenderCfg(){
     chk('Material membership change restarts qualification',cv.outcome_rules?.membership_change_restarts,10);chk('Decision-age cutoff for pending leads (days)',cv.evidence?.decision_age_days,'—');}
   root.innerHTML=`
   <div class="eyebrow ind">Metric versions</div>
-  <div class="card list" style="margin-bottom:16px">${Q.ver.slice().reverse().map(v=>`<div class="row ver"><span class="vn">v${v.version}</span><span style="min-width:0"><span class="t">${esc(v.label)}</span><span class="s">${esc(v.change_note||'')}</span><span class="s" style="margin-top:2px">${v.effective_from?'Effective '+fmtDy(v.effective_from):'Not effective'} · approved ${v.approved_by?esc(v.approved_by.split('@')[0])+' · '+fmtD(dPT(v.approved_at)):'—'} · <span style="color:var(${v.used_in_decision?'--accent':'--ink2'});font-weight:600">used in a decision: ${v.used_in_decision?'yes — immutable':'no'}</span></span></span><span><span class="pill ${v.status}">${esc(v.status)}</span></span>
+  <div class="card list" style="margin-bottom:16px">${Q.ver.slice().reverse().map(v=>`<div class="row ver"><span class="vn">v${v.version}</span><span style="min-width:0"><span class="t">${esc(v.label)}</span><span class="s">${esc(v.change_note||'')}</span><span class="s" style="margin-top:2px">${v.effective_from?'Effective '+fmtDy(v.effective_from):'Not effective'} · approved ${v.approved_by?esc(v.approved_by.split('@')[0])+' · '+fmtD(dPT(v.approved_at)):'—'} · <span style="color:var(${v.used_in_decision?'--ok':'--ink2'});font-weight:600">used in a decision: ${v.used_in_decision?'yes — immutable':'no'}</span></span></span><span><span class="pill ${v.status}">${esc(v.status)}</span></span>
     <span class="acts"><button class="btn soft sm" data-cfg="view" data-id="${v.id}">View</button>${isMgr()?`<button class="btn soft sm" data-cfg="clone" data-id="${v.id}">New draft from this</button>${v.status==='draft'&&!v.used_in_decision?`<button class="btn soft sm" data-cfg="edit" data-id="${v.id}">Edit draft</button><button class="btn sm" data-cfg="activate" data-id="${v.id}">Activate</button>`:''}`:''}</span></div>`).join('')}</div>
   ${av?'':`<div class="note" style="margin-bottom:16px"><span class="dot"></span><span><b>No active version.</b> <span class="m">Review draft v${cv?cv.version:'?'} and activate it (manager) to enable official decisions.</span></span></div>`}
   <div id="qCfgEditor"></div>

@@ -196,7 +196,9 @@ const em=r=>r.error&&r.error.message||'';
   T('entry review complete → team provisional, reviewer stamped',db.qual_teams[0].status==='provisional'&&db.qual_teams[0].entry_reviewed_by==='luka.m@homealliance.com'&&/Completed/.test($('#qEntryReview').textContent));
   // availability + offer + import
   await act('#qTeam .backlink'); await section('avail'); await act('#qTeam [data-act="add"][data-id="avail"]'); await sheet({avail_date:'2026-10-01'}); T('availability declared',db.qual_availability.length===1&&/available/.test($('#qTeam .pill').textContent));
-  await act('#qTeam .backlink'); await section('cov'); await act('#qTeam [data-act="add"][data-id="cov"]'); await sheet({job_date:'2026-10-01',territory:'LA',service:'cleaning'});
+  // The offer's default "Offered at" is now-to-the-second; availability is stamped to the millisecond. Cross a second
+  // boundary first, or the offer can land in the same second as the availability and read as "declared after" (was intermittently red).
+  await act('#qTeam .backlink'); await section('cov'); await tick(1000-(Date.now()%1000)+30); await act('#qTeam [data-act="add"][data-id="cov"]'); await sheet({job_date:'2026-10-01',territory:'LA',service:'cleaning'});
   T('offer recorded and eligible; availability locked; row says Eligible',db.qual_coverage_events.length===1&&db.qual_coverage_events[0].eligible===true&&!!db.qual_availability[0].locked_at&&/Eligible offer/.test($('#qTeam').textContent),toast());
   await act('#qTeam [data-act="importcov"]'); T('import from the Coverage log: the row naming Donat becomes an offer (accepted, note says verify), deduped by log id',db.qual_coverage_events.length===2&&db.qual_coverage_events[1].coverage_log_id==='cl-1'&&db.qual_coverage_events[1].response==='accepted'&&/verify/.test(db.qual_coverage_events[1].notes),toast());
   await act('#qTeam [data-act="importcov"]'); T('second import finds nothing new',/Nothing new/.test(toast()));
