@@ -4,9 +4,9 @@ Replaces the per-agent Google Sheet with a single web app: agents enter daily nu
 everything saves to Supabase, and you review it in Meeting / Scorecard / Admin views.
 
 ## What's in the box
-- `index.html` — the board (one self-contained file, no build step) — the AR LE Tower's shell: sidebar workspaces, glass header, Apple tokens
-- `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; opened from the brand dropdown)
-- `qualification.html` — the **Team Qualification** scorecard (M4) as its own page (shares the Bridge sign-in; opened from the brand dropdown)
+- `index.html` — the board (one self-contained file, no build step) — the AR LE Tower's shell: sidebar workspaces, glass header, Apple tokens. `?ws=adc|sales|jobs` opens a workspace (the pages' sidebars link back this way)
+- `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; a link in the sidebar's Pages group) — same Tower shell and tokens as the board (2026-09-29)
+- `qualification.html` — the **Team Qualification** scorecard (M4) as its own page (shares the Bridge sign-in; a link in the sidebar's Pages group) — same Tower shell and tokens (2026-09-29)
 - `schema.sql` — core Outbound tables (agents, daily reports, bookings, settings, weekly
   history) + security policies + agent seed
 - `sales_schema.sql` — tables for the **Office Sales** workspace (salespersons, daily metrics, sales log)
@@ -255,11 +255,12 @@ comment.** `job_assignments.jobs` is the number of jobs the dispatcher **expects
 a trigger keeps one line per expected job in `job_assignment_outcomes` (`job_assignment_outcomes.sql`). From the
 Meeting's day view the dispatcher marks each line **Completed · Cancelled · Rescheduled · Other**; anything but
 Completed needs a comment (the database refuses it otherwise), and lowering the expected count past a recorded
-outcome is refused too. Derived, never stored: completed = actual, lost = cancelled + rescheduled + other,
+outcome is refused too. Derived, never stored: completed = actual, **lost = cancelled + other**, **rescheduled is its
+own bucket, not lost** (the job is visited another day and comes back as a new expected line — Luka, 2026-09-30),
 pending = not yet marked. Nothing is silently absorbed — a job that is not completed is a record with a reason.
 
 **Meeting (Daily Meeting).** The Tower's Meeting page, one card per **technician** (ADC has one dispatcher and
-records jobs per technician per day): KPI tiles (**Expected · Completed · Lost · Pending outcomes** · ADC · DVC ·
+records jobs per technician per day): KPI tiles (**Expected · Completed · Lost · Rescheduled · Pending outcomes** · ADC · DVC ·
 *Not yet reviewed* → *Correctly assigned* once a verdict exists · flagged rows); sort pills (Jobs · ADC share ↑/↓ ·
 Flags); ranked cards with avatar, ADC/DVC mix bar and the team-average tick, **Expected · Completed · Correct**, and a
 ↗ that opens the technician's day. Dashed rows list approved technicians with no entries. Flags are derived,
@@ -276,10 +277,10 @@ for that date — one row per technician per type per day (upsert on `date, tech
 Outcomes column ("2 ✓ · 1 cancelled · 2 pending").
 
 **Breakdown** — totals over **This week / Last week / This month / Last month / Custom**
-   (with From/To), filterable by job type and technician. Shows KPIs (expected · completed · lost ·
-   realisation % · pending · ADC · DVC), a by-technician table (ADC, DVC, expected, completed, lost,
-   realisation, days, avg/day, share %), a **Lost jobs — why** panel (outcome × count × share with the
-   latest comments), share-of-jobs and jobs-by-day bars, a full assignment list with outcomes, and two
+   (with From/To), filterable by job type and technician. Shows KPIs (expected · completed · lost · rescheduled ·
+   realisation % = completed ÷ (completed + lost) · pending · ADC · DVC), a by-technician table (ADC, DVC, expected,
+   completed, lost, rescheduled, realisation, days, avg/day, share %), a **Not completed — why** panel (outcome ×
+   count, lost or not lost, share, latest comments), share-of-jobs and jobs-by-day bars, a full assignment list with outcomes, and two
    CSV exports (assignments, outcomes).
 3. **Technicians** — add, rename, deactivate, or delete technicians. **Open to DSRs — no admin
    needed.** Deactivating hides someone from the dropdown but keeps their history; deleting
@@ -302,7 +303,7 @@ All dates follow PST like the rest of the platform.
 
 
 ## M2 Bridge workspace
-Fourth entry in the brand dropdown (**M2 Bridge ↗**) — it opens **`bridge.html`**, a separate page, so the
+**M2 Bridge ↗** in the sidebar's Pages group opens **`bridge.html`**, a separate page, so the
 board's single file stays the board and the Bridge can keep growing. Built from the brief *ADL — M2 High-Value-Job
 Bridge* (2026-09-18) for Rock *ADC Ironclad Coverage* milestone 2. It protects high-value sales during
 the transition while preserving gross margin: every high-value lead is recorded with its indicators and
@@ -338,7 +339,7 @@ about overdue or urgent ones — **off until `notify_enabled` is true** in Setti
 
 
 ## Team Qualification workspace (M4)
-Fifth entry in the brand dropdown (**Team Qualification ↗**) — opens **`qualification.html`**, its own page, built
+**Team Qualification ↗** in the sidebar's Pages group opens **`qualification.html`**, its own page, built
 from the brief *ADL — M4 Team Qualification Scorecard and Reporting Structure* (2026-09-23) for Rock *ADC Ironclad
 Coverage* milestone 4. One balanced standard for every technician-sales team — incumbents, candidates and a rebuilt
 team led by the former technician: seven weighted categories (sales 20 · revenue efficiency 15 · coverage 15 ·
