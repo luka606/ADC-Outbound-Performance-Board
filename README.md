@@ -16,6 +16,7 @@ everything saves to Supabase, and you review it in Meeting / Scorecard / Admin v
 - `coverage_schema.sql` — the **Coverage** tab: `coverage_log`, `coverage_days`, and the approved-list
   fields on `technicians` (run after `jobs_schema.sql`)
 - `job_assignments_review.sql` — the Daily Meeting's **Correct** verdict on `job_assignments` (`justified`, stamped by trigger)
+- `job_assignment_outcomes.sql` — one line per **expected** job (`job_assignment_outcomes`), kept in step with the count by trigger; the dispatcher records each job's outcome and a comment
   and the overload threshold in `app_settings` (run after `jobs_schema.sql`)
 - `bridge_schema.sql` — the **M2 Bridge** workspace: twelve `bridge_*` tables, the role allowlist and
   the release gates (run after `coverage_schema.sql`; needs Supabase Auth — see below)
@@ -249,24 +250,37 @@ available for printing or sharing outside the app.
 Sidebar workspace **Job Assignment** with five tabs — **Meeting · Daily Entry · Breakdown · Technicians · Coverage** —
 in the same shell as the AR LE Tower's Dispatch Board (2026-09-29).
 
-**Meeting (Daily Meeting).** The Tower's Meeting page, one card per **technician** (ADC has one dispatcher and
-records jobs per technician per day): KPI tiles (jobs assigned · ADC · DVC · technicians assigned · % ADC ·
-*Not yet reviewed* → *Correctly assigned* once a verdict exists · flagged rows); sort pills (Jobs · ADC share ↑/↓ ·
-Flags); ranked cards with avatar, ADC/DVC mix bar and the team-average tick, **Jobs · ADC share · Correct**, and a
-↗ that opens the technician's day. Dashed rows list approved technicians with no entries. Flags are derived,
-never stored: a technician not on the approved list (or not on the roster), and an overload at
-`app_settings.job_overload_threshold` (default 4). In the day view the **admin** marks each assignment
-*Correct* / *Not correct*; the verdict is `job_assignments.justified`, stamped with who and when by a trigger
-(`job_assignments_review.sql`). Everyone else sees the verdict as a badge. Today / Yesterday pills, date picker,
-Refresh.
+**The rule (2026-09-29): every expected job is a line, and a job that did not happen carries an outcome and a
+comment.** `job_assignments.jobs` is the number of jobs the dispatcher **expects** a technician to run that day;
+a trigger keeps one line per expected job in `job_assignment_outcomes` (`job_assignment_outcomes.sql`). From the
+Meeting's day view the dispatcher marks each line **Completed · Cancelled · Rescheduled · Other**; anything but
+Completed needs a comment (the database refuses it otherwise), and lowering the expected count past a recorded
+outcome is refused too. Derived, never stored: completed = actual, lost = cancelled + rescheduled + other,
+pending = not yet marked. Nothing is silently absorbed — a job that is not completed is a record with a reason.
 
-**Daily Entry.** The assign form (date · job type ADC/DVC · technician · # of jobs) and the editable table for
-that date — one row per technician per type per day (upsert on `date, technician, job_type`).
+**Meeting (Daily Meeting).** The Tower's Meeting page, one card per **technician** (ADC has one dispatcher and
+records jobs per technician per day): KPI tiles (**Expected · Completed · Lost · Pending outcomes** · ADC · DVC ·
+*Not yet reviewed* → *Correctly assigned* once a verdict exists · flagged rows); sort pills (Jobs · ADC share ↑/↓ ·
+Flags); ranked cards with avatar, ADC/DVC mix bar and the team-average tick, **Expected · Completed · Correct**, and a
+↗ that opens the technician's day. Dashed rows list approved technicians with no entries. Flags are derived,
+never stored: a technician not on the approved list (or not on the roster), an overload at
+`app_settings.job_overload_threshold` (default 4), and — on a past date — outcomes still pending. The day view
+lists the technician's jobs one by one (Job 1 · ADC · optional job ref) with a segmented outcome control, an
+inline comment box that opens for anything but Completed, and a who/when stamp; **Today / Yesterday** pills
+switch the day. There the **admin** also marks each assignment *Correct* / *Not correct*; the verdict is
+`job_assignments.justified`, stamped with who and when by a trigger (`job_assignments_review.sql`). Everyone else
+sees the verdict as a badge.
+
+**Daily Entry.** The assign form (date · job type ADC/DVC · technician · **expected jobs**) and the editable table
+for that date — one row per technician per type per day (upsert on `date, technician, job_type`) with a read-only
+Outcomes column ("2 ✓ · 1 cancelled · 2 pending").
 
 **Breakdown** — totals over **This week / Last week / This month / Last month / Custom**
-   (with From/To), filterable by job type and technician. Shows KPIs, a by-technician table
-   (ADC, DVC, total, days assigned, avg/day, share %), share-of-jobs and jobs-by-day bars, a
-   full assignment list, and CSV export.
+   (with From/To), filterable by job type and technician. Shows KPIs (expected · completed · lost ·
+   realisation % · pending · ADC · DVC), a by-technician table (ADC, DVC, expected, completed, lost,
+   realisation, days, avg/day, share %), a **Lost jobs — why** panel (outcome × count × share with the
+   latest comments), share-of-jobs and jobs-by-day bars, a full assignment list with outcomes, and two
+   CSV exports (assignments, outcomes).
 3. **Technicians** — add, rename, deactivate, or delete technicians. **Open to DSRs — no admin
    needed.** Deactivating hides someone from the dropdown but keeps their history; deleting
    removes them from the list while past assignments keep the name. **Approved** is separate

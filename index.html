@@ -460,6 +460,20 @@ body.admin-on .admin-only{display:block}
 .badge.no{background:var(--red-soft);color:var(--red)}
 .j-note{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-left:6px}
 .rep-flags{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+/* the technician's jobs, one line each — grouped inset list, segmented outcome, inline comment */
+.jl-group{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:6px 16px 10px;margin-top:12px}
+.jl-group-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 6px;flex-wrap:wrap}
+.jl{padding:10px 0;border-top:1px solid var(--line)}
+.jl.lost{border-left:3px solid var(--amber);padding-left:10px;margin-left:-13px}
+.jl-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}.jl-h .k{font-family:var(--disp);font-weight:600;font-size:14px}
+.jl-state{margin-left:auto;font-family:var(--mono);font-size:10.5px;padding:2px 9px;border-radius:99px;background:var(--line-2);color:var(--ink-2)}
+.jl-state.completed{background:var(--ok-soft);color:var(--ok)}.jl-state.cancelled,.jl-state.other{background:var(--red-soft);color:var(--red)}.jl-state.rescheduled{background:var(--amber-soft);color:var(--amber)}
+.jl-seg{display:flex}.jl-seg>button{flex:1}
+.jl-cm{display:flex;gap:8px;margin-top:8px;align-items:center}.jl-in{flex:1;min-width:0}.jl-ref{flex:0 0 150px}
+.jl-err{color:var(--red);font-size:12.5px;margin-top:6px}
+.jl-stamp{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:6px;min-height:1em}
+.hide{display:none!important}
+@media(max-width:640px){.jl-cm{flex-wrap:wrap}.jl-ref{flex:1 1 100%}}
 @media(max-width:820px){#tab-jmeet .lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 74px 26px}#tab-jmeet .lb-row .lb-stat.correct{display:none}}
 @media(max-width:560px){#tab-jmeet .lb-row{grid-template-columns:40px minmax(0,1fr) 64px 26px}#tab-jmeet .lb-rank,#tab-jmeet .lb-row .lb-stat.tp{display:none}}
 
@@ -671,20 +685,20 @@ body.admin-on .admin-only{display:block}
 
 <section class="tab" id="tab-jtoday">
   <h2>Daily Entry</h2>
-  <div class="sub">Assign jobs to technicians for a day. Pick the job type and technician, enter how many jobs, and save. Assigning the same technician + type again updates that number.</div>
+  <div class="sub">Record the jobs you <b>expect</b> each technician to run on a day — job type, technician, how many. Assigning the same technician + type again updates that number. Every expected job becomes a line; what actually happened to each one is recorded from the <b>Meeting</b>'s day view (open the technician's card for yesterday).</div>
   <div class="panel">
     <h3 class="pt">Assign jobs</h3>
     <div class="bar tight">
       <div class="fld"><label>Date</label><input type="date" id="jaDate"></div>
       <div class="fld"><label>Job type</label><select id="jaType"><option value="ADC">ADC</option><option value="DVC">DVC</option></select></div>
       <div class="fld" style="min-width:170px"><label>Technician</label><select id="jaTech"></select></div>
-      <div class="fld"><label># of jobs</label><input type="number" id="jaCount" min="0" step="1" value="1" style="width:100px"></div>
+      <div class="fld"><label>Expected jobs</label><input type="number" id="jaCount" min="0" step="1" value="1" style="width:100px"></div>
       <button class="btn" id="jaSave">Assign jobs</button>
     </div>
     <div class="count-note" style="margin-top:8px">Need a technician who isn't listed? Add them on the <b>Technicians</b> tab — anyone can.</div>
   </div>
   <div class="panel">
-    <div class="section-head" style="margin-bottom:12px"><h3 class="pt" style="margin:0">Assigned on this date</h3><span class="count-note" id="jaCountNote"></span></div>
+    <div class="section-head" style="margin-bottom:12px"><h3 class="pt" style="margin:0">Expected on this date</h3><span class="count-note" id="jaCountNote"></span></div>
     <div class="twrap"><table id="tblJToday"></table></div>
   </div>
 </section>
@@ -711,6 +725,7 @@ body.admin-on .admin-only{display:block}
   <div class="count-note" id="jbNote" style="margin-bottom:10px"></div>
   <div class="kpis" id="jbKpis"></div>
   <div class="panel"><h3 class="pt">By technician</h3><div class="twrap"><table id="tblJTech"></table></div></div>
+  <div class="panel"><div class="section-head" style="margin-bottom:10px"><h3 class="pt" style="margin:0">Lost jobs — why</h3><button class="btn ghost sm" id="jbExportOut">Export outcomes CSV</button></div><div id="jbLost"></div></div>
   <div class="dash-cols">
     <div class="panel"><h3 class="pt">Share of jobs by technician</h3><div id="jbBars"></div></div>
     <div class="panel"><h3 class="pt">Jobs by day</h3><div id="jbDays"></div></div>
@@ -2426,14 +2441,36 @@ async function bootSales(tab){
    JOB ASSIGNMENT workspace
    ========================================================================= */
 let TECHS=[], jobsBooted=false;
+/* ---------- job outcomes: every expected job is a line (job_assignment_outcomes.sql) ----------
+   The dispatcher marks each line completed / cancelled / rescheduled / other; anything but completed needs a comment.
+   Derived, never stored: completed = actual, lost = cancelled + rescheduled + other, pending = untouched. */
+const OUTCOMES=[['completed','Completed'],['cancelled','Cancelled'],['rescheduled','Rescheduled'],['other','Other']];
+const LOST=new Set(['cancelled','rescheduled','other']);
+const outcomeLabel=o=>({pending:'Not yet',completed:'Completed',cancelled:'Cancelled',rescheduled:'Rescheduled',other:'Other'}[o]||o);
+function outcomeStats(lines){const st={expected:lines.length,completed:0,lost:0,pending:0,by:{cancelled:0,rescheduled:0,other:0}};lines.forEach(l=>{if(l.outcome==='completed')st.completed++;else if(LOST.has(l.outcome)){st.lost++;st.by[l.outcome]++;}else st.pending++;});return st;}
+function outcomeSummary(o,date){if(!o.expected)return '—';const parts=[];if(o.completed)parts.push(`${o.completed} ✓`);if(o.by.cancelled)parts.push(`${o.by.cancelled} cancelled`);if(o.by.rescheduled)parts.push(`${o.by.rescheduled} rescheduled`);if(o.by.other)parts.push(`${o.by.other} other`);if(o.pending)parts.push(`<span style="color:var(${date&&date<todayStr()?'--amber':'--ink-3'})">${o.pending} pending</span>`);return parts.join(' · ');}
+async function loadOutcomesFor(rows){
+  const ids=(rows||[]).map(r=>r.id); if(!ids.length)return [];
+  const {data,error}=await sb.from('job_assignment_outcomes').select('*').in('assignment_id',ids).order('seq');
+  if(error){if(!loadOutcomesFor._warned){loadOutcomesFor._warned=true;toast(friendlyErr(error,'job_assignment_outcomes.sql'),true);}return [];}
+  return data||[];
+}
+const whoami=()=>{try{return localStorage.getItem(LS.agent)||'Dispatcher (board)';}catch(e){return 'Dispatcher (board)';}};
+async function saveOutcome(id,patch){
+  const {data,error}=await sb.from('job_assignment_outcomes').update({...patch,updated_by:whoami()}).eq('id',id).select();
+  if(error)return {error:friendlyErr(error,'job_assignment_outcomes.sql')};
+  if(!data||data.length!==1)return {error:'The outcome was not saved — the line was not found'};
+  return {row:data[0]};
+}
+
 /* ---------- Daily Meeting (Job Assignment) ----------
    The Tower's Meeting page, one card per TECHNICIAN: ADC records jobs per technician per day and has one
-   dispatcher, so the dispatcher card would always be one card. Counts are weighted by `jobs`. Flags are
-   derived, never stored: a technician who is not on the approved list (technicians.approved) or off the roster,
-   and an overload at the threshold in app_settings.job_overload_threshold (default 4). The Correct stat and the
-   "Not yet reviewed → Correctly assigned" tile read job_assignments.justified — the admin's verdict, written
-   from the card's detail (job_assignments_review.sql). */
-const JM={date:null,rows:[],sort:(()=>{try{return localStorage.getItem('adc_jm_sort')||'jobs';}catch(e){return 'jobs';}})(),threshold:4,loading:false};
+   dispatcher, so the dispatcher card would always be one card. Counts are weighted by `jobs` (the expected
+   count). Flags are derived, never stored: a technician who is not on the approved list (technicians.approved)
+   or off the roster, an overload at app_settings.job_overload_threshold (default 4), and — for a past date —
+   outcomes still pending. The Correct stat and the "Not yet reviewed → Correctly assigned" tile read
+   job_assignments.justified, the admin's verdict, written from the card's day view (job_assignments_review.sql). */
+const JM={date:null,rows:[],lines:[],sort:(()=>{try{return localStorage.getItem('adc_jm_sort')||'jobs';}catch(e){return 'jobs';}})(),threshold:4};
 const jmJobs=r=>Number(r.jobs)||0;
 function jmSyncDayPills(){const d=$('#jmDate').value;const t=todayStr(),y=iso(addDays(nowPST(),-1));$$('[data-jm-day]').forEach(b=>b.classList.toggle('on',(b.dataset.jmDay==='today'&&d===t)||(b.dataset.jmDay==='yesterday'&&d===y)));}
 async function loadJMeet(){
@@ -2442,26 +2479,30 @@ async function loadJMeet(){
   try{const v=await getSetting('job_overload_threshold');const n=parseInt(v,10);JM.threshold=isFinite(n)&&n>0?n:4;}catch(e){JM.threshold=4;}   // app_settings may lose anon read after rls_lockdown.sql; 4 is the Tower's value
   const {data,error}=await sb.from('job_assignments').select('*').eq('date',JM.date).order('technician');
   if(error){$('#jmList').innerHTML=`<div class="loading">${esc(friendlyErr(error,'jobs_schema.sql'))}</div>`;$('#jmKpis').innerHTML='';return;}
-  JM.rows=data||[]; renderJMeetView();
+  JM.rows=data||[]; JM.lines=await loadOutcomesFor(JM.rows); renderJMeetView();
 }
 function techStats(name){
   const rr=JM.rows.filter(r=>r.technician===name);
+  const ids=new Set(rr.map(r=>r.id)); const lines=JM.lines.filter(l=>ids.has(l.assignment_id));
+  const o=outcomeStats(lines);
   const jobs=rr.reduce((s,r)=>s+jmJobs(r),0);
   const adc=rr.filter(r=>r.job_type==='ADC').reduce((s,r)=>s+jmJobs(r),0);
   const dvc=rr.filter(r=>r.job_type==='DVC').reduce((s,r)=>s+jmJobs(r),0);
   const t=TECHS.find(x=>x.name===name);
   const notApproved=!(t&&t.approved===true);
   const over=jobs>=JM.threshold;
-  const flags=(notApproved?1:0)+(over?1:0);
+  const pendingPast=JM.date<todayStr()&&o.pending>0;
+  const flags=(notApproved?1:0)+(over?1:0)+(pendingPast?1:0);
   const reviewed=rr.some(r=>r.justified==='Yes'||r.justified==='No');
   const unj=rr.filter(r=>r.justified==='No').reduce((s,r)=>s+jmJobs(r),0);
-  return {name,rows:rr,jobs,adc,dvc,adcPct:jobs?adc/jobs:NaN,notApproved,over,flags,reviewed,unj,correctPct:jobs?1-unj/jobs:NaN,onRoster:!!t};
+  return {name,rows:rr,lines,jobs,adc,dvc,adcPct:jobs?adc/jobs:NaN,completed:o.completed,lost:o.lost,pending:o.pending,by:o.by,notApproved,over,pendingPast,flags,reviewed,unj,correctPct:jobs?1-unj/jobs:NaN,onRoster:!!t};
 }
 function renderJMeetView(){
   const date=JM.date, rows=JM.rows;
   const total=rows.reduce((s,r)=>s+jmJobs(r),0);
   const adc=rows.filter(r=>r.job_type==='ADC').reduce((s,r)=>s+jmJobs(r),0);
   const dvc=rows.filter(r=>r.job_type==='DVC').reduce((s,r)=>s+jmJobs(r),0);
+  const all=outcomeStats(JM.lines); const past=date<todayStr();
   const withRows=[...new Set(rows.map(r=>r.technician))];
   const approved=TECHS.filter(t=>t.approved===true&&t.active!==false).map(t=>t.name);
   const names=[...new Set([...withRows,...approved])];
@@ -2470,15 +2511,17 @@ function renderJMeetView(){
   const unjJobs=rows.filter(r=>r.justified==='No').reduce((s,r)=>s+jmJobs(r),0);
   const correctPct=(total&&reviewed)?1-unjJobs/total:NaN;
   const flagged=stats.filter(s=>s.rows.length&&s.flags).length;
+  const anyOutcome=all.completed+all.lost>0;
   $('#jmKpis').innerHTML=`
-    <div class="kpi"><div class="v">${total}</div><div class="l">Jobs assigned</div></div>
+    <div class="kpi"><div class="v">${total}</div><div class="l">Expected</div></div>
+    <div class="kpi ${anyOutcome?'a':''}"><div class="v">${anyOutcome?all.completed:'—'}</div><div class="l">Completed</div></div>
+    <div class="kpi ${all.lost?'b':''}"><div class="v">${anyOutcome?all.lost:'—'}</div><div class="l">Lost</div></div>
+    <div class="kpi ${past&&all.pending?'b':''}"><div class="v">${all.pending}</div><div class="l">Pending outcomes</div></div>
     <div class="kpi ok"><div class="v">${adc}</div><div class="l">ADC jobs</div></div>
     <div class="kpi teal"><div class="v">${dvc}</div><div class="l">DVC jobs</div></div>
-    <div class="kpi"><div class="v">${withRows.length}</div><div class="l">Technicians assigned</div></div>
-    <div class="kpi"><div class="v">${fmtPct(total?adc/total:NaN)}</div><div class="l">% ADC</div></div>
     <div class="kpi ${!reviewed?'':unjJobs?'c':'a'}"><div class="v">${reviewed?fmtPct(correctPct):'—'}</div><div class="l">${reviewed?'Correctly assigned':'Not yet reviewed'}</div></div>
     <div class="kpi ${flagged?'b':''}"><div class="v">${flagged}</div><div class="l">Flagged rows</div></div>`;
-  $('#jmNote').textContent=`${rows.length} entr${rows.length===1?'y':'ies'} on ${date}`;
+  $('#jmNote').textContent=`${rows.length} entr${rows.length===1?'y':'ies'} · ${withRows.length} technician${withRows.length===1?'':'s'} on ${date}`;
   const offRoster=stats.filter(s=>s.rows.length&&!s.onRoster).map(s=>s.name);
   $('#jmWarn').textContent=offRoster.length?` · ${offRoster.length} technician name${offRoster.length===1?'':'s'} not on the roster: ${offRoster.join(', ')} — add or rename them on the Technicians tab`:'';
   const teamAvg=total?adc/total:NaN;
@@ -2492,32 +2535,34 @@ function renderJMeetView(){
     return y.jobs-x.jobs||x.name.localeCompare(y.name);
   });
   JM.order=entered.map(s=>s.name).concat(empty.map(s=>s.name));
-  const shareCls=p=>!isFinite(p)?'tp-none':p>=.8?'tp-good':p>=.5?'tp-mid':'tp-bad';
+  const shortName=n=>n.replace(/^\d+\s+(LA|OC|SD|SF|Miami|Ventura)\s+/,'');
   const rowsHtml=entered.map((s,i)=>{
     const wA=s.jobs?s.adc/s.jobs*100:0, wD=s.jobs?s.dvc/s.jobs*100:0;
     const legend=[s.adc?`ADC ${wA.toFixed(0)}%`:null, s.dvc?`DVC ${wD.toFixed(0)}%`:null].filter(Boolean).join(' · ')||'no jobs';
     const corr=s.reviewed?fmtPct(s.correctPct):'—';
     const corrCls=!s.reviewed?'tp-none':(s.unj?'tp-bad':'tp-good');
+    const done=s.completed+s.lost>0;
+    const compCls=!done?'tp-none':(s.completed===s.jobs?'tp-good':'');   // green only when every expected job completed; lost is called out in the legend
     return `<button class="lb-row${s.flags?' flagged':''}" data-tech-open="${esc(s.name)}" aria-haspopup="dialog">
       <span class="lb-rank">#${i+1}</span>
-      <span class="lb-avatar">${esc(initials(s.name.replace(/^\d+\s+(LA|OC|SD|SF|Miami|Ventura)\s+/,'')))}</span>
+      <span class="lb-avatar">${esc(initials(shortName(s.name)))}</span>
       <span class="lb-main">
-        <span class="lb-name">${esc(s.name)}${s.notApproved?`<span class="flag-pill">${s.onRoster?'not approved':'not on roster'}</span>`:''}${s.over?`<span class="ovl-pill">${s.jobs}th job${s.jobs>JM.threshold?' ×'+(s.jobs-JM.threshold+1):''}</span>`:''}</span>
+        <span class="lb-name">${esc(s.name)}${s.notApproved?`<span class="flag-pill">${s.onRoster?'not approved':'not on roster'}</span>`:''}${s.over?`<span class="ovl-pill">${s.jobs}th job${s.jobs>JM.threshold?' ×'+(s.jobs-JM.threshold+1):''}</span>`:''}${s.pendingPast?`<span class="flag-pill">${s.pending} outcome${s.pending===1?'':'s'} pending</span>`:''}</span>
         <span class="mix-bar">
           ${wA?`<span class="seg p1" style="left:0;width:${wA}%"></span>`:''}
           ${wD?`<span class="seg p2" style="left:${wA}%;width:${wD}%"></span>`:''}
           ${isFinite(teamAvg)?`<span class="avg-tick" style="left:${teamAvg*100}%"></span>`:''}
         </span>
-        <span class="mix-legend">${legend}${isFinite(teamAvg)?' · tick = team avg':''}</span>
+        <span class="mix-legend">${legend}${isFinite(teamAvg)?' · tick = team avg':''}${s.lost?` · <span style="color:var(--amber)">${s.lost} lost</span>`:''}</span>
       </span>
-      <span class="lb-stat"><span class="v">${s.jobs}</span><span class="l">Jobs</span></span>
-      <span class="lb-stat tp"><span class="v ${shareCls(s.adcPct)}">${fmtPct(s.adcPct)}</span><span class="l">ADC share</span></span>
+      <span class="lb-stat"><span class="v">${s.jobs}</span><span class="l">Expected</span></span>
+      <span class="lb-stat tp"><span class="v ${compCls}">${done?s.completed:'—'}</span><span class="l">Completed</span></span>
       <span class="lb-stat correct"><span class="v ${corrCls}">${corr}</span><span class="l">Correct</span></span>
       <span class="lb-go">↗</span>
     </button>`;}).join('');
   const emptyHtml=empty.map(s=>`
     <button class="lb-empty-row" data-tech-open="${esc(s.name)}">
-      <span class="lb-avatar" style="width:34px;height:34px;font-size:13px">${esc(initials(s.name.replace(/^\d+\s+(LA|OC|SD|SF|Miami|Ventura)\s+/,'')))}</span>
+      <span class="lb-avatar" style="width:34px;height:34px;font-size:13px">${esc(initials(shortName(s.name)))}</span>
       <span class="nm">${esc(s.name)}</span>
       <span class="hint">no entries yet for ${date}</span>
       <span class="lb-go" style="margin-left:auto">↗</span>
@@ -2529,17 +2574,29 @@ $('#jmDate').addEventListener('change',()=>{loadJMeet();});
 $('#jmRefresh').addEventListener('click',()=>loadJMeet());
 $$('[data-jm-day]').forEach(b=>b.addEventListener('click',()=>{$('#jmDate').value=b.dataset.jmDay==='today'?todayStr():iso(addDays(nowPST(),-1));loadJMeet();}));
 $('#jmList').addEventListener('click',e=>{const b=e.target.closest('[data-tech-open]');if(b)openTechDay(b.dataset.techOpen);});
-/* --- the technician's day: the report modal, with the admin's verdict per assignment --- */
+
+/* --- the technician's day: every expected job as a line with its outcome, plus the admin's verdict per assignment --- */
 function justifiedNote(r){return r.justified&&r.justified_by?`<span class="j-note">${esc(r.justified_by)}${r.justified_at?' · '+new Date(r.justified_at).toLocaleString('en-US',{timeZone:PST_TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}</span>`:'';}
 function justifyControls(r){
   if(!STATE.isAdmin) return r.justified?`<span class="badge ${r.justified==='Yes'?'yes':'no'}">${r.justified==='Yes'?'Correct':'Not correct'}</span>${justifiedNote(r)}`:'<span class="count-note">not yet reviewed</span>';
   return `<span class="j-btns"><button class="jb yes ${r.justified==='Yes'?'on':''}" data-just="Yes" data-jid="${esc(r.id)}">Correct</button><button class="jb no ${r.justified==='No'?'on':''}" data-just="No" data-jid="${esc(r.id)}">Not correct</button></span>${justifiedNote(r)}`;
 }
+const fmtStamp=ts=>ts?new Date(ts).toLocaleString('en-US',{timeZone:PST_TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+function lineHtml(l,r){
+  const lost=LOST.has(l.outcome); const showCm=l.outcome!=='pending'&&l.outcome!=='completed';
+  return `<div class="jl${lost?' lost':''}" data-line="${esc(l.id)}">
+    <div class="jl-h"><span class="k">Job ${l.seq}</span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span>${l.job_ref?`<span class="jobref count-note">${esc(l.job_ref)}</span>`:''}<span class="jl-state ${esc(l.outcome)}">${outcomeLabel(l.outcome)}</span></div>
+    <div class="seg glass-inset jl-seg">${OUTCOMES.map(([k,lab])=>`<button type="button" class="${l.outcome===k?'on':''}" data-oc="${k}">${lab}</button>`).join('')}</div>
+    <div class="jl-cm${showCm?'':' hide'}"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref placeholder="job ref" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
+    <div class="jl-err hide" data-err></div>
+    <div class="jl-stamp">${l.updated_by&&l.outcome!=='pending'?`${esc(l.updated_by)} · ${fmtStamp(l.updated_at)}`:''}</div>
+  </div>`;
+}
 function openTechDay(name){
   const root=$('#repRoot'); const order=JM.order||[name];
   function draw(n){
     const s=techStats(n), i=order.indexOf(n); const t=TECHS.find(x=>x.name===n);
-    const reasons=[...(s.notApproved?[s.onRoster?'Not on the approved list — approve on the Technicians tab or reassign':'Name not on the roster — add or rename on the Technicians tab']:[]),...(s.over?[`${s.jobs} jobs on one day — overload threshold is ${JM.threshold}`]:[])];
+    const reasons=[...(s.notApproved?[s.onRoster?'Not on the approved list — approve on the Technicians tab or reassign':'Name not on the roster — add or rename on the Technicians tab']:[]),...(s.over?[`${s.jobs} jobs on one day — overload threshold is ${JM.threshold}`]:[]),...(s.pendingPast?[`${s.pending} job${s.pending===1?'':'s'} still without an outcome — mark each one below`]:[])];
     root.innerHTML=`<div class="rep">
       <div class="rep-top">
         <div class="rep-avatar" style="background:${colorFor(n)}">${esc(initials(n.replace(/^\d+\s+(LA|OC|SD|SF|Miami|Ventura)\s+/,'')))}</div>
@@ -2547,24 +2604,47 @@ function openTechDay(name){
         <div class="rep-nav"><button class="btn ghost" id="rp_prev" ${i<=0?'disabled':''}>‹</button><button class="btn ghost" id="rp_next" ${i<0||i>=order.length-1?'disabled':''}>›</button><button class="rep-close" id="rp_close">×</button></div>
       </div>
       <div class="rep-kpis">
-        <div class="rep-kpi"><div class="v">${s.jobs}</div><div class="l">Jobs</div></div>
-        <div class="rep-kpi hi"><div class="v">${s.adc}</div><div class="l">ADC</div></div>
-        <div class="rep-kpi blue"><div class="v">${s.dvc}</div><div class="l">DVC</div></div>
-        <div class="rep-kpi"><div class="v">${fmtPct(s.adcPct)}</div><div class="l">ADC share</div></div>
+        <div class="rep-kpi"><div class="v">${s.jobs}</div><div class="l">Expected</div></div>
+        <div class="rep-kpi ${s.completed?'hi':''}"><div class="v">${s.completed}</div><div class="l">Completed</div></div>
+        <div class="rep-kpi ${s.lost?'warn':''}"><div class="v">${s.lost}</div><div class="l">Lost</div></div>
+        <div class="rep-kpi ${s.pendingPast?'warn':''}"><div class="v">${s.pending}</div><div class="l">Pending</div></div>
         <div class="rep-kpi ${s.flags?'warn':''}"><div class="v">${s.flags}</div><div class="l">Flags</div></div>
       </div>
       <div class="rep-body">
         ${reasons.length?`<div class="rep-flags">${reasons.map(x=>`<span class="flag-pill">${esc(x)}</span>`).join('')}</div>`:''}
-        <h3>Assignments on ${JM.date}</h3>
-        ${s.rows.length?`<div class="twrap"><table><thead><tr><th>Job type</th><th># of jobs</th><th>Correct?</th></tr></thead><tbody>
-          ${s.rows.map(r=>`<tr><td><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span></td><td class="num">${jmJobs(r)}</td><td>${justifyControls(r)}</td></tr>`).join('')}
-        </tbody></table></div>${STATE.isAdmin?'<div class="count-note" style="margin-top:8px">Click a verdict again to clear it. Verdicts are stamped with who and when in the database.</div>':''}`:`<div class="empty">No entries for ${esc(n)} on ${JM.date}. Add them on Daily Entry.</div>`}
+        ${s.rows.length?s.rows.map(r=>{const ls=s.lines.filter(l=>l.assignment_id===r.id).sort((a,b)=>a.seq-b.seq);return `
+          <div class="jl-group">
+            <div class="jl-group-h"><span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span> <b>${jmJobs(r)} expected</b> <span class="count-note">${outcomeSummary(outcomeStats(ls),JM.date)}</span></span><span>${justifyControls(r)}</span></div>
+            ${ls.length?ls.map(l=>lineHtml(l,r)).join(''):`<div class="count-note" style="padding:8px 0">No job lines yet — ${esc(friendlyErr({message:'does not exist'},'job_assignment_outcomes.sql'))}</div>`}
+          </div>`;}).join('')+`<div class="count-note" style="margin-top:10px">Each expected job is one line. Mark what happened; anything but <b>Completed</b> needs a comment. ${STATE.isAdmin?'Correct / Not correct is your verdict on the assignment itself — click again to clear.':''}</div>`
+        :`<div class="empty">No entries for ${esc(n)} on ${JM.date}. Add them on Daily Entry.</div>`}
       </div>
     </div>`;
     $('#rp_close').onclick=()=>{root.classList.remove('show');root.innerHTML='';};
     $('#rp_prev').onclick=()=>{if(i>0)draw(order[i-1]);};
     $('#rp_next').onclick=()=>{if(i<order.length-1)draw(order[i+1]);};
     root.querySelectorAll('[data-just]').forEach(b=>b.onclick=async()=>{const r=s.rows.find(x=>String(x.id)===b.dataset.jid);const val=r&&r.justified===b.dataset.just?null:b.dataset.just;const ok=await setJustified(b.dataset.jid,val);if(ok)draw(n);});
+    root.querySelectorAll('.jl').forEach(box=>{
+      const id=box.dataset.line; const line=()=>JM.lines.find(x=>String(x.id)===String(id));
+      const pick=()=>{const on=box.querySelector('[data-oc].on');return on?on.dataset.oc:'pending';};
+      const showErr=m=>{const e=box.querySelector('[data-err]');e.textContent=m||'';e.classList.toggle('hide',!m);};
+      const commit=async()=>{
+        const oc=pick(); const cm=box.querySelector('[data-cm]').value.trim(); const ref=box.querySelector('[data-ref]').value.trim();
+        if(LOST.has(oc)&&!cm){showErr('Say what happened to this job — the comment is required for a job that did not complete.');box.querySelector('[data-cm]').focus();return;}
+        const res=await saveOutcome(id,{outcome:oc,comment:cm||null,job_ref:ref||null});
+        if(res.error){showErr(res.error);return;}
+        Object.assign(line(),res.row); renderJMeetView(); draw(n);
+        toast(oc==='completed'?'Marked completed':`Marked ${outcomeLabel(oc).toLowerCase()} — thank you for the note`);
+      };
+      box.querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{
+        const cur=line(); const already=b.classList.contains('on'); box.querySelectorAll('[data-oc]').forEach(x=>x.classList.toggle('on',x===b&&!already));
+        const oc=pick(); box.querySelector('.jl-cm').classList.toggle('hide',!(LOST.has(oc)||(oc==='completed'&&false)));
+        if(oc==='completed'||oc==='pending'){commit();}   // no comment needed: save at once
+        else{showErr('');box.querySelector('[data-cm]').focus();}
+      });
+      box.querySelector('[data-lsave]').onclick=commit;
+      box.querySelector('[data-cm]').addEventListener('keydown',e=>{if(e.key==='Enter')commit();});
+    });
   }
   draw(name); root.classList.add('show');
 }
@@ -2575,7 +2655,6 @@ async function setJustified(id,val){
   const r=JM.rows.find(x=>String(x.id)===String(id)); if(r)Object.assign(r,data[0]);
   renderJMeetView(); return true;
 }
-
 const TECH_NAMES=()=>TECHS.filter(t=>t.active!==false).map(t=>t.name);
 const JOB_TYPES=['ADC','DVC'];
 function refreshTechSelects(){
@@ -2613,17 +2692,17 @@ async function renderJToday(){
   $('#tblJToday').innerHTML='<tbody><tr><td class="loading">Loading…</td></tr></tbody>';
   const {data:rows,error}=await sb.from('job_assignments').select('*').eq('date',date).order('technician');
   if(error){toast(friendlyErr(error,'jobs_schema.sql'),true);$('#tblJToday').innerHTML='<tbody><tr><td class="empty">Run <b>jobs_schema.sql</b> in Supabase to create the job-assignment tables, then reload.</td></tr></tbody>';return;}
-  const list=rows||[];
-  const total=list.reduce((s,r)=>s+(+r.jobs||0),0);
-  const byType=t=>list.filter(r=>r.job_type===t).reduce((s,r)=>s+(+r.jobs||0),0);
-  const techCount=new Set(list.map(r=>r.technician)).size;
-  $('#jaCountNote').textContent=`${date} · ${list.length} row${list.length===1?'':'s'}`;
-  if(!list.length){$('#tblJToday').innerHTML='<tbody><tr><td style="color:var(--ink-2)">Nothing assigned for this date yet — use the form above.</td></tr></tbody>';return;}
-  let h='<thead><tr><th>Technician</th><th>Job type</th><th># of jobs</th><th></th></tr></thead><tbody>';
+  const list=rows||[]; const lines=await loadOutcomesFor(list);
+  const st=outcomeStats(lines);
+  $('#jaCountNote').textContent=`${date} · ${list.length} row${list.length===1?'':'s'} · expected ${st.expected}${st.expected?` · completed ${st.completed} · lost ${st.lost} · pending ${st.pending}`:''}`;
+  if(!list.length){$('#tblJToday').innerHTML='<tbody><tr><td style="color:var(--ink-2)">Nothing expected for this date yet — use the form above.</td></tr></tbody>';return;}
+  let h='<thead><tr><th>Technician</th><th>Job type</th><th>Expected</th><th>Outcomes</th><th></th></tr></thead><tbody>';
   list.forEach(r=>{
+    const o=outcomeStats(lines.filter(l=>l.assignment_id===r.id));
     h+=`<tr><td><b>${esc(r.technician)}</b></td>
       <td><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span></td>
       <td><input type="number" min="0" step="1" style="width:84px" data-jn="${esc(r.id)}" value="${+r.jobs||0}"></td>
+      <td class="count-note">${outcomeSummary(o,date)}</td>
       <td><button class="btn danger sm" data-jdel="${esc(r.id)}">Remove</button></td></tr>`;
   });
   $('#tblJToday').innerHTML=h+'</tbody>';
@@ -2667,6 +2746,7 @@ function jbRange(){
   if(p==='lastmonth'){const s=new Date(now.getFullYear(),now.getMonth()-1,1);return[iso(s),iso(new Date(now.getFullYear(),now.getMonth(),0)),'Last month'];}
   return[iso(new Date(now.getFullYear(),now.getMonth(),1)),iso(now),'This month'];
 }
+let JB_LINES=[],JB_ROWS=[];
 function jbQuery(){
   const[from,to]=jbRange();
   let q=sb.from('job_assignments').select('*').gte('date',from).lte('date',to).limit(20000);
@@ -2681,29 +2761,39 @@ async function renderJBreak(){
   const {data:rows,error}=await jbQuery().order('date',{ascending:false});
   if(error){toast(friendlyErr(error,'jobs_schema.sql'),true);$('#jbNote').textContent='Run jobs_schema.sql in Supabase to create the job-assignment tables.';return;}
   const list=rows||[];
+  const lines=await loadOutcomesFor(list); JB_LINES=lines; JB_ROWS=list;
   const total=list.reduce((s,r)=>s+(+r.jobs||0),0);
   const byType=t=>list.reduce((s,r)=>s+(r.job_type===t?(+r.jobs||0):0),0);
   const techs=[...new Set(list.map(r=>r.technician))];
   const days=[...new Set(list.map(r=>r.date))];
+  const ost=outcomeStats(lines); const decided=ost.completed+ost.lost;
   $('#jbNote').textContent=`${label} · ${from} → ${to} · ${list.length} assignment row${list.length===1?'':'s'}`;
   $('#jbKpis').innerHTML=`
-    <div class="kpi a"><div class="v">${total}</div><div class="l">Total jobs</div></div>
-    <div class="kpi"><div class="v">${byType('ADC')}</div><div class="l">ADC jobs</div></div>
-    <div class="kpi blue"><div class="v">${byType('DVC')}</div><div class="l">DVC jobs</div></div>
+    <div class="kpi"><div class="v">${total}</div><div class="l">Expected jobs</div></div>
+    <div class="kpi ${decided?'a':''}"><div class="v">${decided?ost.completed:'—'}</div><div class="l">Completed</div></div>
+    <div class="kpi ${ost.lost?'b':''}"><div class="v">${decided?ost.lost:'—'}</div><div class="l">Lost</div></div>
+    <div class="kpi"><div class="v">${decided?fmtPct(ost.completed/decided):'—'}</div><div class="l">Realisation</div></div>
+    <div class="kpi ${ost.pending?'':''}"><div class="v">${ost.pending}</div><div class="l">Pending outcomes</div></div>
+    <div class="kpi ok"><div class="v">${byType('ADC')}</div><div class="l">ADC jobs</div></div>
+    <div class="kpi teal"><div class="v">${byType('DVC')}</div><div class="l">DVC jobs</div></div>
     <div class="kpi"><div class="v">${techs.length}</div><div class="l">Technicians</div></div>
-    <div class="kpi"><div class="v">${techs.length?(total/techs.length).toFixed(1):'—'}</div><div class="l">Avg jobs / tech</div></div>
     <div class="kpi"><div class="v">${days.length?(total/days.length).toFixed(1):'—'}</div><div class="l">Avg jobs / day</div></div>`;
+  // lost jobs — why
+  const lostLines=lines.filter(l=>LOST.has(l.outcome)); const rowById={}; list.forEach(r=>rowById[r.id]=r);
+  const why=['cancelled','rescheduled','other'].map(k=>({k,n:lostLines.filter(l=>l.outcome===k).length,notes:lostLines.filter(l=>l.outcome===k).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(0,3)}));
+  $('#jbLost').innerHTML=lostLines.length?`<div class="twrap"><table><thead><tr><th>Outcome</th><th>Lost jobs</th><th>Share of lost</th><th>Share of expected</th><th>Latest comments</th></tr></thead><tbody>${why.filter(w=>w.n).map(w=>`<tr><td><span class="jl-state ${w.k}">${outcomeLabel(w.k)}</span></td><td class="num"><b>${w.n}</b></td><td class="num">${fmtPct(w.n/lostLines.length)}</td><td class="num">${total?fmtPct(w.n/total):'—'}</td><td class="count-note">${w.notes.map(l=>{const r=rowById[l.assignment_id]||{};return `${esc(r.date||'')} · ${esc(r.technician||'')}: ${esc(l.comment||'')}`;}).join('<br>')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="count-note">No lost jobs recorded in this period${ost.pending?` · ${ost.pending} outcome${ost.pending===1?'':'s'} still pending`:''}.</div>`;
   // by technician
   const per=techs.map(t=>{
     const rs=list.filter(r=>r.technician===t);
     const g=ty=>rs.reduce((s,r)=>s+(r.job_type===ty?(+r.jobs||0):0),0);
     const tot=rs.reduce((s,r)=>s+(+r.jobs||0),0);
-    return {t,adc:g('ADC'),dvc:g('DVC'),tot,days:new Set(rs.map(r=>r.date)).size};
+    const ids=new Set(rs.map(r=>r.id)); const o=outcomeStats(lines.filter(l=>ids.has(l.assignment_id)));
+    return {t,adc:g('ADC'),dvc:g('DVC'),tot,days:new Set(rs.map(r=>r.date)).size,o};
   }).sort((a,b)=>b.tot-a.tot);
-  let th='<thead><tr><th>Technician</th><th>ADC</th><th>DVC</th><th>Total jobs</th><th>Days assigned</th><th>Avg / day</th><th>Share</th></tr></thead><tbody>';
-  per.forEach(p=>{
+  let th='<thead><tr><th>Technician</th><th>ADC</th><th>DVC</th><th>Expected</th><th>Completed</th><th>Lost</th><th>Realisation</th><th>Days</th><th>Avg / day</th><th>Share</th></tr></thead><tbody>';
+  per.forEach(p=>{const dec=p.o.completed+p.o.lost;
     th+=`<tr><td><b>${esc(p.t)}</b></td><td class="num">${p.adc}</td><td class="num">${p.dvc}</td>
-      <td class="num"><b>${p.tot}</b></td><td class="num">${p.days}</td>
+      <td class="num"><b>${p.tot}</b></td><td class="num">${dec?p.o.completed:'—'}</td><td class="num"${p.o.lost?' style="color:var(--amber)"':''}>${dec?p.o.lost:'—'}</td><td class="num">${dec?fmtPct(p.o.completed/dec):'—'}</td><td class="num">${p.days}</td>
       <td class="num">${p.days?(p.tot/p.days).toFixed(1):'—'}</td>
       <td class="num">${total?fmtPct(p.tot/total):'—'}</td></tr>`;
   });
@@ -2717,11 +2807,11 @@ async function renderJBreak(){
   const dmax=Math.max(1,...dayList.map(d=>d[1]));
   $('#jbDays').innerHTML=dayList.length?dayList.map(([d,v])=>`<div class="bar-row"><div class="lbl">${d}</div><div class="trk"><div class="fill alt" style="width:${v/dmax*100}%"></div></div><div class="val">${v}</div></div>`).join(''):'<div class="sub">No data.</div>';
   // all rows
-  let ah='<thead><tr><th>Date</th><th>Technician</th><th>Job type</th><th># of jobs</th></tr></thead><tbody>';
+  let ah='<thead><tr><th>Date</th><th>Technician</th><th>Job type</th><th>Expected</th><th>Outcomes</th></tr></thead><tbody>';
   list.slice(0,600).forEach(r=>{
     ah+=`<tr><td class="num" style="text-align:left">${esc(r.date)}</td><td>${esc(r.technician)}</td>
-      <td><span class="badge ${r.job_type==='DVC'?'crossbooking':'booking'}">${esc(r.job_type)}</span></td>
-      <td class="num"><b>${+r.jobs||0}</b></td></tr>`;
+      <td><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span></td>
+      <td class="num"><b>${+r.jobs||0}</b></td><td class="count-note">${outcomeSummary(outcomeStats(lines.filter(l=>l.assignment_id===r.id)),r.date)}</td></tr>`;
   });
   $('#tblJAll').innerHTML=list.length?ah+'</tbody>':'<tbody><tr><td style="color:var(--ink-2)">Nothing to show.</td></tr></tbody>';
 }
@@ -2729,6 +2819,12 @@ async function renderJBreak(){
   if(id==='jbFrom'||id==='jbTo')$('#jbPreset').value='custom';
   renderJBreak();
 }));
+$('#jbExportOut').addEventListener('click',()=>{
+  const rowById={}; JB_ROWS.forEach(r=>rowById[r.id]=r);
+  const esc2=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const csv=['date,technician,job_type,seq,outcome,comment,job_ref,updated_by,updated_at'].concat(JB_LINES.map(l=>{const r=rowById[l.assignment_id]||{};return [r.date,r.technician,r.job_type,l.seq,l.outcome,l.comment,l.job_ref,l.updated_by,l.updated_at].map(esc2).join(',');})).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`job_outcomes_${jbRange()[0]}_${jbRange()[1]}.csv`;a.click();
+});
 $('#jbExport').addEventListener('click', async ()=>{
   const {data:rows,error}=await jbQuery().order('date',{ascending:true});
   if(error){toast('Export failed: '+error.message,true);return;}
