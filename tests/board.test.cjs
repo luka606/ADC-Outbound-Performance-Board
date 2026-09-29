@@ -41,7 +41,7 @@ function mount(db,{admin=false}={}){
   console.log('— Daily Meeting —');
   $('#sbNav [data-tab="jmeet"]').click(); await tick(300);
   const kpis=$$('#jmKpis .kpi').map(k=>k.querySelector('.v').textContent+' '+k.querySelector('.l').textContent);
-  T('KPIs today: 9 Expected · Completed — · Lost — · 9 Pending · 6 ADC · 3 DVC · Not yet reviewed · flags',kpis[0]==='9 Expected'&&kpis[1]==='— Completed'&&kpis[2]==='— Lost'&&kpis[3]==='9 Pending outcomes'&&kpis[4]==='6 ADC jobs'&&kpis[5]==='3 DVC jobs'&&/— Not yet reviewed/.test(kpis[6])&&/Flagged rows/.test(kpis[7]),kpis);
+  T('KPIs today: 9 Expected · Completed — · Lost — · 9 Pending · 6 ADC · 3 DVC · Not yet reviewed · flags',kpis[0]==='9 Expected'&&kpis[1]==='— Completed'&&kpis[2]==='— Lost'&&kpis[3]==='— Rescheduled'&&kpis[4]==='9 Pending outcomes'&&kpis[5]==='6 ADC jobs'&&kpis[6]==='3 DVC jobs'&&/— Not yet reviewed/.test(kpis[7])&&/Flagged rows/.test(kpis[8]),kpis);
   T('note counts entries and technicians on the date',$('#jmNote').textContent===`5 entries · 4 technicians on ${TODAY}`,$('#jmNote').textContent);
   T('pending outcomes on TODAY are not a flag (the day is not over)',!/outcome/.test($('#jmList').textContent));
   T('four ranked cards, one dashed empty row for the approved technician without entries',$$('#jmList .lb-row').length===4&&$$('#jmList .lb-empty-row').length===1&&/3 LA Miguel/.test($('#jmList .lb-empty-row').textContent));
@@ -51,13 +51,13 @@ function mount(db,{admin=false}={}){
   T('overload at the threshold (4 jobs) shows the dashed pill and flags the row',!!donat.querySelector('.ovl-pill')&&donat.classList.contains('flagged'));
   const shams=$$('#jmList .lb-row').find(r=>/1 Shams/.test(r.textContent));
   T('an unapproved technician gets the "not approved" flag pill',!!shams&&/not approved/.test(shams.querySelector('.flag-pill').textContent)&&shams.classList.contains('flagged'));
-  T('Flagged rows KPI counts the two flagged cards',$$('#jmKpis .kpi')[7].querySelector('.v').textContent==='2');
+  T('Flagged rows KPI counts the two flagged cards',$$('#jmKpis .kpi')[8].querySelector('.v').textContent==='2');
   T('team average ADC share shown',/team avg ADC share: 67%/.test($('#jmAvg').textContent),$('#jmAvg').textContent);
   $('#jmSortBar [data-sort="adcLow"]').click(); await tick(30);
   T('sort by ADC share lowest first puts Jimmy (0% ADC) at #1 and persists the choice',/3 OC Jimmy/.test($('#jmList .lb-row').textContent)&&w.localStorage.getItem('adc_jm_sort')==='adcLow');
   $('#jmSortBar [data-sort="jobs"]').click(); await tick(30);
   $('#jmList [data-tech-open="3 LA Donat"]').click(); await tick(60);
-  T('card opens the technician-day modal with KPIs, flag reasons and the rows; non-admin sees no verdict buttons',$('#repRoot').classList.contains('show')&&/3 LA Donat/.test($('#repRoot .rep-title .nm').textContent)&&$$('#repRoot .rep-kpi').length===5&&/overload threshold is 4/.test($('#repRoot').textContent)&&$$('#repRoot .jl-group').length===2&&$$('#repRoot .jl').length===4&&$$('#repRoot .jb').length===0&&/not yet reviewed/.test($('#repRoot').textContent));
+  T('card opens the technician-day modal with KPIs, flag reasons and the rows; non-admin sees no verdict buttons',$('#repRoot').classList.contains('show')&&/3 LA Donat/.test($('#repRoot .rep-title .nm').textContent)&&$$('#repRoot .rep-kpi').length===6&&/overload threshold is 4/.test($('#repRoot').textContent)&&$$('#repRoot .jl-group').length===2&&$$('#repRoot .jl').length===4&&$$('#repRoot .jb').length===0&&/not yet reviewed/.test($('#repRoot').textContent));
   T('each expected job is a line with a segmented outcome control (nothing selected = Not yet) and a hidden comment box',$$('#repRoot .jl [data-oc]').length===16&&$$('#repRoot .jl [data-oc].on').length===0&&$$('#repRoot .jl-state').every(x=>x.textContent==='Not yet')&&$$('#repRoot .jl-cm').every(x=>x.classList.contains('hide')));
   $('#rp_next').click(); await tick(30); T('› moves to the next card in sort order',/3 LA Jordan|3 OC Jimmy/.test($('#repRoot .rep-title .nm').textContent));
   $('#rp_close').click(); T('× closes',!$('#repRoot').classList.contains('show'));
@@ -76,11 +76,11 @@ function mount(db,{admin=false}={}){
   $('[data-jm-day="yesterday"]').click(); await tick(250);
   const yk=$$('#jmKpis .kpi').map(k=>k.querySelector('.v').textContent+' '+k.querySelector('.l').textContent);
   T('Yesterday pill lights and the date is yesterday',$('#jmDate').value===db.yesterday&&$('[data-jm-day="yesterday"]').classList.contains('on'));
-  T('KPIs yesterday: 4 Expected · 2 Completed · 1 Lost · 1 Pending outcomes · 4 ADC · 0 DVC · Flagged 1',yk[0]==='4 Expected'&&yk[1]==='2 Completed'&&yk[2]==='1 Lost'&&yk[3]==='1 Pending outcomes'&&yk[4]==='4 ADC jobs'&&yk[5]==='0 DVC jobs'&&yk[7]==='1 Flagged rows',yk);
+  T('KPIs yesterday: 4 Expected · 2 Completed · 1 Lost · 1 Pending outcomes · 4 ADC · 0 DVC · Flagged 1',yk[0]==='4 Expected'&&yk[1]==='2 Completed'&&yk[2]==='1 Lost'&&yk[3]==='0 Rescheduled'&&yk[4]==='1 Pending outcomes'&&yk[5]==='4 ADC jobs'&&yk[6]==='0 DVC jobs'&&yk[8]==='1 Flagged rows',yk);
   const migRow=$$('#jmList .lb-row').find(r=>/3 LA Miguel/.test(r.textContent)), donY=$$('#jmList .lb-row').find(r=>/3 LA Donat/.test(r.textContent));
   T('Miguel (past date, line still pending) is flagged "1 outcome pending"; Donat shows Completed 2 and "1 lost" in the legend, no flag',!!migRow&&migRow.classList.contains('flagged')&&/1 outcome pending/.test(migRow.querySelector('.flag-pill').textContent)&&!!donY&&!donY.classList.contains('flagged')&&donY.querySelector('.lb-stat.tp .v').textContent==='2'&&/1 lost/.test(donY.querySelector('.mix-legend').textContent),migRow&&migRow.textContent);
   $('#jmList [data-tech-open="3 LA Miguel"]').click(); await tick(60);
-  T('Miguel\'s day: 1 ADC line, KPIs Expected 1 · Completed 0 · Lost 0 · Pending 1 · Flags 1, the pending flag reason',$$('#repRoot .jl').length===1&&$$('#repRoot .rep-kpi .v').map(x=>x.textContent).join()==='1,0,0,1,1'&&/still without an outcome/.test($('#repRoot').textContent)&&/Job 1/.test($('#repRoot .jl-h').textContent)&&/ADC/.test($('#repRoot .jl-h .badge').textContent));
+  T('Miguel\'s day: 1 ADC line, KPIs Expected 1 · Completed 0 · Lost 0 · Pending 1 · Flags 1, the pending flag reason',$$('#repRoot .jl').length===1&&$$('#repRoot .rep-kpi .v').map(x=>x.textContent).join()==='1,0,0,0,1,1'&&/still without an outcome/.test($('#repRoot').textContent)&&/Job 1/.test($('#repRoot .jl-h').textContent)&&/ADC/.test($('#repRoot .jl-h .badge').textContent));
   $('#repRoot .jl [data-oc="cancelled"]').click(); await tick(60);
   T('choosing Cancelled opens the comment box and does not save yet',!$('#repRoot .jl-cm').classList.contains('hide')&&db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='pending');
   $('#repRoot .jl [data-lsave]').click(); await tick(120);
@@ -88,10 +88,15 @@ function mount(db,{admin=false}={}){
   $('#repRoot .jl [data-cm]').value='customer rescheduled to next week, no truck available'; $('#repRoot .jl [data-ref]').value='ld-9001'; $('#repRoot .jl [data-lsave]').click(); await tick(150);
   const oy1=db.job_assignment_outcomes.find(l=>l.id==='oy1');
   T('with a comment it saves: outcome cancelled, comment, job_ref uppercased, updated_by = Dispatcher (board), stamp',oy1.outcome==='cancelled'&&/no truck/.test(oy1.comment)&&oy1.job_ref==='LD-9001'&&oy1.updated_by==='Dispatcher (board)'&&!!oy1.updated_at,oy1);
-  T('day view re-draws: state pill Cancelled, the line marked lost, stamp shown; KPIs Lost 1 · Pending 0 · Flags 0',$('#repRoot .jl-state').textContent==='Cancelled'&&$('#repRoot .jl').classList.contains('lost')&&/Dispatcher \(board\)/.test($('#repRoot .jl-stamp').textContent)&&$$('#repRoot .rep-kpi .v').map(x=>x.textContent).join()==='1,0,1,0,0');
-  T('board behind updates: Lost 2, Pending 0, Miguel no longer flagged, Flagged rows 0',$$('#jmKpis .kpi')[2].querySelector('.v').textContent==='2'&&$$('#jmKpis .kpi')[3].querySelector('.v').textContent==='0'&&!$$('#jmList .lb-row').find(r=>/3 LA Miguel/.test(r.textContent)).classList.contains('flagged')&&$$('#jmKpis .kpi')[7].querySelector('.v').textContent==='0');
+  T('day view re-draws: state pill Cancelled, the line marked lost, stamp shown; KPIs Lost 1 · Pending 0 · Flags 0',$('#repRoot .jl-state').textContent==='Cancelled'&&$('#repRoot .jl').classList.contains('lost')&&/Dispatcher \(board\)/.test($('#repRoot .jl-stamp').textContent)&&$$('#repRoot .rep-kpi .v').map(x=>x.textContent).join()==='1,0,1,0,0,0');
+  T('board behind updates: Lost 2, Pending 0, Miguel no longer flagged, Flagged rows 0',$$('#jmKpis .kpi')[2].querySelector('.v').textContent==='2'&&$$('#jmKpis .kpi')[4].querySelector('.v').textContent==='0'&&!$$('#jmList .lb-row').find(r=>/3 LA Miguel/.test(r.textContent)).classList.contains('flagged')&&$$('#jmKpis .kpi')[8].querySelector('.v').textContent==='0');
+  $('#repRoot .jl [data-oc="rescheduled"]').click(); await tick(60);
+  T('Rescheduled also needs a comment (the box stays open, nothing saved yet)',!$('#repRoot .jl-cm').classList.contains('hide')&&db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='cancelled');
+  $('#repRoot .jl [data-cm]').value='customer asked for Friday instead'; $('#repRoot .jl [data-lsave]').click(); await tick(150);
+  T('a rescheduled job is NOT lost: line marked resched (teal), Lost back to 1, Rescheduled 1, day KPIs Expected 1 · Completed 0 · Lost 0 · Rescheduled 1 · Pending 0 · Flags 0',db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='rescheduled'&&$('#repRoot .jl').classList.contains('resched')&&!$('#repRoot .jl').classList.contains('lost')&&$('#repRoot .jl-state').textContent==='Rescheduled'&&$$('#repRoot .rep-kpi .v').map(x=>x.textContent).join()==='1,0,0,1,0,0'&&$$('#jmKpis .kpi')[2].querySelector('.v').textContent==='1'&&$$('#jmKpis .kpi')[3].querySelector('.v').textContent==='1',$$('#jmKpis .kpi').map(k=>k.textContent.replace(/\s+/g,' ')));
+  T('card legend says "1 rescheduled", not lost',/1 rescheduled/.test($$('#jmList .lb-row').find(r=>/3 LA Miguel/.test(r.textContent)).querySelector('.mix-legend').textContent)&&!/lost/.test($$('#jmList .lb-row').find(r=>/3 LA Miguel/.test(r.textContent)).querySelector('.mix-legend').textContent));
   $('#repRoot .jl [data-oc="completed"]').click(); await tick(150);
-  T('switching to Completed saves at once with no comment needed and clears the lost mark',db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='completed'&&$('#repRoot .jl-state').textContent==='Completed'&&!$('#repRoot .jl').classList.contains('lost')&&$$('#jmKpis .kpi')[1].querySelector('.v').textContent==='3');
+  T('switching to Completed saves at once with no comment needed and clears the marks',db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='completed'&&$('#repRoot .jl-state').textContent==='Completed'&&!$('#repRoot .jl').classList.contains('lost')&&!$('#repRoot .jl').classList.contains('resched')&&$$('#jmKpis .kpi')[1].querySelector('.v').textContent==='3');
   $('#repRoot .jl [data-oc="completed"]').click(); await tick(150);
   T('clicking the lit outcome again returns the line to pending (Not yet)',db.job_assignment_outcomes.find(l=>l.id==='oy1').outcome==='pending'&&$('#repRoot .jl-state').textContent==='Not yet');
   $('#rp_close').click();
@@ -102,9 +107,13 @@ function mount(db,{admin=false}={}){
     T('lowering y2 from 3 to 2 is refused with the DB message; raising to 5 adds two pending lines (5 lines, seq 1..5)',!!r1.error&&/already have an outcome recorded/.test(r1.error.message)&&!r2.error&&before===3&&after.length===5&&after.map(l=>l.seq).sort().join()==='1,2,3,4,5'&&after.filter(l=>l.outcome==='pending').length===2,r1.error&&r1.error.message);
     await fake.from('job_assignments').update({jobs:3}).eq('id','y2'); }
   w.showTab('jbreak'); await tick(300);
-  T('Breakdown KPIs: Expected · Completed · Lost · Realisation · Pending · ADC · DVC',$$('#jbKpis .kpi .l').map(x=>x.textContent).slice(0,7).join()==='Expected jobs,Completed,Lost,Realisation,Pending outcomes,ADC jobs,DVC jobs');
-  T('"Lost jobs — why" lists the cancellation with its comment',/Cancelled/.test($('#jbLost').textContent)&&/customer cancelled at the door/.test($('#jbLost').textContent)&&!!$('#jbExportOut'));
-  T('per-technician table carries Expected · Completed · Lost · Realisation',/Expected.*Completed.*Lost.*Realisation/.test($$('#tblJTech thead th').map(t=>t.textContent).join(' ')));
+  T('Breakdown KPIs: Expected · Completed · Lost · Realisation · Pending · ADC · DVC',$$('#jbKpis .kpi .l').map(x=>x.textContent).slice(0,8).join()==='Expected jobs,Completed,Lost,Rescheduled,Realisation,Pending outcomes,ADC jobs,DVC jobs');
+  T('"Not completed — why" lists the cancellation as lost with its comment, and nothing rescheduled',/Cancelled/.test($('#jbLost').textContent)&&/customer cancelled at the door/.test($('#jbLost').textContent)&&/lost/.test($('#jbLost').textContent)&&!/not lost/.test($('#jbLost').textContent)&&!!$('#jbExportOut'));
+  { db.job_assignment_outcomes.find(l=>l.id==='oy3').outcome='rescheduled'; db.job_assignment_outcomes.find(l=>l.id==='oy3').comment='moved to Oct 2'; w.showTab('jmeet'); await tick(150); w.showTab('jbreak'); await tick(300);
+    const k=$$('#jbKpis .kpi').map(x=>x.textContent.replace(/\s+/g,' ').trim());
+    T('Breakdown with one rescheduled line: Completed 1 · Lost 1 · Rescheduled 1 · Realisation 50.0% (rescheduled left out); why-panel marks it "not lost"',/^1\s?Completed/.test(k[1])&&/^1\s?Lost/.test(k[2])&&/^1\s?Rescheduled/.test(k[3])&&/^50\.0%\s?Realisation/.test(k[4])&&/not lost/.test($('#jbLost').textContent)&&/moved to Oct 2/.test($('#jbLost').textContent),k);
+    db.job_assignment_outcomes.find(l=>l.id==='oy3').outcome='completed'; db.job_assignment_outcomes.find(l=>l.id==='oy3').comment=null; w.showTab('jbreak'); await tick(300); }
+  T('per-technician table carries Expected · Completed · Lost · Realisation',/Expected.*Completed.*Lost.*Rescheduled.*Realisation/.test($$('#tblJTech thead th').map(t=>t.textContent).join(' ')));
   { let dl=null; w.URL.createObjectURL=()=>'blob:x'; w.HTMLAnchorElement.prototype.click=function(){dl=this.download;}; const origBlob=w.Blob; let csvText=''; w.Blob=class extends origBlob{constructor(parts,o){super(parts,o);csvText=parts.join('');}};
     $('#jbExportOut').click(); await tick(30);
     T('outcomes CSV: header columns and the cancelled line',/^date,technician,job_type,seq,outcome,comment,job_ref,updated_by,updated_at/.test(csvText)&&/"cancelled","customer cancelled at the door"/.test(csvText)&&/^job_outcomes_/.test(dl||''),csvText.slice(0,200)); }

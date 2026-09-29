@@ -2,7 +2,8 @@
 -- Every expected job on job_assignments (jobs = the expected count) becomes one line here, created and kept in step by a
 -- trigger. The dispatcher marks each line completed / cancelled / rescheduled / other from the Daily Meeting's day view;
 -- anything but completed needs a comment saying what happened. Derived, never stored: actual = lines completed,
--- lost = cancelled + rescheduled + other, pending = untouched. The sum of lines always equals the expected count.
+-- lost = cancelled + other, rescheduled = its own bucket (not lost — the job is visited another day), pending = untouched.
+-- The sum of lines always equals the expected count. (Comment-only edit 2026-09-30; the DDL is unchanged and applied.)
 --
 -- Attribution: the board is anonymous (no Supabase Auth); updated_by is the device's agent name or 'Dispatcher (board)',
 -- the same standing as coverage_log.created_by. Lowering the expected count past a recorded outcome is refused on purpose.

@@ -355,7 +355,7 @@ tbody tr:hover td{background:var(--panel-2)}
 .rep-kpi{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;text-align:center}
 .rep-kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
 .rep-kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px}
-.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}
+.rep-kpi.hi .v{color:var(--accent)}.rep-kpi.blue .v{color:var(--blue)}.rep-kpi.warn .v{color:var(--amber)}.rep-kpi.teal .v{color:var(--teal)}
 .rep-body{overflow:auto;padding:16px 28px 26px}
 .rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
 .bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
@@ -465,9 +465,10 @@ body.admin-on .admin-only{display:block}
 .jl-group-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 6px;flex-wrap:wrap}
 .jl{padding:10px 0;border-top:1px solid var(--line)}
 .jl.lost{border-left:3px solid var(--amber);padding-left:10px;margin-left:-13px}
+.jl.resched{border-left:3px solid var(--teal);padding-left:10px;margin-left:-13px}
 .jl-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}.jl-h .k{font-family:var(--disp);font-weight:600;font-size:14px}
 .jl-state{margin-left:auto;font-family:var(--mono);font-size:10.5px;padding:2px 9px;border-radius:99px;background:var(--line-2);color:var(--ink-2)}
-.jl-state.completed{background:var(--ok-soft);color:var(--ok)}.jl-state.cancelled,.jl-state.other{background:var(--red-soft);color:var(--red)}.jl-state.rescheduled{background:var(--amber-soft);color:var(--amber)}
+.jl-state.completed{background:var(--ok-soft);color:var(--ok)}.jl-state.cancelled,.jl-state.other{background:var(--red-soft);color:var(--red)}.jl-state.rescheduled{background:var(--teal-soft);color:var(--teal)}
 .jl-seg{display:flex}.jl-seg>button{flex:1}
 .jl-cm{display:flex;gap:8px;margin-top:8px;align-items:center}.jl-in{flex:1;min-width:0}.jl-ref{flex:0 0 150px}
 .jl-err{color:var(--red);font-size:12.5px;margin-top:6px}
@@ -725,7 +726,7 @@ body.admin-on .admin-only{display:block}
   <div class="count-note" id="jbNote" style="margin-bottom:10px"></div>
   <div class="kpis" id="jbKpis"></div>
   <div class="panel"><h3 class="pt">By technician</h3><div class="twrap"><table id="tblJTech"></table></div></div>
-  <div class="panel"><div class="section-head" style="margin-bottom:10px"><h3 class="pt" style="margin:0">Lost jobs — why</h3><button class="btn ghost sm" id="jbExportOut">Export outcomes CSV</button></div><div id="jbLost"></div></div>
+  <div class="panel"><div class="section-head" style="margin-bottom:10px"><h3 class="pt" style="margin:0">Not completed — why</h3><button class="btn ghost sm" id="jbExportOut">Export outcomes CSV</button></div><div id="jbLost"></div></div>
   <div class="dash-cols">
     <div class="panel"><h3 class="pt">Share of jobs by technician</h3><div id="jbBars"></div></div>
     <div class="panel"><h3 class="pt">Jobs by day</h3><div id="jbDays"></div></div>
@@ -2447,11 +2448,13 @@ async function bootSales(tab){
 let TECHS=[], jobsBooted=false;
 /* ---------- job outcomes: every expected job is a line (job_assignment_outcomes.sql) ----------
    The dispatcher marks each line completed / cancelled / rescheduled / other; anything but completed needs a comment.
-   Derived, never stored: completed = actual, lost = cancelled + rescheduled + other, pending = untouched. */
+   Derived, never stored: completed = actual, lost = cancelled + other, rescheduled = its own bucket (the job is visited
+   another day, so it is not lost — Luka, 2026-09-30), pending = untouched. */
 const OUTCOMES=[['completed','Completed'],['cancelled','Cancelled'],['rescheduled','Rescheduled'],['other','Other']];
-const LOST=new Set(['cancelled','rescheduled','other']);
+const LOST=new Set(['cancelled','other']);                         // lost for good
+const NEEDS_COMMENT=new Set(['cancelled','rescheduled','other']);   // anything but completed needs a comment (DB check)
 const outcomeLabel=o=>({pending:'Not yet',completed:'Completed',cancelled:'Cancelled',rescheduled:'Rescheduled',other:'Other'}[o]||o);
-function outcomeStats(lines){const st={expected:lines.length,completed:0,lost:0,pending:0,by:{cancelled:0,rescheduled:0,other:0}};lines.forEach(l=>{if(l.outcome==='completed')st.completed++;else if(LOST.has(l.outcome)){st.lost++;st.by[l.outcome]++;}else st.pending++;});return st;}
+function outcomeStats(lines){const st={expected:lines.length,completed:0,lost:0,resched:0,pending:0,by:{cancelled:0,rescheduled:0,other:0}};lines.forEach(l=>{if(l.outcome==='completed')st.completed++;else if(l.outcome==='rescheduled'){st.resched++;st.by.rescheduled++;}else if(LOST.has(l.outcome)){st.lost++;st.by[l.outcome]++;}else st.pending++;});return st;}
 function outcomeSummary(o,date){if(!o.expected)return '—';const parts=[];if(o.completed)parts.push(`${o.completed} ✓`);if(o.by.cancelled)parts.push(`${o.by.cancelled} cancelled`);if(o.by.rescheduled)parts.push(`${o.by.rescheduled} rescheduled`);if(o.by.other)parts.push(`${o.by.other} other`);if(o.pending)parts.push(`<span style="color:var(${date&&date<todayStr()?'--amber':'--ink-3'})">${o.pending} pending</span>`);return parts.join(' · ');}
 async function loadOutcomesFor(rows){
   const ids=(rows||[]).map(r=>r.id); if(!ids.length)return [];
@@ -2499,7 +2502,7 @@ function techStats(name){
   const flags=(notApproved?1:0)+(over?1:0)+(pendingPast?1:0);
   const reviewed=rr.some(r=>r.justified==='Yes'||r.justified==='No');
   const unj=rr.filter(r=>r.justified==='No').reduce((s,r)=>s+jmJobs(r),0);
-  return {name,rows:rr,lines,jobs,adc,dvc,adcPct:jobs?adc/jobs:NaN,completed:o.completed,lost:o.lost,pending:o.pending,by:o.by,notApproved,over,pendingPast,flags,reviewed,unj,correctPct:jobs?1-unj/jobs:NaN,onRoster:!!t};
+  return {name,rows:rr,lines,jobs,adc,dvc,adcPct:jobs?adc/jobs:NaN,completed:o.completed,lost:o.lost,resched:o.resched,pending:o.pending,by:o.by,notApproved,over,pendingPast,flags,reviewed,unj,correctPct:jobs?1-unj/jobs:NaN,onRoster:!!t};
 }
 function renderJMeetView(){
   const date=JM.date, rows=JM.rows;
@@ -2515,11 +2518,12 @@ function renderJMeetView(){
   const unjJobs=rows.filter(r=>r.justified==='No').reduce((s,r)=>s+jmJobs(r),0);
   const correctPct=(total&&reviewed)?1-unjJobs/total:NaN;
   const flagged=stats.filter(s=>s.rows.length&&s.flags).length;
-  const anyOutcome=all.completed+all.lost>0;
+  const anyOutcome=all.completed+all.lost+all.resched>0;
   $('#jmKpis').innerHTML=`
     <div class="kpi"><div class="v">${total}</div><div class="l">Expected</div></div>
     <div class="kpi ${anyOutcome?'a':''}"><div class="v">${anyOutcome?all.completed:'—'}</div><div class="l">Completed</div></div>
     <div class="kpi ${all.lost?'b':''}"><div class="v">${anyOutcome?all.lost:'—'}</div><div class="l">Lost</div></div>
+    <div class="kpi ${all.resched?'teal':''}"><div class="v">${anyOutcome?all.resched:'—'}</div><div class="l">Rescheduled</div></div>
     <div class="kpi ${past&&all.pending?'b':''}"><div class="v">${all.pending}</div><div class="l">Pending outcomes</div></div>
     <div class="kpi ok"><div class="v">${adc}</div><div class="l">ADC jobs</div></div>
     <div class="kpi teal"><div class="v">${dvc}</div><div class="l">DVC jobs</div></div>
@@ -2545,7 +2549,7 @@ function renderJMeetView(){
     const legend=[s.adc?`ADC ${wA.toFixed(0)}%`:null, s.dvc?`DVC ${wD.toFixed(0)}%`:null].filter(Boolean).join(' · ')||'no jobs';
     const corr=s.reviewed?fmtPct(s.correctPct):'—';
     const corrCls=!s.reviewed?'tp-none':(s.unj?'tp-bad':'tp-good');
-    const done=s.completed+s.lost>0;
+    const done=s.completed+s.lost+s.resched>0;
     const compCls=!done?'tp-none':(s.completed===s.jobs?'tp-good':'');   // green only when every expected job completed; lost is called out in the legend
     return `<button class="lb-row${s.flags?' flagged':''}" data-tech-open="${esc(s.name)}" aria-haspopup="dialog">
       <span class="lb-rank">#${i+1}</span>
@@ -2557,7 +2561,7 @@ function renderJMeetView(){
           ${wD?`<span class="seg p2" style="left:${wA}%;width:${wD}%"></span>`:''}
           ${isFinite(teamAvg)?`<span class="avg-tick" style="left:${teamAvg*100}%"></span>`:''}
         </span>
-        <span class="mix-legend">${legend}${isFinite(teamAvg)?' · tick = team avg':''}${s.lost?` · <span style="color:var(--amber)">${s.lost} lost</span>`:''}</span>
+        <span class="mix-legend">${legend}${isFinite(teamAvg)?' · tick = team avg':''}${s.lost?` · <span style="color:var(--amber)">${s.lost} lost</span>`:''}${s.resched?` · <span style="color:var(--teal)">${s.resched} rescheduled</span>`:''}</span>
       </span>
       <span class="lb-stat"><span class="v">${s.jobs}</span><span class="l">Expected</span></span>
       <span class="lb-stat tp"><span class="v ${compCls}">${done?s.completed:'—'}</span><span class="l">Completed</span></span>
@@ -2587,8 +2591,8 @@ function justifyControls(r){
 }
 const fmtStamp=ts=>ts?new Date(ts).toLocaleString('en-US',{timeZone:PST_TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 function lineHtml(l,r){
-  const lost=LOST.has(l.outcome); const showCm=l.outcome!=='pending'&&l.outcome!=='completed';
-  return `<div class="jl${lost?' lost':''}" data-line="${esc(l.id)}">
+  const lost=LOST.has(l.outcome), resched=l.outcome==='rescheduled'; const showCm=NEEDS_COMMENT.has(l.outcome);
+  return `<div class="jl${lost?' lost':''}${resched?' resched':''}" data-line="${esc(l.id)}">
     <div class="jl-h"><span class="k">Job ${l.seq}</span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span>${l.job_ref?`<span class="jobref count-note">${esc(l.job_ref)}</span>`:''}<span class="jl-state ${esc(l.outcome)}">${outcomeLabel(l.outcome)}</span></div>
     <div class="seg glass-inset jl-seg">${OUTCOMES.map(([k,lab])=>`<button type="button" class="${l.outcome===k?'on':''}" data-oc="${k}">${lab}</button>`).join('')}</div>
     <div class="jl-cm${showCm?'':' hide'}"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref placeholder="job ref" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
@@ -2611,6 +2615,7 @@ function openTechDay(name){
         <div class="rep-kpi"><div class="v">${s.jobs}</div><div class="l">Expected</div></div>
         <div class="rep-kpi ${s.completed?'hi':''}"><div class="v">${s.completed}</div><div class="l">Completed</div></div>
         <div class="rep-kpi ${s.lost?'warn':''}"><div class="v">${s.lost}</div><div class="l">Lost</div></div>
+        <div class="rep-kpi ${s.resched?'teal':''}"><div class="v">${s.resched}</div><div class="l">Rescheduled</div></div>
         <div class="rep-kpi ${s.pendingPast?'warn':''}"><div class="v">${s.pending}</div><div class="l">Pending</div></div>
         <div class="rep-kpi ${s.flags?'warn':''}"><div class="v">${s.flags}</div><div class="l">Flags</div></div>
       </div>
@@ -2620,7 +2625,7 @@ function openTechDay(name){
           <div class="jl-group">
             <div class="jl-group-h"><span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span> <b>${jmJobs(r)} expected</b> <span class="count-note">${outcomeSummary(outcomeStats(ls),JM.date)}</span></span><span>${justifyControls(r)}</span></div>
             ${ls.length?ls.map(l=>lineHtml(l,r)).join(''):`<div class="count-note" style="padding:8px 0">No job lines yet — ${esc(friendlyErr({message:'does not exist'},'job_assignment_outcomes.sql'))}</div>`}
-          </div>`;}).join('')+`<div class="count-note" style="margin-top:10px">Each expected job is one line. Mark what happened; anything but <b>Completed</b> needs a comment. ${STATE.isAdmin?'Correct / Not correct is your verdict on the assignment itself — click again to clear.':''}</div>`
+          </div>`;}).join('')+`<div class="count-note" style="margin-top:10px">Each expected job is one line. Mark what happened; anything but <b>Completed</b> needs a comment. <b>Rescheduled</b> is not lost — the job is visited another day; <b>Cancelled</b> and <b>Other</b> are. ${STATE.isAdmin?'Correct / Not correct is your verdict on the assignment itself — click again to clear.':''}</div>`
         :`<div class="empty">No entries for ${esc(n)} on ${JM.date}. Add them on Daily Entry.</div>`}
       </div>
     </div>`;
@@ -2634,7 +2639,7 @@ function openTechDay(name){
       const showErr=m=>{const e=box.querySelector('[data-err]');e.textContent=m||'';e.classList.toggle('hide',!m);};
       const commit=async()=>{
         const oc=pick(); const cm=box.querySelector('[data-cm]').value.trim(); const ref=box.querySelector('[data-ref]').value.trim();
-        if(LOST.has(oc)&&!cm){showErr('Say what happened to this job — the comment is required for a job that did not complete.');box.querySelector('[data-cm]').focus();return;}
+        if(NEEDS_COMMENT.has(oc)&&!cm){showErr('Say what happened to this job — the comment is required for a job that did not complete.');box.querySelector('[data-cm]').focus();return;}
         const res=await saveOutcome(id,{outcome:oc,comment:cm||null,job_ref:ref||null});
         if(res.error){showErr(res.error);return;}
         Object.assign(line(),res.row); renderJMeetView(); draw(n);
@@ -2642,7 +2647,7 @@ function openTechDay(name){
       };
       box.querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{
         const cur=line(); const already=b.classList.contains('on'); box.querySelectorAll('[data-oc]').forEach(x=>x.classList.toggle('on',x===b&&!already));
-        const oc=pick(); box.querySelector('.jl-cm').classList.toggle('hide',!(LOST.has(oc)||(oc==='completed'&&false)));
+        const oc=pick(); box.querySelector('.jl-cm').classList.toggle('hide',!NEEDS_COMMENT.has(oc));
         if(oc==='completed'||oc==='pending'){commit();}   // no comment needed: save at once
         else{showErr('');box.querySelector('[data-cm]').focus();}
       });
@@ -2698,7 +2703,7 @@ async function renderJToday(){
   if(error){toast(friendlyErr(error,'jobs_schema.sql'),true);$('#tblJToday').innerHTML='<tbody><tr><td class="empty">Run <b>jobs_schema.sql</b> in Supabase to create the job-assignment tables, then reload.</td></tr></tbody>';return;}
   const list=rows||[]; const lines=await loadOutcomesFor(list);
   const st=outcomeStats(lines);
-  $('#jaCountNote').textContent=`${date} · ${list.length} row${list.length===1?'':'s'} · expected ${st.expected}${st.expected?` · completed ${st.completed} · lost ${st.lost} · pending ${st.pending}`:''}`;
+  $('#jaCountNote').textContent=`${date} · ${list.length} row${list.length===1?'':'s'} · expected ${st.expected}${st.expected?` · completed ${st.completed} · lost ${st.lost}${st.resched?` · rescheduled ${st.resched}`:''} · pending ${st.pending}`:''}`;
   if(!list.length){$('#tblJToday').innerHTML='<tbody><tr><td style="color:var(--ink-2)">Nothing expected for this date yet — use the form above.</td></tr></tbody>';return;}
   let h='<thead><tr><th>Technician</th><th>Job type</th><th>Expected</th><th>Outcomes</th><th></th></tr></thead><tbody>';
   list.forEach(r=>{
@@ -2770,22 +2775,23 @@ async function renderJBreak(){
   const byType=t=>list.reduce((s,r)=>s+(r.job_type===t?(+r.jobs||0):0),0);
   const techs=[...new Set(list.map(r=>r.technician))];
   const days=[...new Set(list.map(r=>r.date))];
-  const ost=outcomeStats(lines); const decided=ost.completed+ost.lost;
+  const ost=outcomeStats(lines); const decided=ost.completed+ost.lost+ost.resched; const real=ost.completed+ost.lost;   // realisation ignores rescheduled: the job returns as a new expected line on its new day
   $('#jbNote').textContent=`${label} · ${from} → ${to} · ${list.length} assignment row${list.length===1?'':'s'}`;
   $('#jbKpis').innerHTML=`
     <div class="kpi"><div class="v">${total}</div><div class="l">Expected jobs</div></div>
     <div class="kpi ${decided?'a':''}"><div class="v">${decided?ost.completed:'—'}</div><div class="l">Completed</div></div>
     <div class="kpi ${ost.lost?'b':''}"><div class="v">${decided?ost.lost:'—'}</div><div class="l">Lost</div></div>
-    <div class="kpi"><div class="v">${decided?fmtPct(ost.completed/decided):'—'}</div><div class="l">Realisation</div></div>
+    <div class="kpi ${ost.resched?'teal':''}"><div class="v">${decided?ost.resched:'—'}</div><div class="l">Rescheduled</div></div>
+    <div class="kpi" title="completed ÷ (completed + lost); rescheduled jobs are left out"><div class="v">${real?fmtPct(ost.completed/real):'—'}</div><div class="l">Realisation</div></div>
     <div class="kpi ${ost.pending?'':''}"><div class="v">${ost.pending}</div><div class="l">Pending outcomes</div></div>
     <div class="kpi ok"><div class="v">${byType('ADC')}</div><div class="l">ADC jobs</div></div>
     <div class="kpi teal"><div class="v">${byType('DVC')}</div><div class="l">DVC jobs</div></div>
     <div class="kpi"><div class="v">${techs.length}</div><div class="l">Technicians</div></div>
     <div class="kpi"><div class="v">${days.length?(total/days.length).toFixed(1):'—'}</div><div class="l">Avg jobs / day</div></div>`;
-  // lost jobs — why
-  const lostLines=lines.filter(l=>LOST.has(l.outcome)); const rowById={}; list.forEach(r=>rowById[r.id]=r);
-  const why=['cancelled','rescheduled','other'].map(k=>({k,n:lostLines.filter(l=>l.outcome===k).length,notes:lostLines.filter(l=>l.outcome===k).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(0,3)}));
-  $('#jbLost').innerHTML=lostLines.length?`<div class="twrap"><table><thead><tr><th>Outcome</th><th>Lost jobs</th><th>Share of lost</th><th>Share of expected</th><th>Latest comments</th></tr></thead><tbody>${why.filter(w=>w.n).map(w=>`<tr><td><span class="jl-state ${w.k}">${outcomeLabel(w.k)}</span></td><td class="num"><b>${w.n}</b></td><td class="num">${fmtPct(w.n/lostLines.length)}</td><td class="num">${total?fmtPct(w.n/total):'—'}</td><td class="count-note">${w.notes.map(l=>{const r=rowById[l.assignment_id]||{};return `${esc(r.date||'')} · ${esc(r.technician||'')}: ${esc(l.comment||'')}`;}).join('<br>')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="count-note">No lost jobs recorded in this period${ost.pending?` · ${ost.pending} outcome${ost.pending===1?'':'s'} still pending`:''}.</div>`;
+  // not completed — why (lost = cancelled + other; rescheduled listed too, marked not lost)
+  const ncLines=lines.filter(l=>NEEDS_COMMENT.has(l.outcome)); const lostN=ncLines.filter(l=>LOST.has(l.outcome)).length; const rowById={}; list.forEach(r=>rowById[r.id]=r);
+  const why=['cancelled','other','rescheduled'].map(k=>({k,n:ncLines.filter(l=>l.outcome===k).length,notes:ncLines.filter(l=>l.outcome===k).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(0,3)}));
+  $('#jbLost').innerHTML=ncLines.length?`<div class="twrap"><table><thead><tr><th>Outcome</th><th>Jobs</th><th>Counts as</th><th>Share of expected</th><th>Latest comments</th></tr></thead><tbody>${why.filter(w=>w.n).map(w=>`<tr><td><span class="jl-state ${w.k}">${outcomeLabel(w.k)}</span></td><td class="num"><b>${w.n}</b></td><td>${LOST.has(w.k)?`<span style="color:var(--amber)">lost</span>${lostN?` · ${fmtPct(w.n/lostN)} of lost`:''}`:'<span style="color:var(--teal)">not lost</span> · visited another day'}</td><td class="num">${total?fmtPct(w.n/total):'—'}</td><td class="count-note">${w.notes.map(l=>{const r=rowById[l.assignment_id]||{};return `${esc(r.date||'')} · ${esc(r.technician||'')}: ${esc(l.comment||'')}`;}).join('<br>')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="count-note">Every recorded outcome in this period is Completed${ost.pending?` · ${ost.pending} outcome${ost.pending===1?'':'s'} still pending`:''}.</div>`;
   // by technician
   const per=techs.map(t=>{
     const rs=list.filter(r=>r.technician===t);
@@ -2794,10 +2800,10 @@ async function renderJBreak(){
     const ids=new Set(rs.map(r=>r.id)); const o=outcomeStats(lines.filter(l=>ids.has(l.assignment_id)));
     return {t,adc:g('ADC'),dvc:g('DVC'),tot,days:new Set(rs.map(r=>r.date)).size,o};
   }).sort((a,b)=>b.tot-a.tot);
-  let th='<thead><tr><th>Technician</th><th>ADC</th><th>DVC</th><th>Expected</th><th>Completed</th><th>Lost</th><th>Realisation</th><th>Days</th><th>Avg / day</th><th>Share</th></tr></thead><tbody>';
-  per.forEach(p=>{const dec=p.o.completed+p.o.lost;
+  let th='<thead><tr><th>Technician</th><th>ADC</th><th>DVC</th><th>Expected</th><th>Completed</th><th>Lost</th><th>Rescheduled</th><th>Realisation</th><th>Days</th><th>Avg / day</th><th>Share</th></tr></thead><tbody>';
+  per.forEach(p=>{const dec=p.o.completed+p.o.lost+p.o.resched, real=p.o.completed+p.o.lost;
     th+=`<tr><td><b>${esc(p.t)}</b></td><td class="num">${p.adc}</td><td class="num">${p.dvc}</td>
-      <td class="num"><b>${p.tot}</b></td><td class="num">${dec?p.o.completed:'—'}</td><td class="num"${p.o.lost?' style="color:var(--amber)"':''}>${dec?p.o.lost:'—'}</td><td class="num">${dec?fmtPct(p.o.completed/dec):'—'}</td><td class="num">${p.days}</td>
+      <td class="num"><b>${p.tot}</b></td><td class="num">${dec?p.o.completed:'—'}</td><td class="num"${p.o.lost?' style="color:var(--amber)"':''}>${dec?p.o.lost:'—'}</td><td class="num"${p.o.resched?' style="color:var(--teal)"':''}>${dec?p.o.resched:'—'}</td><td class="num">${real?fmtPct(p.o.completed/real):'—'}</td><td class="num">${p.days}</td>
       <td class="num">${p.days?(p.tot/p.days).toFixed(1):'—'}</td>
       <td class="num">${total?fmtPct(p.tot/total):'—'}</td></tr>`;
   });

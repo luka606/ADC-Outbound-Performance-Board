@@ -255,11 +255,12 @@ comment.** `job_assignments.jobs` is the number of jobs the dispatcher **expects
 a trigger keeps one line per expected job in `job_assignment_outcomes` (`job_assignment_outcomes.sql`). From the
 Meeting's day view the dispatcher marks each line **Completed · Cancelled · Rescheduled · Other**; anything but
 Completed needs a comment (the database refuses it otherwise), and lowering the expected count past a recorded
-outcome is refused too. Derived, never stored: completed = actual, lost = cancelled + rescheduled + other,
+outcome is refused too. Derived, never stored: completed = actual, **lost = cancelled + other**, **rescheduled is its
+own bucket, not lost** (the job is visited another day and comes back as a new expected line — Luka, 2026-09-30),
 pending = not yet marked. Nothing is silently absorbed — a job that is not completed is a record with a reason.
 
 **Meeting (Daily Meeting).** The Tower's Meeting page, one card per **technician** (ADC has one dispatcher and
-records jobs per technician per day): KPI tiles (**Expected · Completed · Lost · Pending outcomes** · ADC · DVC ·
+records jobs per technician per day): KPI tiles (**Expected · Completed · Lost · Rescheduled · Pending outcomes** · ADC · DVC ·
 *Not yet reviewed* → *Correctly assigned* once a verdict exists · flagged rows); sort pills (Jobs · ADC share ↑/↓ ·
 Flags); ranked cards with avatar, ADC/DVC mix bar and the team-average tick, **Expected · Completed · Correct**, and a
 ↗ that opens the technician's day. Dashed rows list approved technicians with no entries. Flags are derived,
@@ -276,10 +277,10 @@ for that date — one row per technician per type per day (upsert on `date, tech
 Outcomes column ("2 ✓ · 1 cancelled · 2 pending").
 
 **Breakdown** — totals over **This week / Last week / This month / Last month / Custom**
-   (with From/To), filterable by job type and technician. Shows KPIs (expected · completed · lost ·
-   realisation % · pending · ADC · DVC), a by-technician table (ADC, DVC, expected, completed, lost,
-   realisation, days, avg/day, share %), a **Lost jobs — why** panel (outcome × count × share with the
-   latest comments), share-of-jobs and jobs-by-day bars, a full assignment list with outcomes, and two
+   (with From/To), filterable by job type and technician. Shows KPIs (expected · completed · lost · rescheduled ·
+   realisation % = completed ÷ (completed + lost) · pending · ADC · DVC), a by-technician table (ADC, DVC, expected,
+   completed, lost, rescheduled, realisation, days, avg/day, share %), a **Not completed — why** panel (outcome ×
+   count, lost or not lost, share, latest comments), share-of-jobs and jobs-by-day bars, a full assignment list with outcomes, and two
    CSV exports (assignments, outcomes).
 3. **Technicians** — add, rename, deactivate, or delete technicians. **Open to DSRs — no admin
    needed.** Deactivating hides someone from the dropdown but keeps their history; deleting
