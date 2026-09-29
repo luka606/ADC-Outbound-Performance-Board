@@ -1,5 +1,5 @@
 /* In-memory stand-in for supabase-js v2 for the board (index.html): plain tables, no auth, the job_assignments
-   review stamp trigger emulated. Same builder shape as fake-bridge.js. */
+   review stamp trigger and the job_assignment_outcomes line triggers (sync from the expected count, comment rule, stamp) emulated. Same builder shape as fake-bridge.js. */
 (function(root){
 function makeFake(db){
   const uid=()=>'id-'+Math.random().toString(36).slice(2,10); const now=()=>new Date().toISOString();
@@ -11,7 +11,23 @@ function makeFake(db){
       if(row.justified!=null&&!['Yes','No'].includes(row.justified))return 'new row for relation "job_assignments" violates check constraint "job_assignments_justified_ck"';
     }
     if(t==='job_assignments'&&op==='insert'){row.justified=row.justified??null;row.justified_by=row.justified_by??null;row.justified_at=row.justified_at??null;}
+    if(t==='job_assignments'&&op==='update'&&db.job_assignment_outcomes){   // job_assignments_sync_outcomes(): refuse to trim recorded lines
+      const n=Math.max(Number(row.jobs)||0,0); const rec=db.job_assignment_outcomes.filter(l=>String(l.assignment_id)===String(row.id)&&l.seq>n&&l.outcome!=='pending').length;
+      if(rec)return `${rec} of these jobs already have an outcome recorded; clear them before lowering the expected count`;
+    }
+    if(t==='job_assignment_outcomes'){   // jao_stamp() + the check constraints
+      if(row.outcome!=null&&!['pending','completed','cancelled','rescheduled','other'].includes(row.outcome))return 'new row for relation "job_assignment_outcomes" violates check constraint "job_assignment_outcomes_outcome_check"';
+      if(!['pending','completed'].includes(row.outcome)&&!String(row.comment??'').trim())return 'new row for relation "job_assignment_outcomes" violates check constraint "jao_lost_needs_comment"';
+      if(row.job_ref!=null)row.job_ref=String(row.job_ref).trim().toUpperCase()||null;
+      if(op==='insert'||row.outcome!==old.outcome||row.comment!==old.comment||row.job_ref!==old.job_ref)row.updated_at=now();
+    }
     return null;
+  }
+  function after(t,op,row){   // job_assignments_sync_outcomes(): lines follow the expected count
+    if(t!=='job_assignments'||!db.job_assignment_outcomes)return;
+    const n=Math.max(Number(row.jobs)||0,0);
+    db.job_assignment_outcomes=db.job_assignment_outcomes.filter(l=>!(String(l.assignment_id)===String(row.id)&&l.seq>n));
+    for(let i=1;i<=n;i++)if(!db.job_assignment_outcomes.some(l=>String(l.assignment_id)===String(row.id)&&l.seq===i))db.job_assignment_outcomes.push({id:uid(),assignment_id:row.id,seq:i,outcome:'pending',comment:null,job_ref:null,updated_by:null,updated_at:now(),created_at:now()});
   }
   class Qb{
     constructor(t){this.t=t;this.op='select';this.f=[];this.one=false;this.payload=null;this.conflict=[];this.lim=null;this.sorts=[];this.cols=null;}
@@ -25,10 +41,10 @@ function makeFake(db){
       if(!(this.t in db))return ERR(`Could not find the table 'public.${this.t}' in the schema cache`);
       let data=null;
       if(this.op==='select'){data=this._rows().slice();for(const [k,asc] of this.sorts.slice().reverse())data.sort((a,b)=>{const x=a[k]??'',y=b[k]??'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});if(this.lim!=null)data=data.slice(0,this.lim);if(this.one)data=data[0]||null;return {data,error:null,count:data?data.length:0};}
-      if(this.op==='insert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const r={id:uid(),created_at:now(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);out.push(r);}data=this.one?out[0]:out;}
-      else if(this.op==='update'){const rows=this._rows();const staged=[];for(const r of rows){const nr={...r,...this.payload};const err=before(this.t,'update',nr,r);if(err)return ERR(err);staged.push([r,nr]);}staged.forEach(([r,nr])=>Object.assign(r,nr));data=this.one?rows[0]||null:rows;}
-      else if(this.op==='upsert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const hit=(db[this.t]||[]).find(r=>this.conflict.length&&this.conflict.every(k=>String(r[k])===String(p[k])));if(hit){const nr={...hit,...p};const err=before(this.t,'update',nr,hit);if(err)return ERR(err);Object.assign(hit,nr);out.push(hit);}else{const r={id:uid(),created_at:now(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);out.push(r);}}data=out;}
-      else if(this.op==='delete'){const rows=this._rows();db[this.t]=db[this.t].filter(r=>!rows.includes(r));data=rows;}
+      if(this.op==='insert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const r={id:uid(),created_at:now(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);after(this.t,'insert',r);out.push(r);}data=this.one?out[0]:out;}
+      else if(this.op==='update'){const rows=this._rows();const staged=[];for(const r of rows){const nr={...r,...this.payload};const err=before(this.t,'update',nr,r);if(err)return ERR(err);staged.push([r,nr]);}staged.forEach(([r,nr])=>{Object.assign(r,nr);after(this.t,'update',r);});data=this.one?rows[0]||null:rows;}
+      else if(this.op==='upsert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const hit=(db[this.t]||[]).find(r=>this.conflict.length&&this.conflict.every(k=>String(r[k])===String(p[k])));if(hit){const nr={...hit,...p};const err=before(this.t,'update',nr,hit);if(err)return ERR(err);Object.assign(hit,nr);after(this.t,'update',hit);out.push(hit);}else{const r={id:uid(),created_at:now(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);after(this.t,'insert',r);out.push(r);}}data=out;}
+      else if(this.op==='delete'){const rows=this._rows();db[this.t]=db[this.t].filter(r=>!rows.includes(r));if(this.t==='job_assignments'&&db.job_assignment_outcomes){const ids=new Set(rows.map(r=>String(r.id)));db.job_assignment_outcomes=db.job_assignment_outcomes.filter(l=>!ids.has(String(l.assignment_id)));}data=rows;}
       return {data,error:null};
     }
     then(res,rej){return Promise.resolve().then(()=>this._run()).then(res,rej);}
