@@ -5,46 +5,117 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M2 Bridge · ADC Outbound · Home Alliance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-/* bridge.html carries a copy of index.html's design tokens and components so the Bridge reads as part of the
-   board. Kept in sync by hand for now; when a third page appears, move this to a shared stylesheet. */
-/* ============ design tokens (matched to Job Efficiency Board) ============ */
+/* bridge.html carries a copy of index.html's design tokens, Tower shell (sidebar + header) and components so the Bridge
+   reads as part of the board. Kept in sync by hand; a shared stylesheet is the next step if the pages keep multiplying. */
+/* ============ design tokens (the Tower's, copied from index.html) ============ */
 :root{
-  --bg:#F6F7F5; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.07), transparent 60%);
-  --panel:#FFFFFF; --panel-2:#F3F5F2; --glass:rgba(255,255,255,.75);
-  --ink:#101614; --ink-2:#5B6862; --ink-3:#94A099; --line:#E4E8E2; --line-2:#EEF1EC;
-  --accent:#0E9F6E; --accent-hi:#10B981; --accent-deep:#047857; --accent-soft:#E4F5EE; --on-accent:#FFFFFF;
-  --amber:#B45309; --amber-soft:#FCF0DC;
-  --red:#C0392B; --red-soft:#FAE5E1;
-  --blue:#2563EB; --blue-soft:#E5EDFB;
-  --lux:#7C3AED; --lux-soft:#F1EAFD;
-  --shadow:0 1px 2px rgba(16,24,20,.04),0 6px 20px rgba(16,24,20,.05);
-  --shadow-lg:0 12px 40px rgba(16,24,20,.16);
-  --focus:0 0 0 3px rgba(16,185,129,.25);
-  --mono:'JetBrains Mono',ui-monospace,monospace;
-  --sans:'Inter',system-ui,sans-serif;
-  --disp:'Space Grotesk',var(--sans);
-  --r:16px; --r-sm:10px; --r-xs:8px;
-  /* aliases so shared component code reads naturally */
-  --brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
-  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
-  --green:var(--accent); --green-soft:var(--accent-soft); --radius:var(--r); --radius-sm:var(--r-sm);
+  /* Apple system greys. The old palette was tinted green to sit with an emerald
+     accent; with a blue accent that tint read as a colour cast on every neutral
+     surface. These are the platform's own: systemGroupedBackground, label,
+     secondaryLabel, tertiaryLabel, separator. */
+  --bg:#F2F2F7; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(0,122,255,.05), transparent 60%);
+  --panel:#FFFFFF; --panel-2:#EFEFF4; --glass:rgba(255,255,255,.72);
+  --ink:#1C1C1E; --ink-2:#55555A; --ink-3:#8E8E93; --line:#D9D9DE; --line-2:#EBEBF0;
+  /* --accent is INTERACTIVE (controls, selection, links, focus).
+     --ok is POSITIVE STATUS (on time, A tier, yes, connected, working today).
+     These used to be one token, so turning the UI Apple-blue would have turned
+     every "on time" chip blue and broken the good/caution/bad language. Two
+     different jobs that happened to share a value. */
+  --accent:#007AFF; --accent-hi:#3395FF; --accent-deep:#0057B8;
+  --accent-soft:#E7F0FF; --on-accent:#FFFFFF;
+  /* Apple's ACCESSIBLE variants, not the vivid ones. systemRed #FF3B30 and
+     systemOrange #FF9500 are tuned for fills and glyphs; as body text on white
+     they fail contrast, and every one of these is used as text here. */
+  --ok:#248A3D; --ok-deep:#1B6E30; --ok-soft:#E3F5E8;
+  --amber:#B25000; --amber-soft:#FFF0E0;
+  --red:#D70015; --red-soft:#FFE5E7;
+  --blue:#0040DD; --blue-soft:#E4ECFF;
+  /* Fifth status hue, for the Portfolio's "in progress": ~45° from both the
+     interactive blue and the positive green, so a teal pill is never read as
+     a button or as "done". Foreground/soft pair like the others. */
+  --teal:#0F8F84; --teal-soft:#E0F4F1;
+  --lux:#8944AB; --lux-soft:#F4E9FA;
+  /* The half-shift stripe. Soft washes of the two status colours rather than
+     the solid fills the old chip used — solid red/amber stripes at chip size
+     read as noise, and white text on them failed in both themes. */
+  --stripe-soft:repeating-linear-gradient(45deg, rgba(215,0,21,.14) 0 6px, rgba(178,80,0,.14) 6px 12px);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  --shadow-lg:0 12px 44px rgba(0,0,0,.18);
+  --focus:0 0 0 3.5px rgba(0,122,255,.25);
+  /* iOS "system fill": translucent, so a segmented track or an avatar reads
+     correctly on a white card AND on a tinted panel. --panel-2 is opaque and
+     reads as a grey block on top of white. */
+  --fill-1:rgba(118,118,128,.12); --fill-2:rgba(118,118,128,.06);
+  /* A tighter elevation than --shadow, with an explicit hairline ring. */
+  --shadow-hair:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.05);
+  /* ---- Liquid glass ----
+     Real refraction is not available to CSS. What IS available, and what does
+     most of the work, is: a translucent tint, a blur that also boosts
+     saturation so colour bleeds through (vibrancy), a bright specular line
+     along the top inner edge where light catches, and a faint rim. Kept as
+     tokens so light and dark differ where they must — in dark the specular is
+     much weaker, because a bright edge on a dark surface reads as a mistake. */
+  --glass-bg:rgba(255,255,255,.62);
+  --glass-blur:saturate(180%) blur(22px);
+  --glass-hi:rgba(255,255,255,.65);
+  --glass-rim:rgba(0,0,0,.09);
+  --glass-shadow:0 1px 2px rgba(0,0,0,.06),0 10px 30px rgba(0,0,0,.10);
+  /* The lighter blur, for recessed tracks rather than floating panels.
+     --glass-lift and --glass-raised exist to delete two dark-theme .seg
+     overrides that only existed because the shadow was written as a literal
+     rgba() — which is also the design system's first anti-pattern. */
+  --glass-blur-2:saturate(160%) blur(10px);
+  --glass-lift:0 1px 3px rgba(0,0,0,.14);
+  --glass-raised:var(--panel);
+  /* -apple-system first, so macOS and iOS render in SF and the app stops
+     looking like a web page. Inter is the cross-platform fallback. Display type
+     is the SAME family at heavier weight and tighter tracking — that is how the
+     system does headings; a separate display face reads as "branded website". */
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Inter',system-ui,sans-serif;
+  --disp:var(--sans);
+  --r:14px; --r-sm:12px; --r-xs:9px;
+  /* Shell geometry. Deliberately in :root only and NOT mirrored in the dark
+     block — these are measurements, not colours. */
+  --sb-w:214px; --sb-rail:60px; --topbar-h:52px;
 }
 [data-theme="dark"]{
-  --bg:#0B0F0D; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(16,185,129,.08), transparent 60%);
-  --panel:#141A17; --panel-2:#1B2320; --glass:rgba(20,26,23,.8);
-  --ink:#E8EEEA; --ink-2:#9DABA2; --ink-3:#69766E; --line:#26302B; --line-2:#1F2823;
-  --accent:#10B981; --accent-hi:#34D399; --accent-deep:#059669; --accent-soft:#132B21; --on-accent:#06130D;
-  --amber:#E9A23B; --amber-soft:#2E230F;
-  --red:#E0705F; --red-soft:#361D18;
-  --blue:#7CA9F5; --blue-soft:#16233A;
-  --lux:#B79CF7; --lux-soft:#241B38;
-  --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 22px rgba(0,0,0,.3);
-  --shadow-lg:0 12px 44px rgba(0,0,0,.55);
-  --focus:0 0 0 3px rgba(52,211,153,.3);
+  --bg:#1C1C1E; --bg-grad:radial-gradient(1200px 500px at 70% -10%, rgba(10,132,255,.10), transparent 60%);
+  --panel:#2C2C2E; --panel-2:#3A3A3C; --glass:rgba(30,30,32,.72);
+  --ink:#F2F2F7; --ink-2:#AEAEB2; --ink-3:#8E8E93; --line:#3A3A3C; --line-2:#2F2F31;
+  --accent:#0A84FF; --accent-hi:#409CFF; --accent-deep:#0060DF;
+  --accent-soft:#10243B; --on-accent:#FFFFFF;
+  /* The vivid systemColors are correct here: on a dark surface they are legible
+     as text, which is the whole reason Apple ships two sets. */
+  --ok:#30D158; --ok-deep:#6EE787; --ok-soft:#14321F;
+  --amber:#FF9F0A; --amber-soft:#3A2A0B;
+  --red:#FF453A; --red-soft:#3A1A18;
+  --blue:#0A84FF; --blue-soft:#12243C;
+  --teal:#2FC4B2; --teal-soft:#0F2F2B;
+  --lux:#BF5AF2; --lux-soft:#2C1A3A;
+  --stripe-soft:repeating-linear-gradient(45deg, rgba(255,69,58,.24) 0 6px, rgba(255,159,10,.24) 6px 12px);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.36);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.6);
+  --focus:0 0 0 3.5px rgba(10,132,255,.32);
+  --fill-1:rgba(142,142,147,.22); --fill-2:rgba(142,142,147,.10);
+  --shadow-hair:0 0 0 1px var(--line),0 1px 3px rgba(0,0,0,.45);
+  --glass-bg:rgba(44,44,46,.62);
+  --glass-blur:saturate(180%) blur(22px);
+  --glass-hi:rgba(255,255,255,.13);
+  --glass-rim:rgba(255,255,255,.10);
+  --glass-shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px rgba(0,0,0,.5);
+  --glass-blur-2:saturate(160%) blur(10px);
+  --glass-lift:0 1px 3px rgba(0,0,0,.5);
+  --glass-raised:var(--panel-2);
 }
+/* aliases so shared component code reads naturally (kept from the ADC build) */
+:root{--brand:var(--accent); --brand-soft:var(--accent-soft); --muted:var(--ink-2); --faint:var(--ink-3);
+  --surface:var(--panel); --surface-2:var(--panel-2); --rose:var(--red); --rose-soft:var(--red-soft);
+  --green:var(--ok); --green-soft:var(--ok-soft); --radius:var(--r); --radius-sm:var(--r-sm)}
 *{box-sizing:border-box;margin:0}
 html{color-scheme:light}[data-theme="dark"]{color-scheme:dark}
 body{background:var(--bg);background-image:var(--bg-grad);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
@@ -59,22 +130,85 @@ a{color:var(--accent)}
 .hidden{display:none!important}
 .tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
 
-/* ============ header ============ */
-header{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:62px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
-.brand{font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;white-space:nowrap}
-.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red);transition:.3s}
-.brand .dot.live{background:var(--accent-hi);box-shadow:0 0 10px var(--accent-hi)}
-.brand small{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.5px;color:var(--ink-3)}
-nav{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:4px;overflow-x:auto;scrollbar-width:none}
-nav::-webkit-scrollbar{display:none}
-nav button{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:12.5px;letter-spacing:.2px;padding:7px 15px;border-radius:99px;white-space:nowrap;transition:.18s}
-nav button:hover{color:var(--ink)}
-nav button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+/* ============ shell: sidebar + header (Tower) ============ */
+.shell{display:flex;align-items:flex-start;min-height:100vh}
+.sidebar{position:sticky;top:0;flex:none;width:var(--sb-w);height:100vh;display:flex;flex-direction:column;
+  border-right:1px solid var(--line);transition:width .18s}
+/* min-width:0 is load-bearing. Without it the wide .twrap tables in Database
+   and Sales Log blow this flex item out and crush the sidebar. */
+.content{flex:1;min-width:0}
+.sb-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.sb-top{display:flex;align-items:center;gap:8px;padding:13px 12px 9px;font-family:var(--disp);
+  font-weight:600;font-size:13px;letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
+.sb-nav{flex:1;min-height:0;overflow-y:auto;padding:2px 8px 12px}
+.sb-toggle{flex:none;display:flex;padding:4px;border:none;border-radius:6px;background:none;color:var(--ink-3)}
+.sb-toggle:hover{background:var(--line-2);color:var(--ink-2)}
+.sb-toggle .sb-ic{color:inherit}
+/* Collapsed rail. Everything textual is .sb-word, so one rule hides the lot and
+   a new label cannot forget to opt in. */
+body.sb-rail .sidebar{width:var(--sb-rail)}
+body.sb-rail .sb-word,body.sb-rail .sb-lbl,body.sb-rail .sb-count,
+body.sb-rail .sb-kids,body.sb-rail .sb-sec{display:none}
+body.sb-rail .sb-ws{justify-content:center;padding:9px 0;gap:0}
+body.sb-rail .sb-top{justify-content:center;padding:13px 0 9px}
+body.sb-rail .sb-nav{padding:2px 6px 12px}
+body.sb-rail .sb-foot{padding:10px 0;text-align:center}
+body.sb-rail .sb-status{justify-content:center;margin:0}
+.sb-sec{padding:9px 9px 5px;font-size:11px;font-weight:600;letter-spacing:.01em;color:var(--ink-3)}
+.sb-group{display:block}
+.sb-ws{width:100%;display:flex;align-items:center;gap:9px;padding:7px 9px;margin-bottom:1px;border:none;
+  border-radius:8px;background:none;color:var(--ink);font-size:13px;font-weight:500;text-align:left;transition:.12s}
+.sb-ws:hover{background:var(--line-2)}
+a.sb-ws{text-decoration:none;color:var(--ink)}
+.sb-ws.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+.sb-ic{width:15px;height:15px;flex:none;color:var(--accent);
+  fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.sb-ws.on .sb-ic{color:var(--on-accent)}
+.sb-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Collapsed groups stay in the DOM. setAdmin and initMorning reach for
+   #pdsrsBtn / #mrLogBtn regardless of which workspace is open, so hiding by
+   removing nodes would make those lookups null and silently break gating. */
+.sb-group:not(.open) .sb-kids{display:none}
+.sb-kids{margin:1px 0 5px 17px;padding-left:8px;border-left:1px solid var(--line)}
+.sb-tab{width:100%;display:flex;align-items:center;gap:7px;padding:5px 9px;margin-bottom:1px;border:none;
+  border-radius:7px;background:none;color:var(--ink-2);font-size:12.5px;font-weight:500;text-align:left;transition:.12s}
+.sb-tab:hover{background:var(--line-2);color:var(--ink)}
+/* Tinted, not filled. Two accent-filled rows stacked — the workspace and its
+   active tab — is unreadable. */
+.sb-tab.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sb-tab .count-note{margin-left:auto;font-size:9.5px}
+.sb-count{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.sb-ws.on .sb-count{color:var(--on-accent);opacity:.85}
+.sb-foot{flex:none;padding:10px 12px 12px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:9.5px;color:var(--ink-3);line-height:1.7}
+.sb-status{display:flex;align-items:center;gap:7px;margin-bottom:3px;
+  font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--ink-2)}
+/* Styled by id, not by a .dot descendant rule: the connection light no longer
+   lives inside .brand, and .dot is already taken by the availability tiles. */
+#connDot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+#connDot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+/* ============ toolbar ============ */
+header{color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:var(--topbar-h);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--disp);font-weight:600;font-size:13.5px;letter-spacing:-.01em;text-transform:none;display:flex;align-items:center;gap:10px;white-space:nowrap}
 .hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
 .hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
 .hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
-.admin-on #adminBtn{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
 #themeBtn{font-size:14px;line-height:1;padding:5px 11px}
+
+.tb-title{display:flex;flex-direction:column;justify-content:center;line-height:1.18;min-width:0}
+.tb-sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
+.glass-edge{background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
+  box-shadow:inset 0 1px 0 var(--glass-hi)}
+.glass-inset{background:var(--fill-1);
+  backdrop-filter:var(--glass-blur-2);-webkit-backdrop-filter:var(--glass-blur-2)}
+@media (prefers-reduced-transparency: reduce){
+  .glass-edge{background:var(--panel);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+  .glass-inset{background:var(--panel-2);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+/* pages: the connection light keeps its .live toggle from the page's own JS */
+#connDot:not(.live){background:var(--red);box-shadow:0  0 8px var(--red)}
 
 main{max-width:1420px;margin:0 auto;padding:26px 22px 90px}
 h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;margin-bottom:5px}
@@ -87,8 +221,8 @@ h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;m
 .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
 .fld{display:flex;flex-direction:column;gap:5px}
 .fld label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2)}
-.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(16,185,129,.3);display:inline-flex;align-items:center;gap:8px}
-.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(16,185,129,.4)}
+.btn{background:linear-gradient(135deg,var(--accent-hi),var(--accent-deep));color:var(--on-accent);border:none;border-radius:var(--r-xs);padding:10px 20px;font-weight:600;font-size:13px;transition:.18s;box-shadow:0 2px 10px rgba(0,122,255,.3);display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,122,255,.4)}
 .btn:active{transform:none}
 .btn:disabled{opacity:.5;cursor:default;transform:none;filter:none;box-shadow:none}
 .btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:none}
@@ -105,7 +239,7 @@ h2{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.3px;m
 .kpi:hover{transform:translateY(-2px)}
 .kpi .v{font-family:var(--disp);font-weight:700;font-size:32px;font-variant-numeric:tabular-nums;line-height:1.05;letter-spacing:-.5px}
 .kpi .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--ink-2);margin-top:6px;display:flex;align-items:center;gap:5px}
-.kpi.a .v{color:var(--accent)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
+.kpi.a .v{color:var(--ok)}.kpi.b .v{color:var(--amber)}.kpi.c .v{color:var(--red)}.kpi.blue .v{color:var(--blue)}
 
 /* ============ tables / badges ============ */
 .twrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
@@ -115,13 +249,13 @@ td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:middle
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--panel-2)}
 .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 9px;border-radius:99px;line-height:1.5}
-.badge.booking{background:var(--accent-soft);color:var(--accent)}
+.badge.booking{background:var(--ok-soft);color:var(--ok)}
 .badge.crossbooking{background:var(--blue-soft);color:var(--blue)}
-.badge.sold{background:var(--accent-soft);color:var(--accent)}
+.badge.sold{background:var(--ok-soft);color:var(--ok)}
 .badge.cancelled{background:var(--red-soft);color:var(--red)}
 /* CRM job status, written by scripts/crm-sync.mjs */
 .crm-b{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
-.crm-b.ok{background:var(--accent-soft);color:var(--accent-deep)}
+.crm-b.ok{background:var(--ok-soft);color:var(--ok-deep)}
 .crm-b.bad{background:var(--red-soft);color:var(--red)}
 .crm-b.blue{background:var(--blue-soft);color:var(--blue)}
 .crm-b.gray{background:var(--panel-2);color:var(--ink-2)}
@@ -137,8 +271,8 @@ tbody tr:hover td{background:var(--panel-2)}
 .numwrap label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--ink-2);margin-bottom:7px}
 .numwrap input{width:100%;border:0;background:transparent;font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ink);padding:0}
 .numwrap input:focus{box-shadow:none}
-.numwrap.derived{background:var(--accent-soft);border-color:var(--accent)}
-.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--accent)}
+.numwrap.derived{background:var(--ok-soft);border-color:var(--ok)}
+.numwrap.derived .val{font-family:var(--disp);font-size:28px;font-weight:700;color:var(--ok)}
 .numwrap.derived.cross{background:var(--blue-soft);border-color:var(--blue)}
 .numwrap.derived.cross .val{color:var(--blue)}
 .bookblock{border:1px dashed var(--line);border-radius:var(--r-sm);padding:14px;margin-top:12px;background:var(--panel-2)}
@@ -149,7 +283,7 @@ tbody tr:hover td{background:var(--panel-2)}
 .refrow .idx{font-family:var(--mono);font-size:12px;color:var(--ink-3);width:20px;text-align:center;flex:0 0 auto}
 .refrow input{flex:1;letter-spacing:.28em;font-family:var(--mono);text-align:center}
 .refrow .state{width:150px;font-size:11.5px}
-.refrow .state.ok{color:var(--accent);font-weight:700}
+.refrow .state.ok{color:var(--ok);font-weight:700}
 .refrow .state.warn{color:var(--red)}
 .refrow input.bad{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
 
@@ -181,11 +315,11 @@ tbody tr:hover td{background:var(--panel-2)}
 /* attainment against the prorated weekly target: bookings + cross-books, after cancellations */
 .tgt-bar{position:relative;display:block;height:4px;border-radius:3px;overflow:hidden;background:var(--line-2);margin-top:6px;max-width:430px}
 .tgt-fill{display:block;height:100%;background:var(--ink-3);transition:width .2s}
-.tgt-fill.hit{background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.tgt-fill.hit{background:linear-gradient(90deg,var(--ok),var(--ok-deep))}
 .lb-stat{text-align:right}
 .lb-stat .v{font-family:var(--disp);font-weight:700;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.1;display:block}
 .lb-stat .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink-2);margin-top:2px;display:block}
-.tp-good{color:var(--accent)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
+.tp-good{color:var(--ok)}.tp-mid{color:var(--amber)}.tp-bad{color:var(--red)}.tp-none{color:var(--ink-3)}
 .lb-go{width:26px;height:26px;border-radius:50%;background:var(--panel-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
 .lb-row:hover .lb-go{background:var(--accent-soft);color:var(--accent)}
 @media(max-width:820px){.lb-row{grid-template-columns:26px 40px minmax(0,1fr) 64px 78px 26px}.lb-row .lb-stat.conv,.lb-row .lb-stat.bk{display:none}.mix-bar,.tgt-bar{max-width:none}}
@@ -214,7 +348,7 @@ tbody tr:hover td{background:var(--panel-2)}
 .rep-body{overflow:auto;padding:16px 28px 26px}
 .rep-body h3{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--ink-2);margin:14px 0 10px}
 .bar-track{height:8px;border-radius:6px;background:var(--panel-2);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
-.bar-fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep))}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--ok),var(--ok-deep))}
 .hintrow{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
 @media(max-width:760px){.rep-kpis{grid-template-columns:repeat(2,1fr)}.rep-title .nm{font-size:22px}}
 
@@ -264,14 +398,14 @@ h3.pt{font-family:var(--disp);font-size:12px;font-weight:600;text-transform:uppe
 .bar.tight{margin-bottom:0}
 td.num{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
 .loading{color:var(--ink-2);font-size:13px;padding:20px;text-align:center;font-family:var(--mono)}
-.badge.yes{background:var(--accent-soft);color:var(--accent)}
+.badge.yes{background:var(--ok-soft);color:var(--ok)}
 .badge.gray{background:var(--line-2);color:var(--ink-2)}
 .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:980px){.dash-cols{grid-template-columns:1fr}}
 .bar-row{display:flex;align-items:center;gap:10px;margin:7px 0}
 .bar-row .lbl{width:130px;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar-row .trk{flex:1;height:18px;background:var(--line-2);border-radius:6px;overflow:hidden}
-.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--accent-hi),var(--accent-deep));border-radius:6px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.bar-row .fill{height:100%;background:linear-gradient(90deg,var(--ok),var(--ok-deep));border-radius:6px;transition:width .5s cubic-bezier(.2,.8,.3,1)}
 .bar-row .fill.alt{background:linear-gradient(90deg,#60A5FA,var(--blue))}
 .bar-row .val{font-family:var(--mono);font-size:11px;width:44px;text-align:right;font-variant-numeric:tabular-nums}
 
@@ -288,7 +422,7 @@ body.admin-on .admin-only{display:block}
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
-.runway{background:linear-gradient(135deg,var(--accent-soft),transparent);border:1px solid var(--accent);border-radius:var(--r);padding:18px 20px}
+.runway{background:linear-gradient(135deg,var(--ok-soft),transparent);border:1px solid var(--ok);border-radius:var(--r);padding:18px 20px}
 .runway .big{font-family:var(--disp);font-size:44px;font-weight:700;color:var(--accent-deep);line-height:1;letter-spacing:-1px}
 .runway .u{font-size:14px;color:var(--ink-2);font-weight:600}
 .assump{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
@@ -311,15 +445,15 @@ body.admin-on .admin-only{display:block}
 .cv-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;min-height:32px}
 .cv-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;transition:.15s}
 .cv-chip:hover{border-color:var(--ink-3)}
-.cv-chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+.cv-chip.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok-deep)}
 .cv-chip .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);font-weight:500}
-.cv-chip.on .meta{color:var(--accent)}
+.cv-chip.on .meta{color:var(--ok)}
 .badge.uncovered{background:var(--amber-soft);color:var(--amber)}
-.badge.reassigned{background:var(--accent-soft);color:var(--accent)}
+.badge.reassigned{background:var(--ok-soft);color:var(--ok)}
 .badge.rejected{background:var(--line-2);color:var(--ink-2)}
 .badge.potentially_lost{background:var(--red-soft);color:var(--red)}
 .badge.confirmed_lost{background:var(--red);color:var(--on-accent)}
-.badge.approved{background:var(--accent-soft);color:var(--accent-deep)}
+.badge.approved{background:var(--ok-soft);color:var(--ok-deep)}
 .cv-eod{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
 .cv-eod label{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 10px;border:1px solid var(--line-2);border-radius:var(--r-xs);cursor:pointer}
 .cv-eod label:hover{background:var(--panel-2)}
@@ -327,12 +461,12 @@ body.admin-on .admin-only{display:block}
 
 /* ============ m2 bridge ============ */
 .br-pill{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);white-space:nowrap}
-.br-pill.ok{background:var(--accent-soft);color:var(--accent-deep);border-color:transparent}
+.br-pill.ok{background:var(--ok-soft);color:var(--ok-deep);border-color:transparent}
 .br-pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
 .br-pill.bad{background:var(--red-soft);color:var(--red);border-color:transparent}
 .br-pill.blue{background:var(--blue-soft);color:var(--blue);border-color:transparent}
 .br-pill.gray{background:var(--line-2);color:var(--ink-2);border-color:transparent}
-.br-status.confirmed{background:var(--accent-soft);color:var(--accent-deep)}
+.br-status.confirmed{background:var(--ok-soft);color:var(--ok-deep)}
 .br-status.proposed{background:var(--blue-soft);color:var(--blue)}
 .br-status.unresolved{background:var(--red-soft);color:var(--red)}
 .br-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:flex-end}
@@ -390,24 +524,55 @@ body.admin-on .admin-only{display:block}
 </style>
 </head>
 <body>
-<header>
-  <div style="position:relative">
-    <a class="brand" href="index.html" title="Back to the board" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><span class="dot live" id="connDot"></span><span>M2 BRIDGE</span><span class="ws-caret">← board</span></a>
-  </div>
-  <nav id="navBridge">
-    <button data-tab="bqueue" class="on">Queue</button>
-    <button data-tab="bopp">Opportunity</button>
-    <button data-tab="bappr">Approvals</button>
-    <button data-tab="brecon">Reconciliation</button>
-    <button data-tab="bscore">Scorecard</button>
-    <button data-tab="bcover">Coverage register</button>
-    <button data-tab="bset">Settings</button>
-    <button data-tab="bsop">SOP</button>
+<svg class="sb-sprite" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-board" viewBox="0 0 16 16"><path d="M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z"/></symbol>
+  <symbol id="ic-sales" viewBox="0 0 16 16"><path d="M3 13.2V8.4M8 13.2V2.8M13 13.2V6.2"/></symbol>
+  <symbol id="ic-phone" viewBox="0 0 16 16"><path d="M4.2 2.4 6 2.6l1 2.6-1.5 1.2a7.4 7.4 0 0 0 4.1 4.1l1.2-1.5 2.6 1 .2 1.8a1.4 1.4 0 0 1-1.5 1.2C7.9 12.6 3.4 8.1 3 4.1a1.4 1.4 0 0 1 1.2-1.7Z"/></symbol>
+  <symbol id="ic-cal" viewBox="0 0 16 16"><path d="M2.5 4.5h11v9h-11zM2.5 7.4h11M5.5 2.6v3M10.5 2.6v3"/></symbol>
+  <symbol id="ic-house" viewBox="0 0 16 16"><path d="M2.4 7.2 8 2.6l5.6 4.6M3.8 8.4v5h8.4v-5"/></symbol>
+  <symbol id="ic-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.9"/><path d="M8 1.2v1.5M8 13.3v1.5M1.2 8h1.5M13.3 8h1.5M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 16 16"><path d="M8 2.2 13.6 5 8 7.8 2.4 5zM2.4 8l5.6 2.8L13.6 8M2.4 11l5.6 2.8L13.6 11"/></symbol><symbol id="ic-bell" viewBox="0 0 16 16"><path d="M4.2 6.8a3.8 3.8 0 0 1 7.6 0c0 2.5 1 3.6 1 3.6H3.2s1-1.1 1-3.6zM6.5 12.2a1.6 1.6 0 0 0 3 0"/></symbol>
+  <symbol id="ic-rail" viewBox="0 0 16 16"><path d="M2.5 3.2h11v9.6h-11zM6.4 3.2v9.6"/></symbol>
+  <symbol id="ic-locker" viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="11.6" height="11.6" rx="2.6"/><circle cx="8" cy="6.5" r="1.9"/><path d="M4.9 12.3c.5-1.8 1.7-2.7 3.1-2.7s2.6.9 3.1 2.7"/></symbol><symbol id="ic-people" viewBox="0 0 16 16"><circle cx="6" cy="5.2" r="2.4"/><path d="M1.8 13.4c0-2.3 1.9-3.8 4.2-3.8s4.2 1.5 4.2 3.8"/><path d="M11 3.2a2.2 2.2 0 0 1 0 4.3M12 9.9c1.4.4 2.4 1.6 2.4 3.5"/></symbol>
+  <symbol id="ic-pin" viewBox="0 0 16 16"><path d="M8 14s4.4-4.3 4.4-7.4a4.4 4.4 0 1 0-8.8 0C3.6 9.7 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/></symbol>
+</defs></svg>
+
+<div class="shell">
+<aside class="sidebar glass-edge">
+  <div class="sb-top"><button class="sb-toggle" id="sbToggle" aria-label="Collapse sidebar" aria-expanded="true"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-rail"/></svg></button><span class="sb-word">Home Alliance</span></div>
+  <nav class="sb-nav" id="sbNav" aria-label="Workspaces">
+    <div class="sb-sec">Workspaces</div>
+    <a class="sb-ws" href="index.html?ws=adc"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-phone"/></svg><span class="sb-lbl">ADC Outbound</span></a>
+    <a class="sb-ws" href="index.html?ws=sales"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-sales"/></svg><span class="sb-lbl">Office Sales</span></a>
+    <a class="sb-ws" href="index.html?ws=jobs"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-board"/></svg><span class="sb-lbl">Job Assignment</span></a>
+    <div class="sb-sec">Pages</div>
+    <div class="sb-group open" data-wsgroup="bridge">
+      <button class="sb-ws on" type="button"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-layers"/></svg><span class="sb-lbl">M2 Bridge</span></button>
+      <div class="sb-kids" id="navBridge">
+        <button class="sb-tab on" data-tab="bqueue">Queue</button>
+        <button class="sb-tab" data-tab="bopp">Opportunity</button>
+        <button class="sb-tab" data-tab="bappr">Approvals</button>
+        <button class="sb-tab" data-tab="brecon">Reconciliation</button>
+        <button class="sb-tab" data-tab="bscore">Scorecard</button>
+        <button class="sb-tab" data-tab="bcover">Coverage register</button>
+        <button class="sb-tab" data-tab="bset">Settings</button>
+        <button class="sb-tab" data-tab="bsop">SOP</button>
+      </div>
+    </div>
+    <a class="sb-ws" href="qualification.html"><svg class="sb-ic" viewBox="0 0 16 16"><use href="#ic-people"/></svg><span class="sb-lbl">Team Qualification ↗</span></a>
   </nav>
+  <div class="sb-foot">
+    <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
+    <div class="sb-word">build 2026-09-29</div>
+  </div>
+</aside>
+<div class="content">
+<header class="glass-edge">
+  <div class="tb-title"><span class="brand" id="wsLabel">M2 BRIDGE</span><span class="tb-sub">Home Alliance · ADC</span></div>
   <div class="hdr-right">
+    <span id="hdrDate"></span>
     <span id="brWho" class="count-note"></span>
     <span id="brEndBanner" class="count-note"></span>
-    <a class="hdr-btn" href="qualification.html" title="M4 Team Qualification (same sign-in)" style="text-decoration:none">Qualification ↗</a>
     <button class="hdr-btn" id="brSignOut" title="Sign out of the Bridge only">Sign out</button>
     <button class="hdr-btn" id="themeBtn" title="Toggle dark mode">◐</button>
   </div>
@@ -552,11 +717,12 @@ body.admin-on .admin-only{display:block}
   </div></section>
 </div>
 </main>
+</div></div>
 
 <div class="toast" id="toast"></div>
 <script>
 /* ---------- shared helpers (mirrors index.html; kept in sync by hand — a shared script file is the next step if more pages appear) ---------- */
-const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme'};
+const LS={conf:'adc_supabase_cfg',agent:'adc_device_agent',salesSession:'adc_sales_session',theme:'adc_theme',sidebar:'adc_sidebar'};
 let sb=null;
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -572,6 +738,11 @@ const today=()=>iso(nowPST()); const todayStr=today;
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function startOfWeek(d){const x=new Date(d);const g=(x.getDay()+6)%7;x.setDate(x.getDate()-g);x.setHours(0,0,0,0);return x;}
 function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=$('#themeBtn');if(b){b.textContent=t==='dark'?'☀':'◐';b.title=t==='dark'?'Switch to light mode':'Switch to dark mode';}localStorage.setItem(LS.theme,t);}
+/* Tower shell: collapsible rail (shared key with the board) and the header date */
+function setSidebar(railed){document.body.classList.toggle('sb-rail',railed);const t=$('#sbToggle');if(t){t.setAttribute('aria-expanded',String(!railed));t.setAttribute('aria-label',railed?'Expand sidebar':'Collapse sidebar');}try{localStorage.setItem('adc_sidebar',railed?'1':'0');}catch(e){}}
+$('#sbToggle').addEventListener('click',()=>setSidebar(!document.body.classList.contains('sb-rail')));
+try{setSidebar(localStorage.getItem('adc_sidebar')==='1');}catch(e){}
+$('#hdrDate').textContent=nowPST().toDateString();
 function loadConf(){try{return JSON.parse(localStorage.getItem(LS.conf))}catch(e){return null}}
 function saveConf(c){localStorage.setItem(LS.conf,JSON.stringify(c));}
 const WS='bridge';

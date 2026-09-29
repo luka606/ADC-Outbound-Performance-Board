@@ -4,9 +4,9 @@ Replaces the per-agent Google Sheet with a single web app: agents enter daily nu
 everything saves to Supabase, and you review it in Meeting / Scorecard / Admin views.
 
 ## What's in the box
-- `index.html` — the board (one self-contained file, no build step) — the AR LE Tower's shell: sidebar workspaces, glass header, Apple tokens
-- `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; opened from the brand dropdown)
-- `qualification.html` — the **Team Qualification** scorecard (M4) as its own page (shares the Bridge sign-in; opened from the brand dropdown)
+- `index.html` — the board (one self-contained file, no build step) — the AR LE Tower's shell: sidebar workspaces, glass header, Apple tokens. `?ws=adc|sales|jobs` opens a workspace (the pages' sidebars link back this way)
+- `bridge.html` — the **M2 Bridge** workspace as its own page (own sign-in; a link in the sidebar's Pages group) — same Tower shell and tokens as the board (2026-09-29)
+- `qualification.html` — the **Team Qualification** scorecard (M4) as its own page (shares the Bridge sign-in; a link in the sidebar's Pages group) — same Tower shell and tokens (2026-09-29)
 - `schema.sql` — core Outbound tables (agents, daily reports, bookings, settings, weekly
   history) + security policies + agent seed
 - `sales_schema.sql` — tables for the **Office Sales** workspace (salespersons, daily metrics, sales log)
@@ -302,7 +302,7 @@ All dates follow PST like the rest of the platform.
 
 
 ## M2 Bridge workspace
-Fourth entry in the brand dropdown (**M2 Bridge ↗**) — it opens **`bridge.html`**, a separate page, so the
+**M2 Bridge ↗** in the sidebar's Pages group opens **`bridge.html`**, a separate page, so the
 board's single file stays the board and the Bridge can keep growing. Built from the brief *ADL — M2 High-Value-Job
 Bridge* (2026-09-18) for Rock *ADC Ironclad Coverage* milestone 2. It protects high-value sales during
 the transition while preserving gross margin: every high-value lead is recorded with its indicators and
@@ -338,7 +338,7 @@ about overdue or urgent ones — **off until `notify_enabled` is true** in Setti
 
 
 ## Team Qualification workspace (M4)
-Fifth entry in the brand dropdown (**Team Qualification ↗**) — opens **`qualification.html`**, its own page, built
+**Team Qualification ↗** in the sidebar's Pages group opens **`qualification.html`**, its own page, built
 from the brief *ADL — M4 Team Qualification Scorecard and Reporting Structure* (2026-09-23) for Rock *ADC Ironclad
 Coverage* milestone 4. One balanced standard for every technician-sales team — incumbents, candidates and a rebuilt
 team led by the former technician: seven weighted categories (sales 20 · revenue efficiency 15 · coverage 15 ·
