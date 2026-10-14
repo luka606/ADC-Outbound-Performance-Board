@@ -15,7 +15,8 @@ eligibility remains frozen. Coverage log reuse asks the dispatcher to confirm
 service, time, response and contact; acceptance never implies completed contact.
 Status rows for the same imported team/job/date reuse one offer. Offer times use
 Pacific time independently of the browser timezone. Existing imports are not
-rewritten automatically.
+rewritten automatically. Older imports marked as assumed contact need explicit
+confirmation before points are awarded; their original note is retained.
 
 Unknown contact confirmation and unresolved issues on mature jobs withhold
 coverage/quality points. Future appointments are not treated as already missed.
