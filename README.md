@@ -1,5 +1,21 @@
 # ADC Outbound — Performance Board
 
+## Coverage recording
+
+In Team Qualification, **Manage coverage** opens one workspace for the team's
+actual offers, their pending updates and the explained score. **Choose job /
+offer** combines saved offers, Coverage log entries and existing job visits.
+Saved offers open for updates. Existing job details are prefilled, but the actual
+offer time and response are confirmed by the dispatcher. No offers are created
+merely because a job exists. Manual entry of a matching reference/date routes
+to the existing offer instead of creating another row.
+
+Accepted offers show the required customer contact/arrival confirmation; declined,
+unanswered or reassigned offers ask for a reason. Waiting for a reply asks for
+neither. The view explains why each recorded offer does or does not count.
+Availability rules, calculation thresholds and existing history remain unchanged.
+This interface update requires no new SQL migration.
+
 ## Guided performance recording
 
 Apply `sql/qualification_guided_scores.sql` after automatic assignment intake.
