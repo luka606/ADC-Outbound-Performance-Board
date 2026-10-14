@@ -4,7 +4,7 @@ const {createFixture}=require('./qualification-transport.cjs'),{makeClient}=requ
 let pass=0,fixture,dom;const check=(name,c)=>{assert(c,name);pass++;console.log('✓ '+name);};
 const wait=async predicate=>{for(let i=0;i<300;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}throw Error('UI did not reach expected state');};
 (async()=>{
- fixture=await createFixture();const calls=[],errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Could not parse CSS/.test(e.message))errors.push(e.message);});
+ fixture=await createFixture({jobCosts:true});const calls=[],errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Could not parse CSS/.test(e.message))errors.push(e.message);});
  const provider=makeClient(async r=>{calls.push(r);return fixture.transport(r);},null);
  dom=new JSDOM(fs.readFileSync('qualification.html','utf8'),{url:'http://localhost/qualification.html',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){freezeClock(w,'2026-10-13T20:00:00.000Z');w.localStorage.setItem('adc_supabase_cfg',JSON.stringify({url:'http://fixture.local',key:'fictional'}));w.supabase=provider;w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};}});
  const w=dom.window,d=w.document,$=s=>d.querySelector(s);await wait(()=>$('#qGateTitle').textContent==='Sign in');check('Protected report is gated without a session',$('#qBody').classList.contains('hide'));
@@ -17,11 +17,11 @@ const wait=async predicate=>{for(let i=0;i<300;i++){if(predicate())return;await 
  check('Source job reference prefilled, no retyping', $('#qSheet [data-f="job_ref"]').value==='12345');submit();await wait(()=>w.eval('Q.links.length===1')&&!!$('#qTeam [data-act="linkedjob"]'));
  const link=()=>w.eval('Q.links[0]');const record=key=>w.eval('Q.'+key)[0];
  check('Completed visit remains pending estimate, not completed work',record('leads').status==='pending'&&record('jobs')===undefined&&record('appts').outcome==='visited');
- const saveAction=async(mode,values)=>{const start=calls.length;const promise=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,mode);await wait(()=>!!$('#qSheet'));fill(values);submit();await promise;await wait(()=>!$('#qSheet'));check('One protected transactional RPC for '+mode,calls.slice(start).filter(r=>r.query.rpc==='qual_save_linked_job').length===1);};
+ const saveAction=async(mode,values)=>{const start=calls.length;const promise=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,mode);await wait(()=>!!$('#qSheet'));fill(values);submit();await promise;await wait(()=>!$('#qSheet'));check('One atomic save for '+mode,mode==='costs'?calls.slice(start).filter(r=>r.query.table==='qual_jobs'&&r.query.op==='update').length===1:calls.slice(start).filter(r=>r.query.rpc==='qual_save_linked_job').length===1);};
  await saveAction('estimate',{price_cents:'18000'});await saveAction('sale',{revenue_cents:'640',decision_at:'2026-10-12T13:00',promised_date:'2026-10-20'});
  check('Actual sale differs from estimate and is consistent on related records',Number(record('leads').sold_revenue_cents)===64000&&Number(record('jobs').revenue_cents)===64000&&Number(record('ests').price_cents)===1800000);
- await saveAction('costs',{labor:'200',materials:'80'});const costs=JSON.stringify(record('jobs').costs);
- const cp=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,'costs');await wait(()=>!!$('#qSheet [data-f="labor"]'));check('Saved costs are prefilled',$('#qSheet [data-f="labor"]').value==='200'&&$('#qSheet [data-f="materials"]').value==='80');$('#qSheetCancel').click();await cp;
+ await saveAction('costs',{assistant:'200',materials:'80'});const costs=JSON.stringify(record('jobs').costs);
+ const cp=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,'costs');await wait(()=>!!$('#qSheet [data-f="assistant"]'));check('Saved costs are prefilled',$('#qSheet [data-f="assistant"]').value==='200'&&$('#qSheet [data-f="materials"]').value==='80');$('#qSheetCancel').click();await cp;
  await saveAction('work',{completed_at:'2026-10-12T15:00',completion_evidence:'sample photos'});check('Completion leaves stored costs intact',JSON.stringify(record('jobs').costs)===costs);
  // Return visit is selected and links to the already existing opportunity by explicit confirmation.
  $('#qTeam [data-act="linkassignment"]').click();await wait(()=>!!$('#qSheet [data-f="outcome_id"]'));fill({outcome_id:fixture.outcomes[1].id});submit();await wait(()=>!!$('#qSheet [data-f="existing_lead"]'));

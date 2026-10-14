@@ -217,17 +217,17 @@ const em=r=>r.error&&r.error.message||'';
   // jobs: add, costs with unknown, reschedule
   await act('#qTeam .backlink'); await section('jobs'); await act('#qTeam [data-act="add"][data-id="jobs"]'); await sheet({job_ref:'J-100',service:'installation',promised_date:'2026-09-30',revenue_cents:'7200'});
   T('job recorded with current promise = promised',db.qual_jobs.length===1&&db.qual_jobs[0].current_promise_date==='2026-09-30');
-  await act('#qTeam [data-act="costs"]'); await sheet({costs_text:'materials, 2000, estimated\nhelper, unknown, estimated'});
-  T('T8 page: unknown cost saved as unknown; the row says the margin is not calculable and unknown is not zero',db.qual_jobs[0].costs[1].status==='unknown'&&/not treated as zero/.test($('#qTeam').textContent));
+  await act('#qTeam [data-job-open]'); await act('#qTeam [data-act="costs"]'); await sheet({materials:'2000',assistant:'',rate_pct:'50',status:'estimated'});
+  T('Reviewed blank assistant expense saves zero and technician pay uses the net base',db.qual_jobs[0].costs.find(c=>c.category==='assistant').amount_cents===0&&db.qual_jobs[0].costs.find(c=>c.category==='technician_pay').amount_cents===260000);
   await act('#qTeam [data-act="resched"]'); await sheet({to_date:'2026-10-03'}); T('reschedule needs a reason (sheet stays open)',sheetOpen()&&/reason is required/.test(sheetNote())); await sheet({reason:'customer travelling'});
-  T('reschedule via the sheet: original kept, current moved, shown on the row',db.qual_jobs[0].promised_date==='2026-09-30'&&db.qual_jobs[0].current_promise_date==='2026-10-03'&&/→ Oct 3/.test($('#qTeam').textContent));
+  T('reschedule via the sheet: original kept, current moved, shown on the row',db.qual_jobs[0].promised_date==='2026-09-30'&&db.qual_jobs[0].current_promise_date==='2026-10-03'&&/Oct 3/.test($('#qTeam').textContent));
   // guided entry chain: lead → appointment → job → completion
-  await act('#qTeam .backlink'); await act('#qTeam [data-act="step"][data-id="lead"]'); T('guided entry step 1 opens with progress dots',sheetOpen()&&$$('#qSheet .dots span').length===4&&/step 1 of 4/.test($('#qSheet .eyebrow').textContent));
+  await act('#qTeam [data-job-back]');await act('#qTeam .backlink'); await act('#qTeam [data-act="step"][data-id="lead"]'); T('guided entry step 1 opens with progress dots',sheetOpen()&&$$('#qSheet .dots span').length===4&&/step 1 of 4/.test($('#qSheet .eyebrow').textContent));
   await sheet({lead_ref:'B2C3D4',service:'cleaning'}); T('step 1 saved the lead and chained to step 2 (appointment for that lead)',db.qual_leads.length===2&&sheetOpen()&&/Book appointment/.test($('#qSheet h2').textContent)&&$('#qSheet [data-f="lead_id"]').value===db.qual_leads[1].id);
   await sheet({scheduled_at:'2026-09-24T09:00',outcome:'attended'}); T('step 2 saved the appointment and chained to step 3 (job)',db.qual_appointments.length===1&&db.qual_appointments[0].outcome==='attended'&&sheetOpen()&&/Create job/.test($('#qSheet h2').textContent));
-  await sheet({job_ref:'J-101',promised_date:'2026-09-25',revenue_cents:'640'}); T('step 3 saved the job and chained to step 4 (completion)',db.qual_jobs.length===2&&sheetOpen()&&/Record completion/.test($('#qSheet h2').textContent));
-  await sheet({completed_at:'2026-09-25T15:20',completion_evidence:'photos #7',cost_labor:'200',cost_materials:'80'}); const j2=db.qual_jobs.find(j=>j.job_ref==='J-101');
-  T('step 4 recorded completion with evidence and two actual costs; chain ends',!sheetOpen()&&!!j2.completed_at&&j2.completion_evidence==='photos #7'&&j2.costs.length===2&&j2.costs.every(c=>c.status==='actual'),j2);
+  await sheet({job_ref:'J-101',promised_date:'2026-09-25',revenue_cents:'640'}); T('step 3 saved the job and chained to step 4 (completion)',db.qual_jobs.length===2&&sheetOpen()&&/Mark work completed/.test($('#qSheet h2').textContent));
+  await sheet({completed_at:'2026-09-23T12:20',completion_evidence:'photos #7'}); const j2=db.qual_jobs.find(j=>j.job_ref==='J-101');
+  T('Completion records evidence and preserves the separate cost breakdown',!sheetOpen()&&!!j2.completed_at&&j2.completion_evidence==='photos #7'&&j2.costs.length===0,j2);
   T('“Continue where you left off” lists the job with an unknown cost',/Enter costs/.test($('#qTeam').textContent));
   // configuration: activate v1 via sheet, edit draft, clone to v2
   w.showQualTab('qcfg'); await tick(60); T('configuration lists v1 draft with activate/edit and the §18 checklist',/v1/.test($('#qCfg').textContent)&&!!$('#qCfg [data-cfg="activate"]')&&/§18/.test($('#qCfg').textContent)&&/baseline/i.test($('#qCfg').textContent));

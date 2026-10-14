@@ -28,7 +28,7 @@ function makeFake(db){
     if(MGR_ONLY.has(t)&&!isMgr())return `new row violates row-level security policy for table "${t}"`;
     if(t==='qual_exclusions'&&op==='update'&&!isMgr())return 'new row violates row-level security policy for table "qual_exclusions"';
     if((t==='qual_snapshots'||t==='qual_decisions')&&!isMgr())return `new row violates row-level security policy for table "${t}"`;
-    if(op==='insert'){row.created_by=email();row.created_at=row.created_at||now();const d=D[t]||{};for(const k in d)if(row[k]===undefined)row[k]=JSON.parse(JSON.stringify(d[k]));}
+    if(op==='insert'){row.created_by=email();row.created_at=row.created_at||now();row.updated_at=row.updated_at||row.created_at;const d=D[t]||{};for(const k in d)if(row[k]===undefined)row[k]=JSON.parse(JSON.stringify(d[k]));}
     if(op==='update'&&t!=='qual_snapshots'){row.updated_by=email();row.updated_at=now();}
     if(t==='qual_metric_versions'){
       if(op==='update'){if(old.used_in_decision){const strip=r=>{const c={...r};['status','updated_at','updated_by','used_in_decision'].forEach(k=>delete c[k]);return JSON.stringify(c);};if(!(row.status==='superseded'&&strip(row)===strip(old)))return `Version ${old.version} has been used in an official decision and is immutable. Create a new version; this one can only be superseded (brief §9, §16.18).`;}

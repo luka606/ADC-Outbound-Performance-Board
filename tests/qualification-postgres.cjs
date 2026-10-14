@@ -13,5 +13,6 @@ exports.createTestDb=async function(options={}){const db=new PGlite();
  await db.exec(sql('sql/qualification_linked_jobs.sql'));
  if(options.auto){await db.exec(sql('sql/qualification_auto_assignment.sql'));await db.exec("update qual_assignment_auto_settings set started_at='2026-10-01T00:00:00Z'");}
  if(options.guided)await db.exec(sql('sql/qualification_guided_scores.sql'));
+ if(options.guided||options.jobCosts)await db.exec(sql('sql/qualification_job_cost_breakdown.sql'));
  await db.exec('grant select on public.technicians,public.job_assignments to anon;');
  return db;};
