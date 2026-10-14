@@ -548,7 +548,7 @@ body.admin-on .admin-only{display:block}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="off"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word" id="buildStamp">build 2026-09-29</div>
+    <div class="sb-word" id="buildStamp">build 2026-10-14b</div>
   </div>
 </aside>
 <div class="content">
@@ -2591,13 +2591,13 @@ function justifyControls(r){
 }
 const fmtStamp=ts=>ts?new Date(ts).toLocaleString('en-US',{timeZone:PST_TZ,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 function lineHtml(l,r){
-  const lost=LOST.has(l.outcome), resched=l.outcome==='rescheduled'; const showCm=NEEDS_COMMENT.has(l.outcome);
+  const lost=LOST.has(l.outcome), resched=l.outcome==='rescheduled';
   return `<div class="jl${lost?' lost':''}${resched?' resched':''}" data-line="${esc(l.id)}">
     <div class="jl-h"><span class="k">Job ${l.seq}</span><span class="badge ${r.job_type==='DVC'?'dvc':'booking'}">${esc(r.job_type)}</span>${l.job_ref?`<span class="jobref count-note">${esc(l.job_ref)}</span>`:''}<span class="jl-state ${esc(l.outcome)}">${outcomeLabel(l.outcome)}</span></div>
     <div class="seg glass-inset jl-seg">${OUTCOMES.map(([k,lab])=>`<button type="button" class="${l.outcome===k?'on':''}" data-oc="${k}">${lab}</button>`).join('')}</div>
-    <div class="jl-cm${showCm?'':' hide'}"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref placeholder="job ref" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
+    <div class="jl-cm"><input type="text" class="jl-in" data-cm placeholder="What happened — e.g. customer rescheduled to Oct 3, cancelled at the door…" value="${esc(l.comment||'')}"><input type="text" class="jl-in jl-ref jobref" data-ref aria-label="Job reference for visit ${l.seq}" maxlength="80" placeholder="Job reference" value="${esc(l.job_ref||'')}"><button class="btn sm" data-lsave>Save</button></div>
     <div class="jl-err hide" data-err></div>
-    <div class="jl-stamp">${l.updated_by&&l.outcome!=='pending'?`${esc(l.updated_by)} · ${fmtStamp(l.updated_at)}`:''}</div>
+    <div class="jl-stamp">${!l.job_ref?'Add a job reference for automatic Qualification.':l.updated_by&&l.outcome!=='pending'?`${esc(l.updated_by)} · ${fmtStamp(l.updated_at)}`:''}</div>
   </div>`;
 }
 function openTechDay(name){
@@ -2647,7 +2647,7 @@ function openTechDay(name){
       };
       box.querySelectorAll('[data-oc]').forEach(b=>b.onclick=()=>{
         const cur=line(); const already=b.classList.contains('on'); box.querySelectorAll('[data-oc]').forEach(x=>x.classList.toggle('on',x===b&&!already));
-        const oc=pick(); box.querySelector('.jl-cm').classList.toggle('hide',!NEEDS_COMMENT.has(oc));
+        const oc=pick();
         if(oc==='completed'||oc==='pending'){commit();}   // no comment needed: save at once
         else{showErr('');box.querySelector('[data-cm]').focus();}
       });

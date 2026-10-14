@@ -3,13 +3,14 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {createFixture}=require('../tests/qualification-transport.cjs');
 (async()=>{
- const fixture=await createFixture();const mode={mode:'authenticated',member:'manager'};
+ const automatic=process.argv.includes('--auto');const fixture=await createFixture({auto:automatic});const mode={mode:'authenticated',member:'manager'};
  const linked=await fixture.transport({...mode,query:{rpc:'qual_link_assignment',args:{p_team:fixture.team,p_outcome:fixture.outcomes[0].id,p_service:'cleaning',p_territory:'LA'}}});if(linked.error)throw Error(linked.error.message);
  let link=linked.data;for(const [action,values] of [['estimate',{price_cents:75000,presented_at:'2026-10-12T20:00:00Z'}],['sale',{revenue_cents:64000,promised_date:'2026-10-20',decision_at:'2026-10-12T22:00:00Z'}],['costs',{costs:[{category:'labor',amount_cents:20000,status:'estimated'},{category:'materials',amount_cents:8000,status:'estimated'}]}]]){
   const r=await fixture.transport({...mode,query:{rpc:'qual_save_linked_job',args:{p_link:link.id,p_revision:link.revision,p_action:action,p_values:values}}});if(r.error)throw Error(r.error.message);link=r.data;
  }
  const pending=await fixture.transport({...mode,query:{rpc:'qual_link_assignment',args:{p_team:fixture.team,p_outcome:fixture.outcomes[2].id,p_service:'cleaning',p_territory:'LA'}}});if(pending.error)throw Error(pending.error.message);
  const pendingEstimate=await fixture.transport({...mode,query:{rpc:'qual_save_linked_job',args:{p_link:pending.data.id,p_revision:pending.data.revision,p_action:'estimate',p_values:{price_cents:1800000,presented_at:'2026-10-12T20:00:00Z'}}}});if(pendingEstimate.error)throw Error(pendingEstimate.error.message);
+ if(automatic){await fixture.db.exec("reset role;insert into job_assignments(date,technician,job_type,jobs) values('2026-10-13','Fixture Tech','ADC',1);insert into job_assignments(date,technician,job_type,jobs) values('2026-10-13','Needs team confirmation','ADC',1);");await fixture.db.exec("update job_assignment_outcomes set job_ref='TEAMCHECK' where assignment_id in(select id from job_assignments where technician='Needs team confirmation');");}
  const root=path.join(__dirname,'..');let html=fs.readFileSync(path.join(root,'qualification.html'),'utf8');
  const client=fs.readFileSync(path.join(root,'tests/qualification-test-client.js'),'utf8');
  const marker=/<script[^>]+src="https:[^"]*supabase[^"]*"[^>]*><\/script>/;if(!marker.test(html))throw Error('Supabase script marker missing');

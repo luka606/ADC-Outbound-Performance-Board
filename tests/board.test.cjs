@@ -58,7 +58,7 @@ function mount(db,{admin=false}={}){
   $('#jmSortBar [data-sort="jobs"]').click(); await tick(30);
   $('#jmList [data-tech-open="3 LA Donat"]').click(); await tick(60);
   T('card opens the technician-day modal with KPIs, flag reasons and the rows; non-admin sees no verdict buttons',$('#repRoot').classList.contains('show')&&/3 LA Donat/.test($('#repRoot .rep-title .nm').textContent)&&$$('#repRoot .rep-kpi').length===6&&/overload threshold is 4/.test($('#repRoot').textContent)&&$$('#repRoot .jl-group').length===2&&$$('#repRoot .jl').length===4&&$$('#repRoot .jb').length===0&&/not yet reviewed/.test($('#repRoot').textContent));
-  T('each expected job is a line with a segmented outcome control (nothing selected = Not yet) and a hidden comment box',$$('#repRoot .jl [data-oc]').length===16&&$$('#repRoot .jl [data-oc].on').length===0&&$$('#repRoot .jl-state').every(x=>x.textContent==='Not yet')&&$$('#repRoot .jl-cm').every(x=>x.classList.contains('hide')));
+  T('each expected job exposes its reference before completion, with the outcome still Not yet',$$('#repRoot .jl [data-oc]').length===16&&$$('#repRoot .jl [data-oc].on').length===0&&$$('#repRoot .jl-state').every(x=>x.textContent==='Not yet')&&$$('#repRoot .jl-cm').every(x=>!x.classList.contains('hide'))&&$$('#repRoot .jl [data-ref]').every(x=>x.getAttribute('aria-label')));
   $('#rp_next').click(); await tick(30); T('› moves to the next card in sort order',/3 LA Jordan|3 OC Jimmy/.test($('#repRoot .rep-title .nm').textContent));
   $('#rp_close').click(); T('× closes',!$('#repRoot').classList.contains('show'));
   $('#jmDate').value='2026-01-05'; $('#jmDate').dispatchEvent(new w.Event('change',{bubbles:true})); await tick(200);

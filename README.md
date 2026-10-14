@@ -1,5 +1,38 @@
 # ADC Outbound — Performance Board
 
+## Automatic Qualification intake
+
+Apply `sql/qualification_auto_assignment.sql` after the linked-job migration.
+The dispatcher enters the job reference in Job Assignment, where the field is
+available for pending and completed visits as well as exceptions. New source
+visits with one current team match appear in Qualification automatically. Return
+visits with the same normalized job reference reuse the linked opportunity and
+sold work. A finished source visit remains distinct from a sale or completed work.
+
+Team matches use the recorded team leader or an approved roster member, with
+assignment-date validity. Missing references, unmatched/ambiguous teams, conflicting
+references, changed linked identities, and older unlinked records go to a private
+review list. A manager can confirm a technician's roster once; future clear visits
+then match automatically. Unknown service is confirmed with the first estimate or
+sale. No estimate, sale, collection, cost, qualification decision, or completion
+evidence is inferred from an assignment count or visit outcome.
+
+The migration queues existing visits for one-time reconciliation and preserves
+their existing reporting and decisions. It does not automatically create old
+opportunities or rewrite cohort dates. Explicitly matching an older opportunity
+reuses a single compatible older appointment when available; ambiguous old visits
+require reconciliation. The cutover timestamp is preserved when the migration is
+reapplied. Source edits are processed by database triggers without requiring a
+Qualification tab to be open. The visible report refreshes every 30 seconds and
+pauses refresh while an update form is open. Reconciliation RPCs use member roles,
+bounded date windows, and batches of at most 500 visits. Internal helpers and the
+review tables remain inaccessible to anonymous callers; no new public grants.
+
+Run `npm run test:qualification:auto` for the real SQL and frontend scenarios.
+`node scripts/preview-qualification.cjs --auto` starts the real frontend and SQL
+against fictional data, including automatically grouped visits and review-only
+exceptions. This preview never loads production credentials.
+
 Replaces the per-agent Google Sheet with a single web app: agents enter daily numbers,
 everything saves to Supabase, and you review it in Meeting / Scorecard / Admin views.
 
