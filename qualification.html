@@ -446,7 +446,7 @@ textarea.in{resize:vertical;min-height:70px}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word">build 2026-10-14a</div>
+    <div class="sb-word">build 2026-10-14b</div>
   </div>
 </aside>
 <div class="content">
@@ -475,7 +475,7 @@ textarea.in{resize:vertical;min-height:70px}
 </div></div>
 
 <div id="qBody" class="hide">
-<div class="wrap"><div class="why"><span class="k">Jobs entered once</span><span class="t">Start with Job Assignment. Update each linked job once; visits, estimates, sales and completed work stay distinct. Qualification details are available when you need them.</span><a href="#" id="qWhyDef">Definitions ›</a><a href="#" id="qWhySop">SOP ›</a></div></div>
+<div class="wrap"><div class="why"><span class="k">Jobs entered once</span><span class="t">Enter the reference and technician in Job Assignment. Clear new jobs appear here automatically; review only missing references, team matches and older records. Update estimates, sales and work once. Qualification details are available when you need them.</span><a href="#" id="qWhyDef">Definitions ›</a><a href="#" id="qWhySop">SOP ›</a></div></div>
 <div class="wrap" style="padding-top:12px"><label class="fdate">Period ending <input type="date" id="qReportEnd"></label><span class="sub2" style="margin-left:12px">Rolling window from the metric version</span><button class="btn soft sm" id="qRefresh" style="margin-left:12px">Refresh</button><span class="sub2" id="qReportUpdated" style="margin-left:12px"></span></div>
 <main id="qualRoot">
   <div id="qBlockers" class="notes"></div>
@@ -858,6 +858,11 @@ async function qLoad(){
   for(let i=0;i<rs.length;i++){if(rs[i].error){toast(qErr(rs[i].error),true);Q.loaded=false;$('#qBlockers').innerHTML=`<div class="note red"><span class="dot"></span><span>${esc(qErr(rs[i].error))}</span></div>`;return false;}Q[keys[i]]=rs[i].data||[];}
   Q.ver.sort((a,b)=>a.version-b.version);Q.teams.sort((a,b)=>(a.seq||0)-(b.seq||0));
   if(!Q.end)Q.end=today();$('#qfEnd').value=Q.end;$('#qReportEnd').value=Q.end;
+  Q.autoError=null;Q.autoEnabled=false;Q.intake=[];
+  const P=qPeriod(qCalcVersion());
+  const synced=P?await sbb.rpc('qual_sync_assignments',{p_start:P.start,p_end:P.end}):null;
+  if(synced?.error){Q.autoError='Automatic job intake needs the database update. Manual linking remains available.';}
+  else if(synced){Q.autoEnabled=!!synced.data?.enabled;if(!Q.autoEnabled)Q.autoError='Automatic intake is paused. Manual linking remains available.';if(synced.data?.linked){for(const k of ['leads','appts','jobs']){const fresh=await qAll(sbb,QTABLES[k]);if(fresh.error){toast(qErr(fresh.error),true);return false;}Q[k]=fresh.data||[];}}const intake=await qAll(sbb,'qual_assignment_intake');Q.intake=intake.data||[];if(intake.error)Q.autoError='Could not load assignments needing review.';}
   const linked=await qAll(sbb,'qual_assignment_links');Q.links=linked.data||[];
   Q.linkError=linked.error?'Job linking needs the database update. Existing reports remain available.':null;
   const source=await Promise.all([qAll(sb,'job_assignments'),qAll(sb,'job_assignment_outcomes')]);
@@ -868,7 +873,12 @@ async function qLoad(){
   return true;
 }
 let qRefreshedAt=null;
-async function qReload(){await qLoad();showQualTab(Q.tab);}
+async function qReload(){
+ if(Q._refreshing)return Q._refreshing;
+ Q._refreshing=(async()=>{if(await qLoad())showQualTab(Q.tab);})();
+ try{return await Q._refreshing;}finally{Q._refreshing=null;}
+}
+setInterval(()=>{if(Q.loaded&&Q.role&&Q.session&&document.visibilityState==='visible'&&!$('#qSheet')&&!Q._refreshing)qReload().catch(()=>{});},30000);
 const qActiveVersion=()=>Q.ver.find(v=>v.status==='active')||null;
 function qCalcVersion(){return qActiveVersion()||Q.ver.filter(v=>v.status==='draft').slice(-1)[0]||null;}
 function qPeriod(V){const days=Number(cfgval(V?.evidence?.window_days)||28);return {start:addDaysIso(Q.end,-(days-1)),end:Q.end};}
@@ -1108,7 +1118,7 @@ function qRenderTeam(){
   root.innerHTML=`
   <div class="thead"><div><div class="eyebrow acc">${qCode(t)} · ${TYPE_LABEL[t.team_type]||t.team_type}${t.former_technician?' · led by the former technician':''}</div><h1 class="pt" style="margin-top:2px">${esc(t.name)}</h1>
       <div class="tmeta"><span>Leader <b>${esc(t.leader_name||'—')}</b></span><span>${esc((t.territories||[]).join(', ')||'no territories')}</span><span>${esc((t.services||[]).join(' · ')||'no services')}</span></div></div>
-    <div class="acts"><button class="btn soft" data-act="editteam">Edit team</button><button class="btn" data-act="linkassignment">Choose assigned job</button></div></div>
+    <div class="acts"><button class="btn soft" data-act="editteam">Edit team</button><button class="btn" ${Q.autoEnabled?`data-intake-list="${t.id}"`:'data-act="linkassignment"'}>${Q.autoEnabled?'Review assignments':'Choose assigned job'}</button></div></div>
   ${qReportTeam(t,c)}${qLinkedJobs(t)}
   <details class="qual-details" data-detail="qualification"${Q._open.qualification?' open':''}><summary>Qualification details · scores, evidence and manager decisions</summary>${isMgr()?'<button class="btn soft" data-act="decide" style="margin:14px 0">Record decision</button>':''}
   ${c?`
@@ -1515,7 +1525,7 @@ function qRenderSop(){
   const ui=x=>`<span class="ui">${x}</span>`;
   $('#qSop').innerHTML=`<div class="eyebrow acc">SOP ADC-QUAL-001 · v1.0 · for the ADC dispatcher</div><h1 class="pt" style="margin:2px 0 6px">How to record the day</h1>
   <div class="sub2" style="margin-bottom:16px">Effective 24 Sep 2026 · owner: the ADC manager · review Dec 2026 · source of truth: the vault note <em>SOP — Team Qualification records for the dispatcher</em></div>
-  <div class="card pad" style="margin-bottom:18px"><h2>Daily reporting · enter each job once</h2><ol style="padding-left:20px;font-size:15px;line-height:1.8"><li>Open the team and choose an assigned visit from <b>Job Assignment</b>.</li><li>If the opportunity already exists, select that record. Return visits reuse it and its work record.</li><li>Use <b>Update</b> for the visit, estimate, sale, collection, work completion, costs or customer-approved reschedule. Each action saves related records together.</li><li>Choose <b>Cancellation</b> with who cancelled and why. Customer/company exclusions await manager approval; they are never recorded as team failures.</li></ol><p>A visit finished is not sold work completed. Keep estimate price, actual sale and collections separate. Costs are prefilled and survive completion. The detailed standalone forms below are for older, unlinked records.</p></div>
+  <div class="card pad" style="margin-bottom:18px"><h2>Daily reporting · automatic jobs, review exceptions</h2><ol style="padding-left:20px;font-size:15px;line-height:1.8"><li>The dispatcher records the reference and technician in <b>Job Assignment</b>. New clear team matches appear in Qualification automatically.</li><li>Return visits with the same reference reuse their opportunity and work record. Review only missing references, unclear team matches and older records needing reconciliation.</li><li>Use <b>Update</b> for the visit, estimate, sale, collection, work completion, costs or customer-approved reschedule. Each action saves related records together.</li><li>Choose <b>Cancellation</b> with who cancelled and why. Customer/company exclusions await manager approval; they are never recorded as team failures.</li></ol><p>A visit finished is not sold work completed. Keep estimate price, actual sale and collections separate. Costs are prefilled and survive completion. The detailed standalone forms below are for older, unlinked records.</p></div>
   <div class="why2"><b>Why this exists.</b> Every ADC team — the ones we have and the ones we hire — is judged by one scorecard: sales, revenue, coverage, attendance, completion, customer quality and compliance. <b>The scorecard is never typed in.</b> It is calculated from the records you enter. Record the day faithfully and the numbers are fair; leave a record out and the page shows <b>N/A</b> or "missing", never a guess. Your records are what the manager decides on, so accuracy matters more than speed.</div>
 
   ${sec(1,'What you can and cannot do',card(`<p><b>You record.</b> Leads and estimate versions · appointments and their outcome · jobs, promise dates, completion and costs · coverage offers and the team's response · availability · quality events · compliance checks · supervised-job notes · suspected incidents · exclusion <em>requests</em> · weekly review notes.</p>
@@ -1626,9 +1636,10 @@ function qTeamStatus(c){
 }
 function qSimpleTeamRow(t,c){const st=qTeamStatus(c),sales=c?.categories.find(r=>r.key==='sales'),revenue=c?.categories.find(r=>r.key==='revenue');return `<a class="row simple-team" href="#" data-team="${esc(t.id)}"><span><span class="t">${esc(t.name)}</span><span class="s">${esc(t.leader_name||'No leader')} · ${esc((t.territories||[]).join(', '))}</span></span><span><span class="pill ${st.cls}">${esc(st.label)}</span><span class="s">${sales?`${sales.numerator} sale${sales.numerator===1?'':'s'} / ${sales.denominator} decided lead${sales.denominator===1?'':'s'} assigned in this period · ${pct(sales.value)}`:'No report yet'}${revenue?.diagnostics.revenue_per_lead_cents!=null?' · '+cents(revenue.diagnostics.revenue_per_lead_cents)+'/lead':''}</span></span><span class="chev">›</span></a>`;}
 function qRenderOver(){
+  $('#qOver').querySelectorAll('details[data-detail]').forEach(d=>Q._open[d.dataset.detail]=d.open);
   const V=qCalcVersion();const rows=Q.teams.filter(t=>!['inactive','disqualified'].includes(t.status)).map(t=>({t,c:V?qCalc(t,V):null}));
   const qualified=rows.filter(r=>r.c?.qualified_for_rock).length;$('#qOverMeta').textContent=V?`${fmtD(qPeriod(V).start)} – ${fmtD(qPeriod(V).end)} · ${V.evidence?.window_days||28} days`:'';
-  $('#qOver').innerHTML=`<div class="card pad"><div class="eyebrow">Team reporting</div><h2 style="font-size:24px;margin:6px 0">Choose a team, update its linked jobs</h2><p class="sub2">${qualified} of 3 teams currently qualified. A visit finished, a sale made and work completed are separate results.</p>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}</div><div class="eyebrow ind">Teams · performance and next action</div><div class="card list">${rows.map(({t,c})=>qSimpleTeamRow(t,c)).join('')||'<div class="empty">Create a team on Teams to get started.</div>'}</div>`;
+  $('#qOver').innerHTML=`<div class="card pad"><div class="eyebrow">Team reporting</div><h2 style="font-size:24px;margin:6px 0">Choose a team, update its linked jobs</h2><p class="sub2">${qualified} of 3 teams currently qualified. A visit finished, a sale made and work completed are separate results.</p>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}</div><div class="eyebrow ind">Teams · performance and next action</div><div class="card list">${rows.map(({t,c})=>qSimpleTeamRow(t,c)).join('')||'<div class="empty">Create a team on Teams to get started.</div>'}</div>${qAssignmentReviewPanel()}`;
 }
 function qRenderTeams(){
   const V=qCalcVersion(),tsel=$('#qfTerr'),cur=tsel.value;tsel.innerHTML='<option value="">Territory · All</option>'+terrList().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('');
@@ -1659,14 +1670,36 @@ function qLinkedJobs(t){
     return `<div class="linked-row"><span><span class="t num">${esc(g.lead.lead_ref)}</span><span class="s">${esc(stage)}</span><span class="s">${g.visits.length} linked visit${g.visits.length===1?'':'s'} · ${esc(latest.source.assignment.technician)}</span></span><span><span class="s">Estimate ${est?cents(est.price_cents):'not recorded'} · Sale ${g.lead.sold_revenue_cents!=null?cents(g.lead.sold_revenue_cents):'not recorded'} · Collected ${g.lead.collected_revenue_cents!=null?cents(g.lead.collected_revenue_cents):'not recorded'}</span><span class="s">${g.job?`Work ${g.job.completed_at?'finished '+fmtDy(dPT(g.job.completed_at)):'promised '+fmtDy(g.job.current_promise_date)} · ${margin?`${m.actual?'actual':'projected'} margin ${pct(margin.margin_pct)}`:'costs incomplete; margin unavailable'}`:'No sold work to complete yet'}</span><details style="margin-top:8px"><summary class="sub2">Linked visits</summary>${g.visits.map(v=>`<div class="s">${fmtDy(v.source.assignment.date)} · ${esc(v.source.assignment.technician)} · ref ${esc(v.source.job_ref||'not recorded')}${v.link.mapping_note?' · '+esc(v.link.mapping_note):''} · ${esc(v.source.outcome==='completed'?'visit finished':v.source.outcome)} ${btn(v.link,'visit','Update visit')}</div>`).join('')}</details></span><span class="acts">${btn(link,'','Update','tint')}</span></div>`;
   }).join('');
   const unlinked=Q.leads.filter(l=>l.team_id===t.id&&!links.some(x=>x.lead_id===l.id)).length;
-  return `<div class="thead" style="margin-top:20px"><div><h2 style="font-size:22px">Linked jobs</h2><div class="sub2">One opportunity and one work record; return visits attach to the same job.</div></div></div>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}<div class="card list">${rows||'<div class="empty">Choose an assigned job to start. You can link an older qualification record instead of creating it again.</div>'}</div>${unlinked?`<p class="sub2" style="margin:12px 0">${unlinked} older opportunity record(s) are not linked yet. Their data still contributes to the report; select the matching existing record when linking.</p>`:''}`;
+  return `<div class="thead" style="margin-top:20px"><div><h2 style="font-size:22px">Linked jobs</h2><div class="sub2">One opportunity and one work record; return visits attach to the same job.</div></div></div>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}<div class="card list">${rows||`<div class="empty">${Q.autoEnabled?'New jobs with a reference and one confirmed team appear automatically. Review exceptions below.':'Choose an assigned job to start. You can link an older qualification record instead of creating it again.'}</div>`}</div>${unlinked?`<p class="sub2" style="margin:12px 0">${unlinked} older opportunity record(s) are not linked yet. Their data still contributes to the report; match them once when an older assignment needs review.</p>`:''}${qAssignmentReviewPanel(t)}`;
 }
-async function qChooseAssignment(t){
+const QINTAKE_REASON={missing_reference:'Job reference needed',team_not_found:'Confirm technician team',ambiguous_team:'More than one team matches',reference_conflict:'Job reference needs reconciliation',legacy_review:'Match older record once',source_changed:'Linked source details changed',sync_error:'Manager review needed',paused:'Automatic intake paused'};
+function qIntakeRows(t){const P=qPeriod(qCalcVersion()),source=qAssignmentRows();return (Q.intake||[]).filter(i=>i.state==='review').map(i=>({...i,source:source.find(o=>o.id===i.outcome_id)})).filter(i=>i.source&&i.source.assignment.date>=P.start&&i.source.assignment.date<=P.end&&(!t||i.team_id===t.id||(!i.team_id&&qSourceMatches(t,i.source))));}
+function qAssignmentReviewPanel(t){
+ if(Q.autoError)return `<div class="note" style="margin-top:16px">${esc(Q.autoError)}</div>`;
+ if(!Q.autoEnabled)return '';
+ const rows=qIntakeRows(t),older=rows.filter(i=>!i.can_create).length;
+ if(!rows.length)return '<p class="sub2" style="margin-top:16px">Automatic job intake is on. No assignments need review in this period.</p>';
+ return `<details class="qual-details" data-detail="intake"${Q._open.intake?' open':''}><summary>Assignments needing review · ${rows.length-older} new · ${older} older</summary><div class="card list" style="margin-top:12px">${rows.map(i=>`<div class="linked-row"><span><span class="t">${esc(i.source.job_ref||'Reference needed')}</span><span class="s">${esc(i.source.assignment.technician)} · ${fmtDy(i.source.assignment.date)} · visit ${i.source.seq}</span></span><span class="s">${esc(QINTAKE_REASON[i.reason]||'Review needed')}${!i.can_create?' · older record':''}</span><button class="btn sm tint" data-intake="${i.outcome_id}">Review</button></div>`).join('')}</div></details>`;
+}
+async function qReviewAssignment(id){
+ const row=(Q.intake||[]).find(i=>i.outcome_id===id),src=qAssignmentRows().find(i=>i.id===id);if(!row||!src){toast('Refresh to load this assignment');return;}
+ if(row.reason==='source_changed'){toast('This linked visit’s reference, date or technician changed. Review and restore the correct source details in Job Assignment before updating it.',true);return;}
+ if(!src.job_ref){const form=await qAsk({eyebrow:'Job Assignment',title:'Add job reference once',sub:`${src.assignment.technician} · ${fmtDy(src.assignment.date)} · visit ${src.seq}. It is saved to Job Assignment and checked automatically.`,primary:'Save reference',fields:[{label:'Job reference',f:'reference',wide:true}],validate:v=>req(v.reference,'Enter the job reference')});if(!form)return;const r=await sbb.rpc('qual_set_assignment_reference',{p_outcome:id,p_reference:form.values.reference});if(r.error){toast(qErr(r.error),true);return;}await qReload();toast(r.data==='linked'?'Job appeared automatically':'Reference saved; review the remaining match');return;}
+ let team=Q.teams.find(t=>t.id===row.team_id);
+ if(!team||['team_not_found','ambiguous_team'].includes(row.reason)){
+  if(!isMgr()){toast('A manager must confirm this technician’s team.',true);return;}
+  const form=await qAsk({eyebrow:'Manager · confirm team once',title:src.assignment.technician,sub:'This records an approved roster mapping so future visits can appear automatically. Conflicting team mappings must be reconciled first.',primary:'Confirm team',fields:[{label:'Team',f:'team',kind:'select',opts:Q.teams.filter(t=>!['inactive','disqualified'].includes(t.status)).map(t=>[t.id,t.name]),blank:'Choose team',wide:true},{label:'Reason',f:'reason',kind:'area',wide:true}],validate:v=>req(v.team,'Choose the team')||req(v.reason,'Record why this is the team')});if(!form)return;
+  const r=await sbb.rpc('qual_confirm_assignment_team',{p_outcome:id,p_team:form.values.team,p_reason:form.values.reason});if(r.error){toast(qErr(r.error),true);return;}await qReload();toast(r.data==='linked'?'Team confirmed; job appeared automatically':'Team confirmed; match the older record once');return;
+ }
+ return qChooseAssignment(team,id);
+}
+$('#qBody').addEventListener('click',async e=>{const row=e.target.closest('[data-intake]');if(row)return qReviewAssignment(row.dataset.intake);const list=e.target.closest('[data-intake-list]');if(!list)return;const team=qTeam(list.dataset.intakeList),rows=qIntakeRows(team);if(!rows.length){toast('No assignments need review. New clear matches appear automatically.');return;}const pick=await qAsk({eyebrow:'Exceptions only',title:'Review assignment',primary:'Review',fields:[{label:'Assignment',f:'outcome',kind:'select',opts:rows.map(i=>[i.outcome_id,`${i.source.assignment.date} · ${i.source.job_ref||'reference needed'} · ${QINTAKE_REASON[i.reason]||'Review needed'}`]),blank:'Choose assignment',wide:true}],validate:v=>req(v.outcome,'Choose an assignment')});if(pick)return qReviewAssignment(pick.values.outcome);});
+async function qChooseAssignment(t,outcomeId){
   if(Q.linkError){toast(Q.linkError,true);return;}
   const P=qPeriod(qCalcVersion());const rows=qAssignmentRows().filter(o=>o.assignment.date>=P.start&&o.assignment.date<=P.end&&!Q.links.some(l=>l.outcome_id===o.id)&&(isMgr()||qSourceMatches(t,o)));
   if(!rows.length){toast('No unlinked assigned visits in this period. Check the reporting date and team roster.');return;}
-  const pick=await qAsk({eyebrow:'Job Assignment',title:'Choose assigned visit',sub:`${t.name} · ${fmtD(P.start)} – ${fmtD(P.end)}. Existing source details are reused.`,primary:'Continue',fields:[{label:'Assigned visit',f:'outcome_id',kind:'select',opts:rows.map(o=>[o.id,`${o.assignment.date} · ${o.assignment.technician} · ${o.job_ref||'reference needed'} · visit ${o.seq} · ${o.outcome}${qSourceMatches(t,o)?'':' · confirm team mapping'}`]),blank:'Choose a visit',wide:true}],validate:v=>req(v.outcome_id,'Choose a visit')});
-  if(!pick)return;const src=rows.find(o=>o.id===pick.values.outcome_id),ref=String(src.job_ref||'').trim().toUpperCase();
+  const pick=outcomeId?{values:{outcome_id:outcomeId}}:await qAsk({eyebrow:'Job Assignment',title:'Choose assigned visit',sub:`${t.name} · ${fmtD(P.start)} – ${fmtD(P.end)}. Existing source details are reused.`,primary:'Continue',fields:[{label:'Assigned visit',f:'outcome_id',kind:'select',opts:rows.map(o=>[o.id,`${o.assignment.date} · ${o.assignment.technician} · ${o.job_ref||'reference needed'} · visit ${o.seq} · ${o.outcome}${qSourceMatches(t,o)?'':' · confirm team mapping'}`]),blank:'Choose a visit',wide:true}],validate:v=>req(v.outcome_id,'Choose a visit')});
+  if(!pick)return;const src=rows.find(o=>o.id===pick.values.outcome_id);if(!src){toast('This assignment is already linked or is outside the report. Refresh to review it.');return;}const ref=String(src.job_ref||'').trim().toUpperCase();
   const existing=Q.leads.filter(l=>l.team_id===t.id);const exact=existing.filter(l=>l.lead_ref.trim().toUpperCase()===ref);const matched=qSourceMatches(t,src);
   const form=await qAsk({eyebrow:'Link once',title:'Link assigned visit',sub:`${src.assignment.technician} · ${fmtDy(src.assignment.date)}. A finished visit is not a sale or work completion.`,primary:'Link job',fields:[
     {label:'Existing opportunity / return visit',f:'existing_lead',kind:'select',opts:existing.map(l=>[l.id,`${l.lead_ref} · ${l.status}`]),blank:'New opportunity (only if none exists)',value:exact.length===1?exact[0].id:'',wide:true},
@@ -1693,6 +1726,7 @@ async function qLinkedAction(t,id,mode){
   if(mode==='decline'){opts.sub='Customer declined the estimate. This is separate from a cancellation or team failure.';opts.fields=[{label:'Reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.reason,'Record why the customer declined');}
   if(mode==='failure'){opts.sub='Team failure is separate from a customer decline or cancellation.';opts.fields=[{label:'Failure reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.reason,'Record how the team failed its responsibility');}
   if(mode==='cancel'){opts.sub='Record who cancelled and why. Customer/company score exclusions await manager review; cancellation never becomes Team failed.';opts.fields=[{label:'Cancelled by',f:'origin',kind:'seg',segs:[['customer','Customer'],['company','Company'],['team','Team']],value:'customer',wide:true},{label:'Reason',f:'reason',kind:'area',value:lead.cancel_reason||appt.reason||'',wide:true}];opts.validate=v=>req(v.reason,'Record the cancellation reason');}
+  if(['estimate','sale'].includes(mode)&&lead.service_confirmed===false){const validate=opts.validate;opts.fields.unshift({label:'Service · confirm once',f:'service',kind:'select',opts:['cleaning','installation','mixed','other'],blank:'Choose service',wide:true});opts.validate=v=>req(v.service,'Choose the service for this job')||(validate?validate(v):null);}
   const form=await qAsk(opts);if(!form)return;let values=form.values;
   if(Object.values(values).some(v=>typeof v==='number'&&v<0)){toast('Money amounts must be nonnegative',true);return;}
   if(mode==='costs')values={costs:qMergeCosts(job.costs,values.labor,values.materials,values.status)};

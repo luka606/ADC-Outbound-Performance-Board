@@ -1,7 +1,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
 const sql=file=>fs.readFileSync(path.join(__dirname,'../',file),'utf8');
-exports.createTestDb=async function(){const db=new PGlite();
+exports.createTestDb=async function(options={}){const db=new PGlite();
  await db.exec(`create role anon;create role authenticated;create schema auth;grant usage on schema auth,public to anon,authenticated;
  create function auth.email() returns text language sql stable as $$select coalesce(current_setting('test.member',true),'')||'@example.test'$$;
  create function public.bridge_role() returns text language sql stable as $$select nullif(current_setting('test.member',true),'')$$;
@@ -11,5 +11,6 @@ exports.createTestDb=async function(){const db=new PGlite();
  `);
  await db.exec(sql('jobs_schema.sql'));await db.exec(sql('job_assignment_outcomes.sql'));await db.exec(sql('qualification_schema.sql'));
  await db.exec(sql('sql/qualification_linked_jobs.sql'));
+ if(options.auto){await db.exec(sql('sql/qualification_auto_assignment.sql'));await db.exec("update qual_assignment_auto_settings set started_at='2026-10-01T00:00:00Z'");}
  await db.exec('grant select on public.technicians,public.job_assignments to anon;');
  return db;};
