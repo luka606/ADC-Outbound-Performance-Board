@@ -133,5 +133,10 @@ function mount(db,{admin=false}={}){
   T('clicking the lit verdict again clears it and the stamp',db.job_assignments.find(r=>r.id==='j2').justified===null&&db.job_assignments.find(r=>r.id==='j2').justified_at===null&&/Not yet reviewed/.test($('#jmKpis').textContent));
   $('#repRoot .jb.yes[data-jid="j1"]').click(); await tick(120); T('"Correct" writes Yes',db.job_assignments.find(r=>r.id==='j1').justified==='Yes');
   T('zero console / jsdom errors (admin)',errors.length===0,errors);
+  w.renderJTechs();T('Technician setup links to the normally authenticated team score',!!$('#tblJTechs a[href*="qualification.html?technician="]'));
+  w.cvResetForm();$('#cvOutcome').value='uncovered';w.cvUpdateHints();T('Open coverage jobs show required next action and owner',$('#cvNext').required&&$('#cvRowOwner').required&&$('#cvFinal').closest('.fld').style.display==='none');
+  $('#cvOutcome').value='reassigned';w.cvUpdateHints();T('Reassignment shows its final-assignee requirement and hides unrelated lost reason',$('#cvFinal').required&&$('#cvFinal').closest('.fld').style.display!== 'none'&&$('#cvLost').closest('.fld').style.display==='none');
+  $('#cvOutcome').value='confirmed_lost';w.cvUpdateHints();T('Confirmed loss shows the required lost reason',$('#cvLost').required&&$('#cvLost').closest('.fld').style.display!=='none');
+  T('Coverage totals normalize reference case without counting status updates twice',w.cvLatestByLead([{lead_ref:'jobx',log_date:'2026-10-01',time_local:'09:00'},{lead_ref:' JOBX ',log_date:'2026-10-01',time_local:'10:00'}]).size===1);
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);
 })().catch(e=>{console.error('TEST CRASH',e);process.exit(2);});

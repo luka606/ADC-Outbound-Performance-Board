@@ -1,5 +1,39 @@
 # ADC Outbound — Performance Board
 
+## Guided performance recording
+
+Apply `sql/qualification_guided_scores.sql` after automatic assignment intake.
+Each team now shows a daily **What needs recording** checklist: availability,
+coverage, attendance, work/costs, required checks, customer issues and supervised
+jobs. Actions reuse existing records; fields marked `*` are required. Manager
+reviews remain separate. A plain performance panel explains the numerator,
+denominator and missing evidence for each score.
+
+Availability is recorded before offers. The latest matching declaration controls
+new offer eligibility, including an unavailable declaration. Earlier offer
+eligibility remains frozen. Coverage log reuse asks the dispatcher to confirm
+service, time, response and contact; acceptance never implies completed contact.
+Status rows for the same imported team/job/date reuse one offer. Offer times use
+Pacific time independently of the browser timezone. Existing imports are not
+rewritten automatically. Older imports marked as assumed contact need explicit
+confirmation before points are awarded; their original note is retained.
+
+Unknown contact confirmation and unresolved issues on mature jobs withhold
+coverage/quality points. Future appointments are not treated as already missed.
+Historical maturity uses the report end date. Supervised-job evidence counts
+unique real jobs, and only managers change signed-off observations. Missing
+checks can be updated on their existing record. Jobs referenced by checks,
+customer issues or supervision must belong to that team. No qualification
+threshold, metric version or official decision is changed by this migration.
+
+The Technician setup page links to the authenticated team score. The Coverage
+log shows the fields relevant to the selected outcome and puts additional details
+under an optional disclosure. Open jobs require an owner and next action.
+
+Run `npm run test:qualification:guided` for the real PostgreSQL, scoring and form
+scenarios. `node scripts/preview-qualification.cjs --guided` previews this flow
+with fictional jobs and the actual SQL. No production credentials are loaded.
+
 ## Automatic Qualification intake
 
 Apply `sql/qualification_auto_assignment.sql` after the linked-job migration.
