@@ -448,7 +448,7 @@ textarea.in{resize:vertical;min-height:70px}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word">build 2026-10-14c</div>
+    <div class="sb-word">build 2026-10-14d</div>
   </div>
 </aside>
 <div class="content">
@@ -982,12 +982,12 @@ function qAsk(o){
       const badTime=$$('[data-t="ts"]',$('#qSheet')).find(i=>i.value&&!ptToIso(i.value));if(badTime){const typed=badTime.value;badTime.type='text';badTime.value=typed;badTime.placeholder='Pacific date/time or ISO timestamp with UTC offset';$('#qSheetNote').textContent='Enter a valid Pacific time. During the repeated daylight-saving hour, use an explicit UTC offset.';$('#qSheetNote').className='snote bad';return;}
       const badMoney=$$('[data-t="cents"]',$('#qSheet')).find(i=>i.value.trim()!==''&&(toC(i.value)==null||toC(i.value)<0));
       if(badMoney){const n=$('#qSheetNote');n.textContent='Enter a valid nonnegative money amount.';n.className='snote bad';return;}
-      if(o.validate){const err=o.validate(values);if(err){const n=$('#qSheetNote');n.textContent=err;n.className='snote bad';return;}}
+      if(o.validate){const err=o.validate(values,!!sec);if(err){const n=$('#qSheetNote');n.textContent=err;n.className='snote bad';return;}}
       done({values,secondary:!!sec});});
-    Q._sheet=o;const first=$('#qSheet .in');if(first&&first.focus)try{first.focus();}catch(e){}
+    Q._sheet=o;if(o.setup)o.setup($('#qSheet'));const first=$('#qSheet .in');if(first&&first.focus)try{first.focus();}catch(e){}
   });
 }
-function readForm(root){const o={};$$('[data-f]',root).forEach(i=>{const k=i.dataset.f,t=i.dataset.t||'text';let v=i.type==='checkbox'?i.checked:i.value;
+function readForm(root){const o={};$$('[data-f]',root).forEach(i=>{if(i.disabled)return;const k=i.dataset.f,t=i.dataset.t||'text';let v=i.type==='checkbox'?i.checked:i.value;
   if(t==='cents')v=toC(v);else if(t==='int')v=v===''?null:Number(v);else if(t==='num')v=v===''?null:Number(v);else if(t==='arr')v=String(v).split(',').map(s=>s.trim()).filter(Boolean);else if(t==='ts')v=v?ptToIso(v):null;else if(t==='date')v=v||null;else if(t==='bool')v=v===true||v==='true';else if(t==='nullbool')v=v===''?null:v==='true';else if(typeof v==='string'){v=v.trim();if(v==='')v=null;}
   o[k]=v;});return o;}
 /* a datetime-local value typed on this page is Pacific time, whatever the machine's zone (Tom's runs Tbilisi) */
@@ -1118,30 +1118,40 @@ function qSectionCount(key,t){
   return {text:''};
 }
 /* Daily recording uses the existing job and evidence records; scores are calculated. */
-function qCoverageFields(t,source){
+function qCoverageFields(t,source,job){
  const time=source&&/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(source.time_local||'');
- const stamp=time?`${source.log_date}T${time[1].padStart(2,'0')}:${time[2]}:${time[3]||'00'}`:source?'':dtLocal(null,true);
- return [{label:'Job reference *',f:'lead_ref',value:source?.lead_ref||'',ph:'Same reference as Job Assignment'},
- {label:'Job date *',f:'job_date',t:'date',type:'date',value:source?.job_date||source?.log_date||Q.end||today()},
+ const stamp=time?`${source.log_date}T${time[1].padStart(2,'0')}:${time[2]}:${time[3]||'00'}`:source||job?'':dtLocal(null,true);
+ return [{label:'Job reference *',f:'lead_ref',value:source?.lead_ref||job?.lead_ref||'',ph:'Same reference as Job Assignment'},
+ {label:'Job date *',f:'job_date',t:'date',type:'date',value:source?.job_date||source?.log_date||job?.job_date||Q.end||today()},
  {label:'Offer sent (Pacific) *',f:'offered_at',t:'ts',type:'datetime-local',value:stamp,step:'0.001',hint:'Actual offer time. Availability must have been recorded before it.'},
- {label:'Territory *',f:'territory',kind:'select',opts:terrList(),blank:'Choose territory',value:source?.area||(t.territories?.length===1?t.territories[0]:'')},
- {label:'Service *',f:'service',kind:'select',opts:svcList,blank:'Choose service',value:t.services?.length===1?t.services[0]:''},
- {label:'Team response *',f:'response',kind:'select',opts:[['pending','Awaiting response'],['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned to another team']],value:'pending',wide:true},
- {label:'Required contact / arrival completed?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Not confirmed'],['true','Yes'],['false','No']],value:'',hint:'Acceptance alone does not confirm that the obligation was met.',wide:true},
- {label:'Reason (required for decline, no response or reassignment)',f:'failure_reason',kind:'area',wide:true}];
+ {label:'Area *',f:'territory',kind:'select',opts:terrList(),blank:'Choose area',value:source?.area||job?.territory||(t.territories?.length===1?t.territories[0]:'')},
+ {label:'Service *',f:'service',kind:'select',opts:svcList,blank:'Choose service',value:job?.service||(t.services?.length===1?t.services[0]:'')},
+ ...qCoverageResponseFields({response:'pending',contact_met:null})];
+}
+function qCoverageResponseFields(c){return [
+ {label:'Did the team accept? *',f:'response',kind:'select',opts:[['pending','Still waiting for a reply'],['accepted','Yes — accepted'],['declined','No — declined'],['no_response','No reply by the deadline'],['reassigned','Given to another team']],value:c.response,wide:true},
+ {label:'Was the required customer contact or arrival completed?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Not confirmed yet'],['true','Yes'],['false','No']],value:qContactUnconfirmed(c)?'':c.contact_met==null?'':String(c.contact_met),hint:'Confirm the follow-up required for this offer: contacting the customer or arriving as agreed. Accepting the offer alone is not enough. Record finished work under Work and costs.',wide:true},
+ {label:'Why was the offer not accepted? *',f:'failure_reason',kind:'area',value:c.failure_reason||'',wide:true}];}
+function qCoverageConditional(sheet){
+ const response=$('[data-f="response"]',sheet);
+ const update=()=>{for(const [field,show] of [['contact_met',response.value==='accepted'],['failure_reason',['declined','no_response','reassigned'].includes(response.value)]]){const control=$(`[data-f="${field}"]`,sheet);control.closest('label').classList.toggle('hide',!show);control.disabled=!show;}};
+ response.addEventListener('change',update);update();
 }
 function qCoverageValidation(v){return req(v.lead_ref,'Enter the job reference')||req(v.job_date,'Choose the job date')||req(v.offered_at,'Enter the actual Pacific offer time')||req(v.territory,'Choose the territory')||req(v.service,'Choose the service')||(['declined','no_response','reassigned'].includes(v.response)?req(v.failure_reason,'Record the response reason'):null);}
-async function qRecordCoverage(t,source){
- const r=await qAsk({eyebrow:'Coverage · offered jobs only',title:source?'Reuse recorded coverage offer':'Record offer',sub:'1. Declare availability before offering work. 2. Record the offer and response. 3. Confirm contact/arrival when known. Eligibility is fixed at the offer time; pending responses remain unfulfilled.',primary:'Save offer',fields:qCoverageFields(t,source),validate:qCoverageValidation});if(!r)return;
+async function qRecordCoverage(t,source,job){
+ const r=await qAsk({eyebrow:`Coverage · ${t.name}`,title:'Record a job offer',sub:source?'The reference, date, area and offer time come from the Coverage log. Check them, then record what this team said.':job?'The job details are filled from the existing assignment. Confirm when it was offered and what this team said.':'Use this only for an offer missing from your job records. Record when it was actually offered, not when you are entering it.',note:'An offer counts in the score only if the team was recorded as available before that offer, for this job date, area and service. Recording availability now cannot change an earlier offer.',primary:'Save offer',fields:qCoverageFields(t,source,job),setup:qCoverageConditional,validate:qCoverageValidation});if(!r)return;
+ r.values.contact_met=r.values.response==='accepted'?(r.values.contact_met??null):null;r.values.failure_reason=['declined','no_response','reassigned'].includes(r.values.response)?r.values.failure_reason:null;
+ const existing=Q.cov.filter(c=>c.team_id===t.id&&qCoverageKey(c.lead_ref,c.job_date)===qCoverageKey(r.values.lead_ref,r.values.job_date));
+ if(existing.length>1){toast('Several recorded offers match this job and date. Review the existing offers instead of adding another.',true);return;}
+ if(existing.length===1){toast('This offer is already recorded. Update the existing offer below.');return qCoverageResponse(t,existing[0].id);}
  const result=await sbb.rpc('qual_record_coverage_offer',{p_team:t.id,p_source:source?.id||null,p_values:r.values});if(result.error){toast(qErr(result.error),true);return;}await qReload();toast('Offer saved once; update its response when needed');
 }
 async function qCoverageResponse(t,id){
  const c=Q.cov.find(x=>x.id===id);if(!c)return;
- const r=await qAsk({eyebrow:'Coverage response',title:c.lead_ref||'Update offer',sub:`${fmtDy(c.job_date)} · ${c.eligible?'Counts in coverage':'Outside the scored offers: '+(c.eligibility?.reasons||[]).join('; ')}. This updates the existing offer.`,primary:'Save response',fields:[
- {label:'Team response *',f:'response',kind:'select',opts:[['pending','Awaiting response'],['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned to another team']],value:c.response,wide:true},
- {label:'Required contact / arrival completed?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Not confirmed'],['true','Yes'],['false','No']],value:qContactUnconfirmed(c)?'':c.contact_met==null?'':String(c.contact_met),wide:true},
- {label:'Reason (decline / no response / reassignment)',f:'failure_reason',kind:'area',value:c.failure_reason||'',wide:true}],validate:v=>['declined','no_response','reassigned'].includes(v.response)?req(v.failure_reason,'Record the reason'):null});if(!r)return;
- const values=r.values;if(values.contact_met!=null&&qContactUnconfirmed(c)&&/contact obligation assumed met; verify/.test(c.notes||''))values.notes=(c.notes||'')+' [Contact status explicitly reviewed: '+new Date().toISOString()+']';
+ const metric=qCalc(t)?.categories.find(r=>r.key==='coverage'),counted=metric?.included_ids.includes(c.id),excluded=metric?.excluded_ids.includes(c.id);
+ const reason=excluded?'manager-approved exclusion':!c.eligible?(c.eligibility?.reasons||[]).join('; '):'offer sent outside this report period';
+ const r=await qAsk({eyebrow:`Coverage · ${t.name}`,title:`Update ${c.lead_ref||'offer'}`,sub:`${fmtDy(c.job_date)} · ${counted?'Counts in the score':'Not counted: '+reason}. You are updating the existing offer.`,primary:'Save update',fields:qCoverageResponseFields(c),setup:qCoverageConditional,validate:v=>['declined','no_response','reassigned'].includes(v.response)?req(v.failure_reason,'Record the reason'):null});if(!r)return;
+ const values=r.values;values.contact_met=values.response==='accepted'?(values.contact_met??null):null;values.failure_reason=['declined','no_response','reassigned'].includes(values.response)?values.failure_reason:null;if(values.contact_met!=null&&qContactUnconfirmed(c)&&/contact obligation assumed met; verify/.test(c.notes||''))values.notes=(c.notes||'')+' [Contact status explicitly reviewed: '+new Date().toISOString()+']';
  await qWrite('qual_coverage_events','update',values,id,'Response updated');
 }
 async function qRecordAvailability(t){
@@ -1181,8 +1191,7 @@ function qRecordingGuide(t,c){
  const row=(title,detail,button,action,count)=>`<div class="record-task"><span><b>${esc(title)}</b><span class="s">${esc(detail)}</span></span><button class="btn sm ${count?'tint':'soft'}" data-record="${action}">${esc(button)}</button></div>`;
  return `<section class="record-guide" aria-label="What needs recording"><div class="thead"><div><h2>What needs recording</h2><div class="sub2">${fmtDy(date)} · Enter facts here; the score calculates automatically. Fields marked * are required.</div></div></div><div class="card list">
  ${row('1. Availability',declared?`Latest declaration: ${last.available?'Available':'Unavailable'} · ${last.territory||'all approved territories'} / ${last.service||'all approved services'}. Record only a change.`:'Record availability before offering work. This step determines whether offers count.',declared?'Change availability':'Declare availability','availability',!declared)}
- ${row('2. Coverage',n.offers.length?`${n.offers.length} offer(s) need a response or contact confirmation.`:'Record only offers made to this team. Acceptance and contact/arrival are separate facts.',n.offers.length?'Update offers':'Record offer','coverage',n.offers.length)}
- <div class="record-task"><span class="sub2">Already in the Coverage log? Reuse that record instead of entering the reference and date again.</span><button class="btn soft sm" data-record="coverage_log">Reuse Coverage log</button></div>
+ ${row('2. Coverage',n.offers.length?`${n.offers.length} offer(s) need an update. Choose the job, record the reply and confirm the required follow-up.`:'Track job offers to this team: did they accept, and did they complete the required customer contact or arrival? Choose an existing job or Coverage log entry.','Manage coverage','coverage',n.offers.length)}
  ${row('3. Attendance',n.appointments.length?`${n.appointments.length} visit(s) need an outcome or scheduled time.`:'Update the actual visit outcome and arrival details when known.','Record attendance','attendance',n.appointments.length)}
  ${row('4. Work and costs',`${n.work.length} due job(s) need completion or evidence · ${n.costs.length} job(s) need costs. Existing jobs are reused.`,'Review work','work',n.work.length+n.costs.length)}
  ${row('5. Required checks',`${n.checks.length} recorded check(s) need evidence.${c&&!c.evidence.progress.critical_evidence?' No critical check has been recorded for this period.':''}`,'Record / update check','check',n.checks.length)}
@@ -1192,7 +1201,7 @@ function qRecordingGuide(t,c){
 }
 function qSimpleScores(c){
  if(!c)return '';
- const text={sales:'Sales ÷ decided leads. Pending decisions are shown separately.',revenue:'Revenue ÷ assigned leads, compared with the approved baseline.',coverage:'Eligible offers accepted with required contact/arrival completed ÷ eligible offers. Availability must be declared first.',attendance:'Visits attended on time ÷ responsible visits due. Unknown times need review.',completion:'Work finished by the promise date with evidence ÷ work due. Approved reschedules use the revised date.',quality:'Mature jobs with a substantiated customer issue ÷ mature completed jobs. Lower is better.',compliance:'Passed documented checks ÷ recorded checks. Every critical requirement must pass.'};
+ const text={sales:'Sales ÷ decided leads. Pending decisions are shown separately.',revenue:'Revenue ÷ assigned leads, compared with the approved baseline.',coverage:'Fulfilled offers ÷ counted offers. A fulfilled offer was accepted and its required customer contact or arrival was completed. Open Coverage to update offers or see why they do not count.',attendance:'Visits attended on time ÷ responsible visits due. Unknown times need review.',completion:'Work finished by the promise date with evidence ÷ work due. Approved reschedules use the revised date.',quality:'Mature jobs with a substantiated customer issue ÷ mature completed jobs. Lower is better.',compliance:'Passed documented checks ÷ recorded checks. Every critical requirement must pass.'};
  const action={sales:'leads',revenue:'leads',coverage:'cov',attendance:'appts',completion:'jobs',quality:'quality',compliance:'cc'};
  return `<details class="qual-details" data-detail="simple_scores"${Q._open.simple_scores?' open':''}><summary>Performance scores · ${c.weighted_score==null?'Not ready — '+c.categories.filter(r=>r.points==null).length+' metric(s) need evidence':c.weighted_score.toFixed(1)+' / 100'}</summary><div class="card list">${c.categories.map(r=>`<div class="record-task"><span><b>${esc(r.label)} · ${r.key==='revenue'?(r.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents)+'/lead':'Not ready'):r.value==null?'Not ready':pct(r.value)}</b><span class="s">${esc(text[r.key])}</span><span class="s">${r.denominator?`${r.key==='revenue'?cents(r.numerator):r.numerator} / ${r.denominator} · `:''}${r.points==null?'Points unavailable':r.points+' / 100 points'}${r.notes.length?' · '+esc(r.notes[0].replace('N/A — zero denominator','No eligible records yet')):''}</span></span><a class="btn soft sm" href="#" data-section="${action[r.key]}">View records</a></div>`).join('')}</div></details>`;
 }
@@ -1200,11 +1209,51 @@ async function qPickRecording(t,title,rows,label,save){
  if(!rows.length){toast('Nothing needs updating here in this period.');return;}if(rows.length===1)return save(rows[0]);
  const pick=await qAsk({eyebrow:'Use the existing record',title,primary:'Continue',fields:[{label:'Record *',f:'id',kind:'select',opts:rows.map(r=>[r.id,label(r)]),blank:'Choose record',wide:true}],validate:v=>req(v.id,'Choose the record')});if(pick)return save(rows.find(x=>x.id===pick.values.id));
 }
+/* Coverage is one workspace: update recorded offers or choose a source job. */
+const qCoverageKey=(ref,date)=>String(ref||'').trim().toUpperCase()+'|'+date;
+function qCoverageCandidates(t,logs){
+ const P=qPeriod(qCalcVersion()),items=[],seen=new Set();
+ Q.cov.filter(c=>c.team_id===t.id&&dPT(c.offered_at)>=P.start&&dPT(c.offered_at)<=P.end).forEach(c=>{items.push({id:'offer:'+c.id,offer:c,label:`${c.lead_ref||'Offer'} · ${c.job_date} · already recorded`});seen.add(qCoverageKey(c.lead_ref,c.job_date));});
+ const matches=(r)=>{const date=r.job_date||r.log_date;const names=[t.leader_name,...Q.members.filter(m=>m.team_id===t.id&&m.approval_status==='approved'&&m.active_from<=date&&(!m.active_to||m.active_to>=date)).flatMap(m=>[m.person_name,TECHS.find(x=>x.id===m.technician_id)?.name])].filter(Boolean).map(n=>String(n).trim().toLowerCase());return (r.offered_names||[]).some(n=>names.includes(String(n).trim().toLowerCase()));};
+ (logs||[]).filter(r=>r.log_date>=P.start&&r.log_date<=P.end&&r.lead_ref?.trim()&&matches(r)).sort((a,b)=>String(a.log_date+' '+(a.time_local||'')+' '+a.created_at).localeCompare(String(b.log_date+' '+(b.time_local||'')+' '+b.created_at))).forEach(r=>{const key=qCoverageKey(r.lead_ref,r.job_date||r.log_date);if(seen.has(key))return;const existing=Q.cov.filter(c=>c.team_id===t.id&&qCoverageKey(c.lead_ref,c.job_date)===key);if(existing.length){existing.forEach(c=>items.push({id:'offer:'+c.id,offer:c,label:`${c.lead_ref} · ${c.job_date} · already recorded`}));}else items.push({id:'log:'+r.id,source:r,label:`${r.lead_ref} · ${r.job_date||r.log_date} · Coverage log`});seen.add(key);});
+ Q.appts.filter(a=>a.team_id===t.id&&dPT(a.scheduled_at)>=P.start&&dPT(a.scheduled_at)<=P.end).forEach(a=>{const lead=Q.leads.find(l=>l.id===a.lead_id&&l.team_id===t.id);if(!lead?.lead_ref?.trim())return;const date=dPT(a.scheduled_at),key=qCoverageKey(lead.lead_ref,date);if(seen.has(key))return;const existing=Q.cov.filter(c=>c.team_id===t.id&&qCoverageKey(c.lead_ref,c.job_date)===key);if(existing.length){existing.forEach(c=>items.push({id:'offer:'+c.id,offer:c,label:`${c.lead_ref} · ${c.job_date} · already recorded`}));}else items.push({id:'job:'+a.id,job:{lead_ref:lead.lead_ref,job_date:date,territory:lead.territory,service:lead.service},label:`${lead.lead_ref} · ${date} · existing job`});seen.add(key);});
+ return items;
+}
+async function qChooseCoverageJob(t){
+ const loaded=await qAll(sb,'coverage_log');if(loaded.error){toast(friendlyErr(loaded.error,'coverage_schema.sql'),true);return;}
+ const items=qCoverageCandidates(t,loaded.data);if(!items.length){return qRecordCoverage(t);}
+ const choice=await qAsk({eyebrow:`Coverage · ${t.name}`,title:'Choose the job offered to this team',sub:'Choose a job only if an offer was actually made. Existing offers open for an update; job records and the Coverage log fill the details for a new offer.',primary:'Continue',secondary:'Offer not listed',fields:[{label:'Job / offer *',f:'job',kind:'select',opts:items.map(i=>[i.id,i.label]),blank:'Choose job',wide:true}],validate:(v,secondary)=>secondary?null:req(v.job,'Choose the job, or use Offer not listed')});
+ if(!choice)return;if(choice.secondary)return qRecordCoverage(t);const item=items.find(i=>i.id===choice.values.job);if(!item)return;
+ if(item.offer)return qCoverageResponse(t,item.offer.id);return qRecordCoverage(t,item.source,item.job);
+}
+function qCoverageStatus(c){
+ if(c.response==='pending')return {text:'Waiting for a reply',detail:'Update when the team replies, or record no reply once the deadline passes.',cls:'pending'};
+ if(qContactUnconfirmed(c))return {text:'Accepted · follow-up not confirmed',detail:'Confirm the required customer contact or arrival. Until then, coverage points are unavailable for counted offers.',cls:'pending'};
+ if(c.fulfilled)return {text:'Accepted · follow-up done',detail:'The team accepted and completed the required customer contact or arrival.',cls:'pass'};
+ return {text:({accepted:'Accepted · follow-up not completed',declined:'Declined',no_response:'No reply by the deadline',reassigned:'Given to another team'})[c.response]||'Needs review',detail:c.failure_reason||'This offer has not been fulfilled.',cls:'warn'};
+}
+function qRenderCoverage(t){
+ const c=qCalc(t),P=c?.period||qPeriod(qCalcVersion()),metric=c?.categories.find(r=>r.key==='coverage');
+ const offers=Q.cov.filter(o=>o.team_id===t.id&&dPT(o.offered_at)>=P.start&&dPT(o.offered_at)<=P.end).sort((a,b)=>Number(b.response==='pending'||qContactUnconfirmed(b))-Number(a.response==='pending'||qContactUnconfirmed(a))||String(b.offered_at).localeCompare(String(a.offered_at)));
+ const count=metric?.denominator||0,missing=metric?.diagnostics.contact_confirmation_missing||0,waiting=metric?.diagnostics.pending_response||0,notCounted=offers.length-count;
+ const availability=Q.avail.filter(a=>a.team_id===t.id&&a.avail_date===(Q.end||today()));
+ const latestScopes=new Map();availability.slice().sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))||String(b.created_at).localeCompare(String(a.created_at))||String(b.id).localeCompare(String(a.id))).forEach(a=>{const key=(a.territory||'')+'|'+(a.service||'');if(!latestScopes.has(key))latestScopes.set(key,a);});
+ const availabilityText=availability.length?`${fmtDy(Q.end||today())}: ${[...latestScopes.values()].map(a=>`${a.available?'Available':'Unavailable'} · ${a.territory||'all approved areas'} / ${a.service||'all approved services'}`).join('; ')}.`:`No availability recorded for ${fmtDy(Q.end||today())}.`;
+ const card=o=>{const status=qCoverageStatus(o),included=metric?.included_ids.includes(o.id),excluded=metric?.excluded_ids.includes(o.id);return `<div class="record-task"><span><b>${esc(o.lead_ref||'Offer')} · ${esc(fmtDy(o.job_date))}</b><span class="s">${esc(status.text)} · ${esc(o.territory||'Area missing')} / ${esc(o.service||'Service missing')}</span><span class="s">${included?'Counts in the score':excluded?'Not counted — manager-approved exclusion':'Not counted — '+esc((o.eligibility?.reasons||['Eligibility not confirmed']).join('; '))}</span><span class="s">${esc(status.detail)}</span></span><button class="btn sm ${o.response==='pending'||qContactUnconfirmed(o)?'tint':'soft'}" data-act="covresp" data-id="${esc(o.id)}">Update offer</button></div>`;};
+ return `<a class="backlink" href="#" data-section="">‹ ${esc(t.name)}</a><div class="thead"><div><h1 class="pt">Coverage</h1><div class="sub2">${esc(t.name)} · Offers sent ${fmtD(P.start)} – ${fmtD(P.end)}</div></div><button class="btn" data-record="coverage_new">Choose job / offer</button></div>
+ <div class="card pad"><h2>Did the team take the work and follow through?</h2><p>Record each actual job offer to this team. Choose an existing job or Coverage log entry, record the team’s reply, then confirm the required customer contact or arrival. A recorded job assignment helps fill the details; it does not confirm the reply or follow-up.</p>
+ <div class="record-task"><span><b>Before offering work: record availability</b><span class="s">${esc(availabilityText)} The team must be available for the job date, area and service before the offer is sent. Recording it later does not change old offers.</span></span><button class="btn soft sm" data-record="availability">${availability.length?'Change availability':'Record availability'}</button></div></div>
+ <div class="card pad"><h2>Coverage score · ${count?missing?'Needs follow-up confirmation':pct(metric?.value):'No counted offers yet'}</h2><p>${count?`${metric.numerator} fulfilled / ${count} counted offer${count===1?'':'s'}. ${waiting?`${waiting} waiting for a reply; ${waiting===1?'it counts':'they count'} as unfulfilled until updated. `:''}${missing?`${missing} accepted offer${missing===1?' needs':'s need'} follow-up confirmation before points can be calculated. `:''}`:'There is nothing to calculate yet. Only offers made after recorded availability, inside the team’s approved area and service, count.'}${notCounted?` ${notCounted} recorded offer${notCounted===1?' does':'s do'} not count; each row explains why.`:''}</p><p class="sub2">Fulfilled means accepted + required customer contact or arrival completed. Job completion is recorded separately under Work and costs.</p></div>
+ <div class="thead"><h2>Recorded offers · ${offers.length}</h2></div>${offers.length?`<div class="card list">${offers.map(card).join('')}</div>`:'<div class="card empty">No offers recorded in this period. Start with Choose job / offer. If no work was offered, there is nothing to enter.</div>'}
+ <details class="qual-details"><summary>Offer missing from your records?</summary><div class="card pad"><p>Use manual entry only for an actual offer that is not in the job records or Coverage log.</p><button class="btn soft" data-record="coverage_manual">Enter an unlisted offer</button></div></details>`;
+}
 $('#qBody').addEventListener('click',async e=>{
  const button=e.target.closest('[data-record]');if(!button)return;const t=qTeam(Q.sel),n=qRecordingNeeds(t,qCalc(t)),key=button.dataset.record;
  if(key==='availability')return qRecordAvailability(t);
  if(key==='coverage_log')return qImportCoverage(t);
- if(key==='coverage')return n.offers.length?qPickRecording(t,'Update coverage response',n.offers,r=>`${r.lead_ref||'Offer'} · ${r.job_date}`,r=>qCoverageResponse(t,r.id)):qRecordCoverage(t);
+ if(key==='coverage'){Q.section='cov';qRenderTeam();window.scrollTo(0,0);return;}
+ if(key==='coverage_new')return qChooseCoverageJob(t);
+ if(key==='coverage_manual')return qRecordCoverage(t);
  if(key==='quality')return qAddSheet('quality',t);
  if(key==='supervision')return qRecordSupervision(t);
  if(key==='check')return n.checks.length?qPickRecording(t,'Update missing check',n.checks,r=>r.requirement,r=>qAddCheck(t,null,r.id)):qAddCheck(t);
@@ -1304,6 +1353,7 @@ function qRows(key,t){
   return [];
 }
 function qRenderSection(t,key){
+  if(key==='cov')return qRenderCoverage(t);
   const s=SECTIONS.find(x=>x.key===key);if(!s)return '';
   const rows=qRows(key,t);const V=qCalcVersion();
   const showAdd=s.add&&(!s.mgrOnly||isMgr());
@@ -1686,7 +1736,7 @@ function qRenderSop(){
 
   ${sec(8,'Coverage offers and availability',card(`<p>The same work you already do under the coverage SOP (ADC-DSR-001), seen from the team's side. Two rules make it fair:</p>
     <ol><li><b>Availability first.</b> <b>Records → Availability</b> → ${ui('+ Availability')} for the dates the team told you it works — <em>before</em> you offer jobs. An offer on a date with no declared availability is <b>not eligible</b>: it never counts against the team, and never for it.</li>
-    <li><b>Every offer is a record.</b> On Friday press ${ui('Import from Coverage log')} (it pulls the offers you logged on the board's Coverage tab and skips ones already imported), or add one with ${ui('+ Offer')}. Then ${ui('Response…')} on each row: accepted / declined / no response / reassigned, whether the team met its contact-or-arrival obligation, and the reason if it did not accept. An offer left <span class="pill pending">pending</span> counts as unfulfilled.</li></ol>
+    <li><b>Every offer is a record.</b> Open ${ui('Manage coverage')} → ${ui('Choose job / offer')}. Select an existing job or Coverage log entry; recorded offers open for update. Use ${ui('Enter an unlisted offer')} only when the actual offer is missing from those records. Then ${ui('Update offer')} on each row: accepted / declined / no response / reassigned, whether the team met its contact-or-arrival obligation, and the reason if it did not accept. An offer left <span class="pill pending">pending</span> counts as unfulfilled.</li></ol>
     <p>Once an offer references a date, that day's availability row is <b>locked</b>. If the team later says it was unavailable, add a new row with the reason — the manager approves it — and the offer keeps the eligibility it had. Nobody can make a declined job disappear by editing availability afterwards.</p>`))}
 
   ${sec(9,'Quality events',card(`<p>Complaint, callback, refund, damage, corrective work or other — record it on the job (${ui('+ Quality event')}) or under <b>Records → Quality events</b> the day you learn of it: type, severity (low / medium / <b>severe</b>), cost if any, who is responsible, and the evidence (ticket, call, photos). Leave <b>substantiation</b> alone — the manager rules on it; until then it counts neither for nor against. A <b>severe</b> open event blocks any Pass by itself, so report it the same day.</p>
@@ -1698,7 +1748,7 @@ function qRenderSop(){
     <p><b>Incidents:</b> if you suspect a critical event — unsafe work, payment mishandling, unauthorised pricing or job start, license/insurance failure, abandoning a job, severe harm — record it under <b>Records → Incidents and restrictions</b> → ${ui('+ Incident')} <em>and tell the manager immediately</em>. You are flagging, not judging.</p>
     <p><b>Exclusions:</b> ${ui('Exclude…')} on a lead or job creates a request with category and reason. It changes nothing until approved. Never delete or overwrite a record to make a rate look better — request the exclusion instead.</p>`))}
 
-  ${sec(12,'Weekly routine (Friday, 30 minutes)',card(`<ol><li>Each team → <b>Records → Coverage offers</b> → ${ui('Import from Coverage log')}; record responses on every pending offer.</li>
+  ${sec(12,'Weekly routine (Friday, 30 minutes)',card(`<ol><li>Each team → ${ui('Manage coverage')}; use ${ui('Choose job / offer')} and update recorded offers awaiting a reply or follow-up confirmation.</li>
     <li>Each team → <b>Today · guided entry</b> → clear "Continue where you left off".</li>
     <li>${ui('Queues')} → <b>Missing or conflicting data preventing a decision</b>: fix each item (missing outcome, missing evidence, unknown cost). What you cannot fix, write in the weekly review note.</li>
     <li>Each team → <b>Records → Weekly reviews</b> → ${ui('+ Review')}: kind <b>weekly</b>, who was present, observations, actions.</li>
