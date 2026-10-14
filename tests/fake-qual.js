@@ -112,7 +112,7 @@ function makeFake(db){
   const auth={getSession:async()=>({data:{session:S},error:null}),onAuthStateChange(cb){listeners.push(cb);return {data:{subscription:{unsubscribe(){listeners=listeners.filter(x=>x!==cb);}}}};},
     signInWithOtp:async({email:e})=>{db.__otp=e;return {data:{},error:null};},signOut:async()=>{S=null;listeners.forEach(cb=>cb('SIGNED_OUT',null));return {error:null};},
     __set(session){S=session;listeners.forEach(cb=>cb(session?'SIGNED_IN':'SIGNED_OUT',session));}};
-  async function rpc(name){if(name==='bridge_role')return {data:roleOf(),error:null};if(name==='is_bridge_member')return {data:!!roleOf(),error:null};if(name==='qual_is_manager')return {data:isMgr(),error:null};return ERR('unknown rpc '+name);}
+  async function rpc(name,args={}){if(name==='qual_record_coverage_offer'){const r=await new Qb('qual_coverage_events').insert({...args.p_values,team_id:args.p_team,coverage_log_id:args.p_source||null});return {...r,data:r.data?.[0]||null};}if(name==='bridge_role')return {data:roleOf(),error:null};if(name==='is_bridge_member')return {data:!!roleOf(),error:null};if(name==='qual_is_manager')return {data:isMgr(),error:null};return ERR('unknown rpc '+name);}
   return {from:t=>new Qb(t),auth,rpc,__db:db};
 }
 root.__makeFakeQual=makeFake;

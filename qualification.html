@@ -405,6 +405,8 @@ textarea.in{resize:vertical;min-height:70px}
 .simple-team{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:16px;align-items:center}
 @media(min-width:1200px){.simple-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:700px){.simple-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.linked-row,.simple-team{grid-template-columns:1fr}.report-status{display:block}.linked-row .acts{justify-content:flex-start}.qual-details{padding:12px}}
+
+.record-task{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 20px;border-bottom:1px solid var(--line)}.record-task:last-child{border-bottom:0}.record-task>span{min-width:0}.record-task .s{display:block;color:var(--ink2);font-size:13px;line-height:1.6;margin-top:4px}.record-task .btn{flex-shrink:0}.record-guide{margin:22px 0}@media(max-width:650px){.record-task{align-items:flex-start;flex-direction:column;gap:10px}}
 </style>
 </head>
 <body>
@@ -446,7 +448,7 @@ textarea.in{resize:vertical;min-height:70px}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word">build 2026-10-14b</div>
+    <div class="sb-word">build 2026-10-14c</div>
   </div>
 </aside>
 <div class="content">
@@ -615,7 +617,7 @@ function qualMargin(job,rules){
    input = {team, version, period:{start,end}, now, data:{members,avail,leads,ests,appts,jobs,resched,cov,qe,cc,ex,sup,inc,res,snaps,dec}}
    Every rate returns numerator, denominator, n, excluded, missing and the source ids behind it (brief §4.3, §16.16). */
 function qualCompute(input){
-  const {team,version:V}=input; const P=input.period; const now=input.now||new Date().toISOString(); const today=dPT(now);
+  const {team,version:V}=input; const P=input.period; const now=input.now||new Date().toISOString(); const today=dPT(now); const asOf=P.end<today?P.end:today;
   const D=input.data||{}; const tid=team.id; const of=a=>(a||[]).filter(r=>r.team_id===tid);
   const members=of(D.members),leads=of(D.leads),appts=of(D.appts),jobs=of(D.jobs),cov=of(D.cov),qe=of(D.qe),cc=of(D.cc),ex=of(D.ex),sup=of(D.sup),inc=of(D.inc),res=of(D.res);
   const ests=(D.ests||[]).filter(e=>leads.some(l=>l.id===e.lead_id));
@@ -650,7 +652,7 @@ function qualCompute(input){
   {
     const inc_=[],exc_=[],pend=[];let won=0;
     cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}
-      if(l.status==='pending'){const age=daysBetween(dPT(l.assigned_at),today);if(decAge!=null&&age>=Number(decAge)){inc_.push(l.id);}else pend.push(l.id);return;}
+      if(l.status==='pending'){const age=daysBetween(dPT(l.assigned_at),asOf);if(decAge!=null&&age>=Number(decAge)){inc_.push(l.id);}else pend.push(l.id);return;}
       inc_.push(l.id);if(l.status==='won')won++;});
     const estN=cohort.filter(l=>!isEx('qual_leads',l.id)&&(ests.some(e=>e.lead_id===l.id)||!['pending','cancelled'].includes(l.status))).length;
     mk('sales',{numerator:won,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length?won*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
@@ -678,10 +680,10 @@ function qualCompute(input){
   {
     const inP_=cov.filter(c=>inP(c.offered_at));const inc_=[],exc_=[],inel=[];let ful=0;const fail={};
     inP_.forEach(c=>{if(isEx('qual_coverage_events',c.id)){exc_.push(c.id);return;}if(!c.eligible){inel.push(c.id);return;}inc_.push(c.id);if(c.fulfilled)ful++;else fail[c.response||'pending']=(fail[c.response||'pending']||0)+1;});
-    const pendingResp=inP_.filter(c=>c.eligible&&c.response==='pending').length;
-    mk('coverage',{numerator:ful,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing:pendingResp,value:inc_.length?ful*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
-      diagnostics:{ineligible_offers:inel.length,ineligible_ids:inel,failures_by_response:fail,pending_response:pendingResp},
-      notes:pendingResp?[`${pendingResp} offer(s) still without a response count as unfulfilled until recorded`]:[]});
+    const scored=inP_.filter(c=>inc_.includes(c.id));const pendingResp=scored.filter(c=>c.response==='pending').length;const contactMissing=scored.filter(c=>c.response==='accepted'&&c.contact_met==null).length;
+    mk('coverage',{numerator:ful,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing:pendingResp+contactMissing,complete:contactMissing===0,allow_points:contactMissing===0,value:inc_.length&&!contactMissing?ful*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{ineligible_offers:inel.length,ineligible_ids:inel,failures_by_response:fail,pending_response:pendingResp,contact_confirmation_missing:contactMissing},
+      notes:[...(contactMissing?[`${contactMissing} accepted offer(s) need contact/arrival confirmation — coverage points withheld`]:[]),...(pendingResp?[`${pendingResp} offer(s) still without a response count as unfulfilled until recorded`]:[])]});
   }
   /* 4 · Attendance — documented reschedules/cancellations excluded with their reason; unexplained no-shows cap the band */
   {
@@ -689,11 +691,11 @@ function qualCompute(input){
     const inP_=appts.filter(a=>inP(a.scheduled_at));const inc_=[],exc_=[];let ontime=0,late=0,noshow=0,unexpl=0,missing=0;const exReasons=[];
     inP_.forEach(a=>{if(isEx('qual_appointments',a.id)||['customer_reschedule','company_cancel','force_majeure'].includes(a.outcome)){exc_.push(a.id);if(a.reason)exReasons.push(a.reason);return;}
       if(a.outcome==='visited'||a.outcome==='cancelled'||a.outcome==='rescheduled'){inc_.push(a.id);missing++;return;}
-      if(a.outcome==='scheduled'){if(dPT(a.scheduled_at)<today){inc_.push(a.id);missing++;}return;}
+      if(a.outcome==='scheduled'){const due=dPT(a.scheduled_at)<asOf||(dPT(a.scheduled_at)===asOf&&(asOf<today||(a.schedule_time_known!==false&&new Date(a.scheduled_at)<=new Date(now))));if(due){inc_.push(a.id);missing++;}return;}
       inc_.push(a.id);let o=a.outcome;
       if(o==='attended'&&grace!=null&&a.arrival_at){const lateBy=(new Date(a.arrival_at)-new Date(a.scheduled_at))/60000;if(lateBy>Number(grace))o='late';}
       if(o==='attended')ontime++;else if(o==='late')late++;else if(o==='no_show'){noshow++;if(!String(a.reason||'').trim())unexpl++;}});
-    const unclassified=inc_.filter(id=>{const a=inP_.find(x=>x.id===id);return ['visited','cancelled','rescheduled'].includes(a.outcome)||(a.schedule_time_known===false&&a.outcome==='scheduled');}).length;
+    const unclassified=inc_.filter(id=>{const a=inP_.find(x=>x.id===id);return ['visited','cancelled','rescheduled'].includes(a.outcome)||(a.schedule_time_known===false&&['scheduled','attended','late'].includes(a.outcome));}).length;
     mk('attendance',{allow_points:unclassified===0,complete:unclassified===0,numerator:ontime,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing,value:inc_.length&&!unclassified?ontime*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,cap:unexpl?70:null,
       diagnostics:{unclassified_visits:unclassified,late,no_show:noshow,unexplained_no_show:unexpl,outcome_missing:missing,grace_minutes:grace??null,grace_status:cfgstat(V.windows?.on_time_grace_minutes),exclusion_reasons:exReasons},
       notes:[...(unclassified?[`${unclassified} visit(s) need classification or scheduled time — attendance points withheld`]:[]),...(grace==null?['on-time grace window unresolved (§18.6) — the dispatcher\'s attended/late marking is used as recorded']:[]),...(unexpl?[`${unexpl} unexplained no-show(s) — passing standard not met, band capped at 70`]:[]),...(missing?[`${missing} past appointment(s) without a recorded outcome count as not attended`]:[])]});
@@ -718,12 +720,13 @@ function qualCompute(input){
     const qStart=win!=null?addDaysIso(P.start,-Number(win)):P.start;
     const done=jobs.filter(j=>!j.cancelled&&j.completed_at&&dPT(j.completed_at)>=qStart&&dPT(j.completed_at)<=P.end);const inc_=[],exc_=[],immature=[];let issueJobs=0,events=0,cost=0,openEv=0;
     done.forEach(j=>{if(isEx('qual_jobs',j.id)){exc_.push(j.id);return;}
-      const mature=win!=null&&daysBetween(dPT(j.completed_at),today)>=Number(win);if(!mature){immature.push(j.id);return;}inc_.push(j.id);
-      const evs=qe.filter(e=>e.job_id===j.id&&!isEx('qual_quality_events',e.id));if(evs.some(e=>e.substantiation==='substantiated'))issueJobs++;});
+      const mature=win!=null&&daysBetween(dPT(j.completed_at),asOf)>=Number(win);if(!mature){immature.push(j.id);return;}inc_.push(j.id);
+      const evs=qe.filter(e=>e.job_id===j.id&&dPT(e.opened_at||now)<=asOf&&!isEx('qual_quality_events',e.id));if(evs.some(e=>e.substantiation==='substantiated'))issueJobs++;});
     qe.forEach(e=>{events++;cost+=Number(e.cost_cents||0);if(e.status==='open')openEv++;});
-    mk('quality',{numerator:issueJobs,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length?issueJobs*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
+    const pendingQuality=qe.filter(e=>inc_.includes(e.job_id)&&e.substantiation==='pending'&&dPT(e.opened_at||now)<=asOf&&!isEx('qual_quality_events',e.id)).length;
+    mk('quality',{missing:pendingQuality,complete:pendingQuality===0,allow_points:pendingQuality===0,numerator:issueJobs,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length&&!pendingQuality?issueJobs*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
       diagnostics:{cohort_start:qStart,immature_jobs:immature.length,immature_ids:immature,observation_days:win??null,observation_status:cfgstat(V.windows?.quality_observation_days),events_total:events,events_open:openEv,events_cost_cents:cost,severe_unresolved:severeOpen.length,pending_substantiation:qe.filter(e=>e.substantiation==='pending').length},
-      notes:[...(win==null?['observation window unresolved (§18.5) — every completed job is shown as immature']:[]),...(immature.length?[`${immature.length} job(s) still inside the ${win??'?'}-day window — immature, not issue-free`]:[]),...(inc_.length&&!issueJobs?['provisional: a low-volume clean result does not establish stable quality']:[])]});
+      notes:[...(pendingQuality?[`${pendingQuality} issue(s) on mature jobs await a manager ruling — quality points withheld`]:[]),...(win==null?['observation window unresolved (§18.5) — every completed job is shown as immature']:[]),...(immature.length?[`${immature.length} job(s) still inside the ${win??'?'}-day window — immature, not issue-free`]:[]),...(inc_.length&&!issueJobs?['provisional: a low-volume clean result does not establish stable quality']:[])]});
   }
   /* 7 · Compliance — missing is not a pass; any critical failure is the 0-point band and a failed gate */
   const ccP=cc.filter(c=>inP(c.checked_at)&&!isEx('qual_compliance_checks',c.id));
@@ -763,7 +766,7 @@ function qualCompute(input){
   const E=V.evidence||{};const minEst=Number(E.min_qualified_estimates??10),minJobs=Number(E.min_completed_jobs??5),minSup=Number(E.supervised_jobs??3);
   const completedN=jobs.filter(j=>!j.cancelled&&!isEx('qual_jobs',j.id)&&j.completed_at&&inP(j.completed_at)).length;
   const estN=cats.find(c=>c.key==='sales').diagnostics.qualified_estimates;
-  const supOk=sup.filter(s=>s.reviewed_at&&s.result&&s.result!=='unsatisfactory').length;
+  const supOk=new Set(sup.filter(s=>s.job_id&&jobs.some(j=>j.id===s.job_id)&&s.observed_at<=asOf&&s.reviewed_at&&s.result&&s.result!=='unsatisfactory').map(s=>s.job_id)).size;
   const needsTrial=team.team_type!=='incumbent';
   const critEvidence=ccP.some(c=>c.critical);
   const evReasons=[];let evidence_state;
@@ -910,7 +913,7 @@ async function qRoute(){
   $('#qWho').textContent=`${(Q.email||'').split('@')[0]} · ${Q.role}`;$('#qWho').title=`${Q.email} · ${Q.role}`;
   const m=/[?&]team=([^&]+)/.exec(location.search);if(m){Q.sel=decodeURIComponent(m[1]);Q.tab='qteam';}
   if(/[?&](code|team)=/.test(location.search))history.replaceState(null,'',location.pathname);
-  if(await qLoad())showQualTab(Q.tab);
+  if(await qLoad()){const requested=new URLSearchParams(location.search).get('technician');if(requested){const name=requested.trim().toLowerCase(),teams=Q.teams.filter(t=>!['inactive','disqualified'].includes(t.status)&&(String(t.leader_name||'').trim().toLowerCase()===name||Q.members.some(m=>m.team_id===t.id&&m.approval_status==='approved'&&!m.active_to&&String(m.person_name||'').trim().toLowerCase()===name)));if(teams.length===1){Q.sel=teams[0].id;Q.tab='qteam';}else{Q.tab='qover';toast(teams.length?'More than one team matches. Choose the correct team.':'No confirmed team matches this technician. The manager can check its roster.');}history.replaceState(null,'',location.pathname);}showQualTab(Q.tab);}
 }
 $('#qSend').addEventListener('click',async()=>{
   const email=$('#qEmail').value.trim();if(!email||!email.includes('@')){toast('Enter your work email',true);return;}
@@ -974,6 +977,7 @@ function qAsk(o){
       if(e.target===back||e.target.closest('#qSheetX,#qSheetCancel')){done(null);return;}
       const sec=e.target.closest('#qSheetSecondary'),pri=e.target.closest('#qSheetPrimary');if(!sec&&!pri)return;
       const values=readForm($('#qSheet'));
+      const badTime=$$('[data-t="ts"]',$('#qSheet')).find(i=>i.value&&!ptToIso(i.value));if(badTime){const typed=badTime.value;badTime.type='text';badTime.value=typed;badTime.placeholder='Pacific date/time or ISO timestamp with UTC offset';$('#qSheetNote').textContent='Enter a valid Pacific time. During the repeated daylight-saving hour, use an explicit UTC offset.';$('#qSheetNote').className='snote bad';return;}
       const badMoney=$$('[data-t="cents"]',$('#qSheet')).find(i=>i.value.trim()!==''&&(toC(i.value)==null||toC(i.value)<0));
       if(badMoney){const n=$('#qSheetNote');n.textContent='Enter a valid nonnegative money amount.';n.className='snote bad';return;}
       if(o.validate){const err=o.validate(values);if(err){const n=$('#qSheetNote');n.textContent=err;n.className='snote bad';return;}}
@@ -985,9 +989,14 @@ function readForm(root){const o={};$$('[data-f]',root).forEach(i=>{const k=i.dat
   if(t==='cents')v=toC(v);else if(t==='int')v=v===''?null:Number(v);else if(t==='num')v=v===''?null:Number(v);else if(t==='arr')v=String(v).split(',').map(s=>s.trim()).filter(Boolean);else if(t==='ts')v=v?ptToIso(v):null;else if(t==='date')v=v||null;else if(t==='bool')v=v===true||v==='true';else if(t==='nullbool')v=v===''?null:v==='true';else if(typeof v==='string'){v=v.trim();if(v==='')v=null;}
   o[k]=v;});return o;}
 /* a datetime-local value typed on this page is Pacific time, whatever the machine's zone (Tom's runs Tbilisi) */
-function ptToIso(local){if(!local)return null;if(/Z$|[+-]\d{2}:\d{2}$/.test(local))return new Date(local).toISOString();const asUtc=new Date(local+(local.length===16?':00':'')+'Z');if(isNaN(asUtc))return null;
-  const off=new Date(asUtc.toLocaleString('en-US',{timeZone:PST_TZ})).getTime()-new Date(asUtc.toLocaleString('en-US',{timeZone:'UTC'})).getTime();return new Date(asUtc.getTime()-off).toISOString();}
-const dtLocal=(ts,secs)=>{const d=ts?new Date(ts):new Date();const p=n=>String(n).padStart(2,'0');const l=new Date(d.toLocaleString('en-US',{timeZone:PST_TZ}));return `${l.getFullYear()}-${p(l.getMonth()+1)}-${p(l.getDate())}T${p(l.getHours())}:${p(l.getMinutes())}${secs?':'+p(l.getSeconds()):''}`;};
+function ptToIso(local){
+ if(!local)return null;if(/Z$|[+-]\d{2}:\d{2}$/.test(local)){const d=new Date(local);return isNaN(d)?null:d.toISOString();}
+ const value=local.length===16?local+':00':local;if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?$/.test(value))return null;
+ const base=new Date(value+'Z');if(isNaN(base))return null;
+ const format=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:PST_TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;};
+ const matches=[7,8].map(h=>new Date(base.getTime()+h*3600000)).filter(d=>format(d)===value.slice(0,19));return matches.length===1?matches[0].toISOString():null;
+}
+const dtLocal=(ts,secs)=>{const d=ts?new Date(ts):new Date();const p=n=>String(n).padStart(2,'0');const l=new Date(d.toLocaleString('en-US',{timeZone:PST_TZ}));return `${l.getFullYear()}-${p(l.getMonth()+1)}-${p(l.getDate())}T${p(l.getHours())}:${p(l.getMinutes())}${secs?':'+p(l.getSeconds())+'.'+String(d.getMilliseconds()).padStart(3,'0'):''}`;};
 const req=(v,msg)=>(v==null||v===''||(Array.isArray(v)&&!v.length))?msg:null;
 
 /* ---------- blockers (§15.12, §18) ---------- */
@@ -1106,6 +1115,99 @@ function qSectionCount(key,t){
   }
   return {text:''};
 }
+/* Daily recording uses the existing job and evidence records; scores are calculated. */
+function qCoverageFields(t,source){
+ const time=source&&/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(source.time_local||'');
+ const stamp=time?`${source.log_date}T${time[1].padStart(2,'0')}:${time[2]}:${time[3]||'00'}`:source?'':dtLocal(null,true);
+ return [{label:'Job reference *',f:'lead_ref',value:source?.lead_ref||'',ph:'Same reference as Job Assignment'},
+ {label:'Job date *',f:'job_date',t:'date',type:'date',value:source?.job_date||source?.log_date||Q.end||today()},
+ {label:'Offer sent (Pacific) *',f:'offered_at',t:'ts',type:'datetime-local',value:stamp,step:'0.001',hint:'Actual offer time. Availability must have been recorded before it.'},
+ {label:'Territory *',f:'territory',kind:'select',opts:terrList(),blank:'Choose territory',value:source?.area||(t.territories?.length===1?t.territories[0]:'')},
+ {label:'Service *',f:'service',kind:'select',opts:svcList,blank:'Choose service',value:t.services?.length===1?t.services[0]:''},
+ {label:'Team response *',f:'response',kind:'select',opts:[['pending','Awaiting response'],['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned to another team']],value:'pending',wide:true},
+ {label:'Required contact / arrival completed?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Not confirmed'],['true','Yes'],['false','No']],value:'',hint:'Acceptance alone does not confirm that the obligation was met.',wide:true},
+ {label:'Reason (required for decline, no response or reassignment)',f:'failure_reason',kind:'area',wide:true}];
+}
+function qCoverageValidation(v){return req(v.lead_ref,'Enter the job reference')||req(v.job_date,'Choose the job date')||req(v.offered_at,'Enter the actual Pacific offer time')||req(v.territory,'Choose the territory')||req(v.service,'Choose the service')||(['declined','no_response','reassigned'].includes(v.response)?req(v.failure_reason,'Record the response reason'):null);}
+async function qRecordCoverage(t,source){
+ const r=await qAsk({eyebrow:'Coverage · offered jobs only',title:source?'Reuse recorded coverage offer':'Record offer',sub:'1. Declare availability before offering work. 2. Record the offer and response. 3. Confirm contact/arrival when known. Eligibility is fixed at the offer time; pending responses remain unfulfilled.',primary:'Save offer',fields:qCoverageFields(t,source),validate:qCoverageValidation});if(!r)return;
+ const result=await sbb.rpc('qual_record_coverage_offer',{p_team:t.id,p_source:source?.id||null,p_values:r.values});if(result.error){toast(qErr(result.error),true);return;}await qReload();toast('Offer saved once; update its response when needed');
+}
+async function qCoverageResponse(t,id){
+ const c=Q.cov.find(x=>x.id===id);if(!c)return;
+ const r=await qAsk({eyebrow:'Coverage response',title:c.lead_ref||'Update offer',sub:`${fmtDy(c.job_date)} · ${c.eligible?'Counts in coverage':'Outside the scored offers: '+(c.eligibility?.reasons||[]).join('; ')}. This updates the existing offer.`,primary:'Save response',fields:[
+ {label:'Team response *',f:'response',kind:'select',opts:[['pending','Awaiting response'],['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned to another team']],value:c.response,wide:true},
+ {label:'Required contact / arrival completed?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Not confirmed'],['true','Yes'],['false','No']],value:c.contact_met==null?'':String(c.contact_met),wide:true},
+ {label:'Reason (decline / no response / reassignment)',f:'failure_reason',kind:'area',value:c.failure_reason||'',wide:true}],validate:v=>['declined','no_response','reassigned'].includes(v.response)?req(v.failure_reason,'Record the reason'):null});if(!r)return;
+ await qWrite('qual_coverage_events','update',r.values,id,'Response updated');
+}
+async function qRecordAvailability(t){
+ const date=Q.end||today(),have=Q.avail.filter(a=>a.team_id===t.id&&a.avail_date===date).sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at)));const last=have[0];
+ const r=await qAsk({eyebrow:'Before offering work',title:'Declare availability',sub:'Record the day the team is available. Later declarations cannot change the eligibility of offers already made. After offers exist, a manager must record corrections with a reason.',primary:'Save availability',fields:[
+ {label:'Date *',f:'avail_date',t:'date',type:'date',value:date},
+ {label:'Available for offers?',f:'available',t:'bool',kind:'seg',segs:[['true','Available'],['false','Unavailable']],value:String(last?.available??true)},
+ {label:'Territory',f:'territory',kind:'select',opts:t.territories||[],blank:'All approved territories',value:last?.territory||''},
+ {label:'Service',f:'service',kind:'select',opts:t.services||[],blank:'All approved services',value:last?.service||''},
+ {label:'Working hours (optional)',f:'windows',value:last?.windows||'',ph:'8:00–17:00 Pacific'},
+ {label:'Change reason (if a correction)',f:'change_reason',kind:'area',wide:true}],validate:v=>req(v.avail_date,'Choose the date')||(Q.cov.some(c=>c.team_id===t.id&&c.job_date===v.avail_date)?!isMgr()?'A manager must record availability changes after offers exist':req(v.change_reason,'Record the correction reason'):null)});
+ if(!r)return;await qWrite('qual_availability','insert',{...r.values,team_id:t.id},null,'Availability recorded');
+}
+async function qRecordSupervision(t){
+ const r=await qAsk({eyebrow:'Supervised jobs',title:'Record supervised job',sub:'Choose the real job once and add what the observer saw. The manager signs it off. Multiple observations on one job count as one supervised job.',primary:'Save observation',fields:[
+ {label:'Job *',f:'job_id',kind:'select',opts:jobOpts(t),blank:'Choose job',wide:true},
+ {label:'Observed on *',f:'observed_at',t:'date',type:'date',value:Q.end||today()},
+ {label:'Observer *',f:'observer'},
+ {label:'Observation / feedback *',f:'observation',kind:'area',ph:'Sales handling, workmanship, customer interaction, documentation and safety',wide:true},
+ {label:'Observed result',f:'result',kind:'select',opts:[['satisfactory','Satisfactory'],['needs_correction','Needs correction'],['unsatisfactory','Unsatisfactory']],blank:'Awaiting manager review',wide:true}],validate:v=>req(v.job_id,'Choose the observed job')||req(v.observed_at,'Choose the observation date')||req(v.observer,'Name the observer')||req(v.observation,'Record what was observed')||(v.observed_at>today()?'Observation cannot be in the future':null)});
+ if(!r)return;const v=r.values;await qWrite('qual_supervised_jobs','insert',{team_id:t.id,job_id:v.job_id,observed_at:v.observed_at,observer:v.observer,result:v.result,notes:{observation:v.observation}},null,'Observation saved; manager sign-off is still required');
+}
+function qRecordingNeeds(t,c){
+ const P=c?.period||qPeriod(qCalcVersion()),within=stamp=>dPT(stamp)>=P.start&&dPT(stamp)<=P.end;
+ const appointments=Q.appts.filter(a=>a.team_id===t.id&&within(a.scheduled_at)&&(['visited','cancelled','rescheduled'].includes(a.outcome)||(a.schedule_time_known===false&&['attended','late'].includes(a.outcome))||(a.outcome==='scheduled'&&dPT(a.scheduled_at)<today())));
+ const offers=Q.cov.filter(o=>o.team_id===t.id&&within(o.offered_at)&&(o.response==='pending'||(o.response==='accepted'&&o.contact_met==null)));
+ const work=Q.jobs.filter(j=>j.team_id===t.id&&!j.cancelled&&j.current_promise_date<=P.end&&j.current_promise_date>=P.start&&(!j.completed_at||!j.completion_evidence));
+ const costs=Q.jobs.filter(j=>j.team_id===t.id&&!j.cancelled&&(!j.costs?.length||j.costs.some(x=>x.status==='unknown'||x.amount_cents==null||(j.completed_at&&x.status!=='actual'))));
+ const checks=Q.cc.filter(x=>x.team_id===t.id&&within(x.checked_at)&&x.result==='missing');
+ const quality=Q.qe.filter(x=>x.team_id===t.id&&x.substantiation==='pending');
+ const observations=Q.sup.filter(x=>x.team_id===t.id&&!x.reviewed_at);
+ return {appointments,offers,work,costs,checks,quality,observations};
+}
+function qRecordingGuide(t,c){
+ const n=qRecordingNeeds(t,c),date=Q.end||today();const declarations=Q.avail.filter(a=>a.team_id===t.id&&a.avail_date===date).sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))),declared=declarations.length,last=declarations[0];
+ const row=(title,detail,button,action,count)=>`<div class="record-task"><span><b>${esc(title)}</b><span class="s">${esc(detail)}</span></span><button class="btn sm ${count?'tint':'soft'}" data-record="${action}">${esc(button)}</button></div>`;
+ return `<section class="record-guide" aria-label="What needs recording"><div class="thead"><div><h2>What needs recording</h2><div class="sub2">${fmtDy(date)} · Enter facts here; the score calculates automatically. Fields marked * are required.</div></div></div><div class="card list">
+ ${row('1. Availability',declared?`Latest declaration: ${last.available?'Available':'Unavailable'} · ${last.territory||'all approved territories'} / ${last.service||'all approved services'}. Record only a change.`:'Record availability before offering work. This step determines whether offers count.',declared?'Change availability':'Declare availability','availability',!declared)}
+ ${row('2. Coverage',n.offers.length?`${n.offers.length} offer(s) need a response or contact confirmation.`:'Record only offers made to this team. Acceptance and contact/arrival are separate facts.',n.offers.length?'Update offers':'Record offer','coverage',n.offers.length)}
+ <div class="record-task"><span class="sub2">Already in the Coverage log? Reuse that record instead of entering the reference and date again.</span><button class="btn soft sm" data-record="coverage_log">Reuse Coverage log</button></div>
+ ${row('3. Attendance',n.appointments.length?`${n.appointments.length} visit(s) need an outcome or scheduled time.`:'Update the actual visit outcome and arrival details when known.','Record attendance','attendance',n.appointments.length)}
+ ${row('4. Work and costs',`${n.work.length} due job(s) need completion or evidence · ${n.costs.length} job(s) need costs. Existing jobs are reused.`,'Review work','work',n.work.length+n.costs.length)}
+ ${row('5. Required checks',`${n.checks.length} recorded check(s) need evidence.${c&&!c.evidence.progress.critical_evidence?' No critical check has been recorded for this period.':''}`,'Record / update check','check',n.checks.length)}
+ ${row('6. Customer issues','Record a complaint, callback, refund or damage only when it happens. Observation periods and the quality rate calculate automatically.','Record issue','quality',0)}
+ ${c?.evidence.progress.supervised.required?row('7. Supervised jobs',`${c.evidence.progress.supervised.done} of ${c.evidence.progress.supervised.min} distinct jobs signed off · ${n.observations.length} observation(s) awaiting manager review.`,'Record observation','supervision',c.evidence.progress.supervised.done<c.evidence.progress.supervised.min):''}
+ </div><details class="qual-details" data-detail="manager"${Q._open.manager?' open':''}><summary>${isMgr()?'Manager review':'Awaiting manager'} · ${n.quality.length+n.observations.length} issue / observation review(s)</summary><div class="card list">${['roster','sup','quality','inc','excl','dec'].map(key=>{const sec=SECTIONS.find(s=>s.key===key);return `<a class="row seclist" href="#" data-section="${key}">${esc(sec.title)}<span class="chev">›</span></a>`;}).join('')}</div></details></section>`;
+}
+function qSimpleScores(c){
+ if(!c)return '';
+ const text={sales:'Sales ÷ decided leads. Pending decisions are shown separately.',revenue:'Revenue ÷ assigned leads, compared with the approved baseline.',coverage:'Eligible offers accepted with required contact/arrival completed ÷ eligible offers. Availability must be declared first.',attendance:'Visits attended on time ÷ responsible visits due. Unknown times need review.',completion:'Work finished by the promise date with evidence ÷ work due. Approved reschedules use the revised date.',quality:'Mature jobs with a substantiated customer issue ÷ mature completed jobs. Lower is better.',compliance:'Passed documented checks ÷ recorded checks. Every critical requirement must pass.'};
+ const action={sales:'leads',revenue:'leads',coverage:'cov',attendance:'appts',completion:'jobs',quality:'quality',compliance:'cc'};
+ return `<details class="qual-details" data-detail="simple_scores"${Q._open.simple_scores?' open':''}><summary>Performance scores · ${c.weighted_score==null?'Not ready — '+c.categories.filter(r=>r.points==null).length+' metric(s) need evidence':c.weighted_score.toFixed(1)+' / 100'}</summary><div class="card list">${c.categories.map(r=>`<div class="record-task"><span><b>${esc(r.label)} · ${r.key==='revenue'?(r.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents)+'/lead':'Not ready'):r.value==null?'Not ready':pct(r.value)}</b><span class="s">${esc(text[r.key])}</span><span class="s">${r.denominator?`${r.key==='revenue'?cents(r.numerator):r.numerator} / ${r.denominator} · `:''}${r.points==null?'Points unavailable':r.points+' / 100 points'}${r.notes.length?' · '+esc(r.notes[0].replace('N/A — zero denominator','No eligible records yet')):''}</span></span><a class="btn soft sm" href="#" data-section="${action[r.key]}">View records</a></div>`).join('')}</div></details>`;
+}
+async function qPickRecording(t,title,rows,label,save){
+ if(!rows.length){toast('Nothing needs updating here in this period.');return;}if(rows.length===1)return save(rows[0]);
+ const pick=await qAsk({eyebrow:'Use the existing record',title,primary:'Continue',fields:[{label:'Record *',f:'id',kind:'select',opts:rows.map(r=>[r.id,label(r)]),blank:'Choose record',wide:true}],validate:v=>req(v.id,'Choose the record')});if(pick)return save(rows.find(x=>x.id===pick.values.id));
+}
+$('#qBody').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-record]');if(!button)return;const t=qTeam(Q.sel),n=qRecordingNeeds(t,qCalc(t)),key=button.dataset.record;
+ if(key==='availability')return qRecordAvailability(t);
+ if(key==='coverage_log')return qImportCoverage(t);
+ if(key==='coverage')return n.offers.length?qPickRecording(t,'Update coverage response',n.offers,r=>`${r.lead_ref||'Offer'} · ${r.job_date}`,r=>qCoverageResponse(t,r.id)):qRecordCoverage(t);
+ if(key==='quality')return qAddSheet('quality',t);
+ if(key==='supervision')return qRecordSupervision(t);
+ if(key==='check')return n.checks.length?qPickRecording(t,'Update missing check',n.checks,r=>r.requirement,r=>qAddCheck(t,null,r.id)):qAddCheck(t);
+ if(key==='work')return qPickRecording(t,'Review existing work',Q.jobs.filter(j=>j.team_id===t.id&&!j.cancelled),r=>`${r.job_ref||'Work'} · ${r.completed_at?'finished':'promise '+r.current_promise_date}`,r=>{const link=Q.links.find(x=>x.job_id===r.id);if(link)return qLinkedAction(t,link.id,'');Q.section='jobs';qRenderTeam();window.scrollTo(0,0);});
+ if(key==='attendance')return qPickRecording(t,'Record attendance',n.appointments,r=>`${Q.leads.find(l=>l.id===r.lead_id)?.lead_ref||'Visit'} · ${fmtTs(r.scheduled_at)}`,r=>{const link=Q.links.find(x=>x.appointment_id===r.id);if(link)return qLinkedAction(t,link.id,'visit');Q.section='appts';qRenderTeam();const control=$(`#qTeam [data-act="apptout"][data-id="${r.id}"]`);control?.click();});
+});
+
 function qRenderTeam(){
   const root=$('#qTeam');root.querySelectorAll('details[data-detail]').forEach(d=>Q._open[d.dataset.detail]=d.open);const t=qTeam(Q.sel);
   if(!t){root.innerHTML=`<div class="phead"><h1 class="pt">Team</h1></div><div class="card empty">Pick a team on the Teams tab.</div>`;return;}
@@ -1119,7 +1221,7 @@ function qRenderTeam(){
   <div class="thead"><div><div class="eyebrow acc">${qCode(t)} · ${TYPE_LABEL[t.team_type]||t.team_type}${t.former_technician?' · led by the former technician':''}</div><h1 class="pt" style="margin-top:2px">${esc(t.name)}</h1>
       <div class="tmeta"><span>Leader <b>${esc(t.leader_name||'—')}</b></span><span>${esc((t.territories||[]).join(', ')||'no territories')}</span><span>${esc((t.services||[]).join(' · ')||'no services')}</span></div></div>
     <div class="acts"><button class="btn soft" data-act="editteam">Edit team</button><button class="btn" ${Q.autoEnabled?`data-intake-list="${t.id}"`:'data-act="linkassignment"'}>${Q.autoEnabled?'Review assignments':'Choose assigned job'}</button></div></div>
-  ${qReportTeam(t,c)}${qLinkedJobs(t)}
+  ${qReportTeam(t,c)}${qRecordingGuide(t,c)}${qSimpleScores(c)}${qLinkedJobs(t)}
   <details class="qual-details" data-detail="qualification"${Q._open.qualification?' open':''}><summary>Qualification details · scores, evidence and manager decisions</summary>${isMgr()?'<button class="btn soft" data-act="decide" style="margin:14px 0">Record decision</button>':''}
   ${c?`
   <div class="scorecard">
@@ -1129,7 +1231,7 @@ function qRenderTeam(){
         <div><div class="eyebrow">Recommended</div><div style="margin-top:5px">${outPill(c.recommended_outcome,true)}</div><div class="m">${esc(c.reasons[0]||'')}</div></div></div>
         <div class="evline">${evDot(c.evidence.state)}<b>${esc(QEV_LABEL[c.evidence.state])}</b><span class="m">— ${esc(c.evidence.reasons.join('; ')||'minimum evidence satisfied')}</span></div></div></div>
     <div class="card" style="padding:16px 22px"><div class="eyebrow" style="margin-bottom:4px">Gates · no score overrides these</div>
-      ${c.gates.map(g=>`<div class="gate${g.passed?'':' fail'}"><span class="g ${g.passed?'ok':'fail'}">${g.passed?'✓':'✕'}</span><span><span class="t">${esc(g.label)}</span><span class="d">${esc(g.detail)}</span></span></div>`).join('')}</div>
+      ${c.gates.map(g=>`<div class="gate${g.passed?'':' fail'}"><span class="g ${g.passed?'ok':'fail'}">${g.key==='critical_compliance'&&!c.evidence.progress.critical_evidence?'—':g.passed?'✓':'✕'}</span><span><span class="t">${esc(g.label)}</span><span class="d">${esc(g.detail)}</span></span></div>`).join('')}</div>
   </div>
   ${c.reasons.length>1?`<div class="card pad" style="margin-bottom:16px;font-size:13.5px;color:var(--ink2)"><div class="eyebrow" style="margin-bottom:6px">Why this recommendation</div>${c.reasons.slice(1).map(r=>`<div style="padding:3px 0">· ${esc(r)}</div>`).join('')}</div>`:''}
   ${c.warnings.length?`<div class="notes">${c.warnings.map(w=>`<div class="note"><span class="dot"></span><span>${esc(w)}</span></div>`).join('')}</div>`:''}
@@ -1151,7 +1253,7 @@ function qRenderTeam(){
       <div class="card list">${(()=>{const p=c.evidence.progress;const EP=(label,done,min,ok)=>{const pc=min?Math.min(100,done/min*100):(ok?100:0);const good=min?done>=min:ok;return `<div class="evp"><div class="h"><b>${label}</b><span class="num" style="color:var(${good?'--ok':pc>0?'--amber':'--ink3'})">${min?`${done} / ${min}`:(ok?'Done':'Not yet')}</span></div><div class="track"><div style="width:${pc}%;background:var(${good?'--ok':pc>0?'--amber':'--ink3'})"></div></div></div>`;};
         return EP('Entry review',p.entry_review?1:0,0,p.entry_review)+(p.supervised.required?EP('Supervised jobs',p.supervised.done,p.supervised.min):'')+EP('Qualified estimates',p.estimates.done,p.estimates.min)+EP('Completed jobs',p.completed_jobs.done,p.completed_jobs.min)+EP('Critical compliance evidence',p.critical_evidence?1:0,0,p.critical_evidence)+EP('Jobs through quality window',p.quality_mature,1);})()}</div></div>
   </div>`:'<div class="note red" style="margin-bottom:16px"><span class="dot"></span><span>No metric version — nothing to compute.</span></div>'}
-  </details><details class="qual-details" data-detail="legacy"${Q._open.legacy?' open':''}><summary>Older records and administration</summary><div class="note">Use Choose assigned job for new reporting. These separate forms are retained for older, unlinked records.</div><div class="eyebrow ind">Older records · guided entry</div>
+  </details><details class="qual-details" data-detail="legacy"${Q._open.legacy?' open':''}><summary>Older records and administration</summary><div class="note">Use the recording checklist above for daily work. These detailed records include older jobs, setup and manager administration.</div><div class="eyebrow ind">Older records · guided entry</div>
   <div class="card pad" style="margin-bottom:16px">
     <div class="steps">${[['lead','1','Lead','Assignment and estimate'],['appt','2','Appointment','Schedule and outcome'],['job','3','Job','Promise date and revenue'],['complete','4','Completion','Evidence and costs']].map(([k,n,l,s])=>`<button class="step" data-act="step" data-id="${k}"><span class="n">${n}</span><span><span class="t">${l}</span><span class="s">${s}</span></span></button>`).join('')}</div>
     ${pend.length?`<div class="eyebrow" style="margin:18px 0 4px">Continue where you left off</div>${pend.map(p=>`<div class="cont"><span><span class="t num">${esc(p.p)}</span><span class="s">${esc(p.s)}</span></span><button class="btn tint sm" data-act="${p.act}" data-id="${p.id}">${esc(p.cta)}</button></div>`).join('')}`:''}
@@ -1184,7 +1286,7 @@ function qRows(key,t){
         [...(!j.completed_at&&!j.cancelled?[A('Complete','complete',j.id,'tint'),A('Reschedule','resched',j.id),A('Cancel','canceljob',j.id,'danger')]:[]),A('Costs','costs',j.id),A('+ Quality event','addqe',j.id),A('+ Check','addcc',j.id),...(!x?[A('Exclude…','excl',j.id)]:[])],late?'bad':m.below_floor===true?'warn':'');});
     case 'cov':return by(Q.cov).sort((a,b)=>String(b.offered_at).localeCompare(String(a.offered_at))).map(c=>R(`${c.lead_ref||'Offer'} · ${fmtDy(c.job_date)}`,`Offered ${fmtTs(c.offered_at)} · ${c.territory||''} ${c.service||''}${c.notes?' · '+c.notes:''}`,c.eligible?'Eligible offer':`Not eligible — ${((c.eligibility||{}).reasons||[]).join('; ')}`,c.response==='pending'?'response not recorded — counts as unfulfilled':`${c.response}${c.contact_met===true?' · contact met':c.contact_met===false?' · contact not met':''}${c.failure_reason?' · '+c.failure_reason:''}`,c.fulfilled?'fulfilled':c.response==='pending'?'pending':c.response,[A('Response…','covresp',c.id,'tint')],c.response==='pending'&&c.eligible?'warn':''));
     case 'quality':return by(Q.qe).sort((a,b)=>String(b.opened_at).localeCompare(String(a.opened_at))).map(e=>R(`${e.type.replace('_',' ')} · ${jobRef(e.job_id)}`,`Reported ${fmtD(dPT(e.opened_at))} · severity ${e.severity}${e.responsible_party?' · '+e.responsible_party:''}`,e.substantiation==='pending'?'Awaiting the manager’s ruling':`${e.substantiation[0].toUpperCase()+e.substantiation.slice(1)}`,`${e.cost_cents!=null?cents(e.cost_cents)+' · ':''}${e.evidence||''}`,e.severity==='severe'&&e.status==='open'?'severe':e.status,[A('Update…','qeedit',e.id,'tint')],e.severity==='severe'?'bad':''));
-    case 'cc':return by(Q.cc).sort((a,b)=>String(b.checked_at).localeCompare(String(a.checked_at))).map(c=>R(c.requirement,`${c.job_id?'Job '+jobRef(c.job_id)+' · ':''}checked ${fmtD(dPT(c.checked_at))}${c.reviewer?' · '+c.reviewer.split('@')[0]:''}`,c.critical?'Critical check':'Non-critical',c.evidence||(c.result==='pass'?'':'no evidence'),c.result,[],c.critical&&c.result!=='pass'?'bad':''));
+    case 'cc':return by(Q.cc).sort((a,b)=>String(b.checked_at).localeCompare(String(a.checked_at))).map(c=>R(c.requirement,`${c.job_id?'Job '+jobRef(c.job_id)+' · ':''}checked ${fmtD(dPT(c.checked_at))}${c.reviewer?' · '+c.reviewer.split('@')[0]:''}`,c.critical?'Critical check':'Non-critical',c.evidence||(c.result==='pass'?'':'no evidence'),c.result,[A('Update check','editcheck',c.id,'tint')],c.critical&&c.result!=='pass'?'bad':''));
     case 'sup':return by(Q.sup).sort((a,b)=>b.observed_at.localeCompare(a.observed_at)).map(s=>R(`Observed ${fmtDy(s.observed_at)}`,`${s.observer}${s.job_id?' · job '+jobRef(s.job_id):''}`,Object.entries(s.notes||{}).filter(([k,v])=>v).map(([k,v])=>k.replace('_',' ')+': '+v).join(' · ')||'No notes',s.reviewed_at?`Signed off by ${(s.reviewed_by||'').split('@')[0]}`:'Awaiting sign-off',s.result||'pending',[...(!s.reviewed_at?[A('Sign off','signsup',s.id,'tint',true)]:[])]));
     case 'inc':{const inc=by(Q.inc).sort((a,b)=>String(b.reported_at).localeCompare(String(a.reported_at))).map(i=>R(i.event_code,`Reported ${fmtTs(i.reported_at)}${i.job_id?' · job '+jobRef(i.job_id):''}`,i.description,i.review_note?`${i.reviewed_by?i.reviewed_by.split('@')[0]+': ':''}${i.review_note}`:'',i.status==='confirmed'?'confirmed_inc':i.status,[...(!['confirmed','dismissed'].includes(i.status)?[A('Under review','increview',i.id,'soft',true),A('Confirm…','incconfirm',i.id,'danger',true),A('Dismiss…','incdismiss',i.id,'soft',true)]:[])],i.status==='confirmed'?'bad':''));
       const res=by(Q.res).sort((a,b)=>String(b.imposed_at).localeCompare(String(a.imposed_at))).map(r=>R(`Restriction · ${r.kind.replace(/_/g,' ')}`,`Imposed ${fmtTs(r.imposed_at)} by ${(r.imposed_by||'').split('@')[0]}${r.affects_core_coverage?' · affects core coverage':''}`,r.reason,r.lifted_at?`Lifted ${fmtTs(r.lifted_at)} by ${(r.lifted_by||'').split('@')[0]} — ${r.lift_reason||''}`:'',r.lifted_at?'lifted':'active_res',[...(!r.lifted_at?[A('Lift…','liftres',r.id,'soft',true)]:[])],r.lifted_at?'':'bad'));
@@ -1268,18 +1370,15 @@ async function qAddSheet(key,t){
   if(key==='roster'){const r=await qAsk({eyebrow:'Roster',title:'Add member',sub:t.name,primary:'Add member',fields:[{label:'Person',f:'person_name',list:'qTechList2',ph:'name'},{label:'Role',f:'role',kind:'select',opts:[['leader','Leader'],['technician','Technician'],['installer','Installer'],['helper','Helper'],['salesperson','Salesperson']],value:'technician'},{label:'Active from',f:'active_from',t:'date',type:'date',value:today()},{label:'Credentials (comma)',f:'credentials_text',ph:'license valid, insurance (expired)'}],datalists:`<datalist id="qTechList2">${TECHS.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>`,validate:v=>req(v.person_name,'Name the person')});
     if(!r)return;const f=r.values;const tech=TECHS.find(x=>x.name.toLowerCase()===String(f.person_name).toLowerCase());const creds=String(f.credentials_text||'').split(',').map(s=>s.trim()).filter(Boolean).map(s=>{const m=/^(.*?)\s*\((valid|expired|missing)\)$/i.exec(s);return m?{name:m[1],status:m[2].toLowerCase()}:{name:s,status:'valid'};});delete f.credentials_text;
     await qWrite('qual_team_members','insert',{...f,team_id:t.id,technician_id:tech?tech.id:null,credentials:creds},null,'Member added');return;}
-  if(key==='avail'){const r=await qAsk({eyebrow:'Availability',title:'Declare availability',sub:'Before offers are made. A late change needs a reason and the manager.',primary:'Declare',fields:[{label:'Date',f:'avail_date',t:'date',type:'date',value:today()},{label:'Available',f:'available',t:'bool',kind:'seg',segs:[['true','Yes'],['false','No']],value:'true'},{label:'Territory',f:'territory',kind:'select',opts:terrList(),blank:'all'},{label:'Service',f:'service',kind:'select',opts:svcList,blank:'all'},{label:'Windows',f:'windows',ph:'8:00–17:00'},{label:'Change reason (if late)',f:'change_reason'}],validate:v=>req(v.avail_date,'Pick a date')});
-    if(!r)return;await qWrite('qual_availability','insert',{...r.values,team_id:t.id},null,'Availability declared');return;}
+  if(key==='avail')return qRecordAvailability(t);
   if(key==='leads'){await qStepLead(t,false);return;}
   if(key==='appts'){await qStepAppt(t,null,false);return;}
   if(key==='jobs'){await qStepJob(t,null,false);return;}
-  if(key==='cov'){const r=await qAsk({eyebrow:'Coverage',title:'Record offer',sub:'Eligibility is computed and frozen when the offer is saved.',primary:'Record offer',fields:[{label:'Offered at',f:'offered_at',t:'ts',type:'datetime-local',value:dtLocal(null,true),step:'1',hint:'To the second — availability must have been declared before this moment.'},{label:'Lead reference',f:'lead_ref',ph:'A1B2C3'},{label:'Territory',f:'territory',kind:'select',opts:terrList(),value:(t.territories||[])[0]||'LA'},{label:'Service',f:'service',kind:'select',opts:svcList,value:(t.services||[])[0]||'cleaning'},{label:'Job date',f:'job_date',t:'date',type:'date',value:today()},{label:'Response',f:'response',kind:'seg',segs:[['pending','Pending'],['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned']],value:'pending',wide:true},{label:'Contact / arrival obligation met?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['','Unknown'],['true','Yes'],['false','No']],value:''},{label:'Reason (decline / no response)',f:'failure_reason'}],validate:v=>req(v.job_date,'Enter the job date')});
-    if(!r)return;await qWrite('qual_coverage_events','insert',{...r.values,team_id:t.id},null,'Offer recorded — eligibility frozen');return;}
-  if(key==='quality'){const r=await qAsk({eyebrow:'Quality',title:'Record customer-quality event',sub:t.name,primary:'Record event',fields:[{label:'Job',f:'job_id',kind:'select',opts:jobOpts(t)},{label:'Type',f:'type',kind:'select',opts:[['complaint','Complaint'],['callback','Callback'],['refund','Refund'],['damage','Damage'],['corrective_work','Corrective work'],['other','Other']]},{label:'Severity',f:'severity',kind:'seg',segs:[['low','Low'],['medium','Medium'],['severe','Severe']],value:'low',wide:true},{label:'Cost',f:'cost_cents',t:'cents',ph:'$ 0'},{label:'Responsible party',f:'responsible_party'},{label:'Evidence / description',f:'evidence',kind:'area',wide:true}],validate:v=>req(v.job_id,'Pick the job')});
+  if(key==='cov')return qRecordCoverage(t);
+  if(key==='quality'){const r=await qAsk({eyebrow:'Quality',title:'Record customer-quality event',sub:t.name,primary:'Record event',fields:[{label:'Job *',f:'job_id',kind:'select',opts:jobOpts(t),blank:'Choose job',required:true},{label:'Type',f:'type',kind:'select',opts:[['complaint','Complaint'],['callback','Callback'],['refund','Refund'],['damage','Damage'],['corrective_work','Corrective work'],['other','Other']]},{label:'Severity',f:'severity',kind:'seg',segs:[['low','Low'],['medium','Medium'],['severe','Severe']],value:'low',wide:true},{label:'Cost (optional)',f:'cost_cents',t:'cents',ph:'$ 0'},{label:'Responsible party (if known)',f:'responsible_party'},{label:'Evidence / description',f:'evidence',kind:'area',wide:true}],validate:v=>req(v.job_id,'Pick the job')||req(v.evidence,'Describe the customer issue')});
     if(!r)return;await qWrite('qual_quality_events','insert',{...r.values,team_id:t.id},null,'Quality event recorded');return;}
   if(key==='cc'){await qAddCheck(t,null);return;}
-  if(key==='sup'){const r=await qAsk({eyebrow:'Supervised trial',title:'Record supervised job',sub:t.name,primary:'Record',fields:[{label:'Observed on',f:'observed_at',t:'date',type:'date',value:today()},{label:'Observer',f:'observer'},{label:'Job',f:'job_id',kind:'select',opts:jobOpts(t),blank:'—'},{label:'Result',f:'result',kind:'select',opts:[['satisfactory','Satisfactory'],['needs_correction','Needs correction'],['unsatisfactory','Unsatisfactory']],blank:'—'},{label:'Sales handling',f:'n_sales_handling'},{label:'Workmanship',f:'n_workmanship'},{label:'Customer interaction',f:'n_customer_interaction'},{label:'Documentation',f:'n_documentation'},{label:'Safety',f:'n_safety'},{label:'Feedback given',f:'n_feedback'}],validate:v=>req(v.observer,'Name the observer')});
-    if(!r)return;const v=r.values;const notes={};Object.keys(v).filter(k=>k.startsWith('n_')).forEach(k=>{if(v[k])notes[k.slice(2)]=v[k];delete v[k];});await qWrite('qual_supervised_jobs','insert',{...v,team_id:t.id,job_id:v.job_id||null,result:v.result||null,notes},null,'Supervised job recorded');return;}
+  if(key==='sup')return qRecordSupervision(t);
   if(key==='inc'){const V=qCalcVersion();const codes=(V?.critical_events||[]).map(e=>[e.code,e.label]).concat([['other','Other']]);
     const r=await qAsk({eyebrow:'Incidents',title:'Report suspected critical event',sub:'The software flags; Luka reviews and decides.',primary:'Report',fields:[{label:'Event',f:'event_code',kind:'select',opts:codes,value:'other',wide:true},{label:'Job',f:'job_id',kind:'select',opts:jobOpts(t),blank:'—'},{label:'Description',f:'description',kind:'area',wide:true},...(isMgr()?[{label:'Also impose a restriction now',f:'restrict',t:'bool',kind:'seg',segs:[['false','No'],['true','Yes — no new assignments']],value:'false',wide:true}]:[])],validate:v=>req(v.description,'Describe the event')});
     if(!r)return;const v=r.values;const restrict=v.restrict;delete v.restrict;const inc=await qWrite('qual_incidents','insert',{event_code:v.event_code,description:v.description,job_id:v.job_id||null,team_id:t.id},null,'Incident reported — Luka reviews it; nothing is decided automatically');
@@ -1288,10 +1387,16 @@ async function qAddSheet(key,t){
   if(key==='rev'){const r=await qAsk({eyebrow:'Reviews',title:'Record review',sub:t.name,primary:'Record',fields:[{label:'Held on',f:'held_at',t:'date',type:'date',value:today()},{label:'Kind',f:'kind',kind:'seg',segs:[['weekly','Weekly'],['shadow','Shadow'],['official','Official']],value:'weekly'},{label:'Participants',f:'participants',wide:true},{label:'Observations',f:'observations',kind:'area',wide:true},{label:'Decisions / actions',f:'decisions',kind:'area',wide:true}]});
     if(!r)return;await qWrite('qual_reviews','insert',{...r.values,team_id:t.id},null,'Review recorded');return;}
 }
-async function qAddCheck(t,jobId){
-  const reqs=['authorization','approved pricing/discounts','financing disclosure','payment handling','margin approval','safety documentation','estimate acceptance','start authorization','completion evidence'];
-  const r=await qAsk({eyebrow:'Compliance',title:'Record check',sub:'Missing evidence is not a pass.',primary:'Record check',fields:[{label:'Requirement',f:'requirement',list:'qReqList',wide:true},{label:'Job',f:'job_id',kind:'select',opts:jobOpts(t),value:jobId||'',blank:'—'},{label:'Critical?',f:'critical',t:'bool',kind:'seg',segs:[['false','No'],['true','Critical']],value:'false'},{label:'Result',f:'result',kind:'seg',segs:[['pass','Pass'],['fail','Fail'],['missing','Missing']],value:'missing',wide:true},{label:'Evidence',f:'evidence',ph:'required for a pass',wide:true},{label:'Reviewer',f:'reviewer',value:Q.email||''}],datalists:`<datalist id="qReqList">${reqs.map(x=>`<option value="${x}">`).join('')}</datalist>`,validate:v=>req(v.requirement,'Name the requirement')||(v.result==='pass'&&!v.evidence?'A pass needs evidence':null)});
-  if(!r)return;await qWrite('qual_compliance_checks','insert',{...r.values,team_id:t.id,job_id:r.values.job_id||null},null,'Check recorded');
+async function qAddCheck(t,jobId,checkId){
+ const check=Q.cc.find(x=>x.id===checkId);const reqs=['authorization','approved pricing/discounts','financing disclosure','payment handling','margin approval','safety documentation','estimate acceptance','start authorization','completion evidence'];
+ const r=await qAsk({eyebrow:'Required checks',title:check?'Update recorded check':'Record a required check',sub:'Choose the actual requirement, record its result and add the document/photo/reference. The manager identifies which requirements are critical for this team.',primary:'Save check',fields:[
+ {label:'Requirement *',f:'requirement',list:'qReqList',value:check?.requirement||'',wide:true,hint:'Choose a suggestion or type the requirement you actually checked.'},
+ {label:'Related job (optional for a team-level check)',f:'job_id',kind:'select',opts:jobOpts(t),value:check?.job_id||jobId||'',blank:'Team-level check'},
+ {label:'Importance',f:'critical',t:'bool',kind:'seg',segs:[['false','Routine'],['true','Critical']],value:String(check?.critical||false),hint:'Use Critical for a requirement the manager has designated as mandatory.'},
+ {label:'Result *',f:'result',kind:'seg',segs:[['missing','Evidence missing'],['pass','Passed'],['fail','Failed']],value:check?.result||'missing',wide:true},
+ {label:'Evidence / reference',f:'evidence',value:check?.evidence||'',ph:'Photo link, signed form or CRM reference',hint:'Required for Passed. Describe what failed for Failed.',wide:true}],
+ datalists:`<datalist id="qReqList">${reqs.map(x=>`<option value="${x}">`).join('')}</datalist>`,validate:v=>req(v.requirement,'Name the requirement')||(v.result!=='missing'?req(v.evidence,'Add the evidence or failure description'):null)});
+ if(!r)return;await qWrite('qual_compliance_checks',check?'update':'insert',{...r.values,team_id:t.id,job_id:r.values.job_id||null,reviewer:Q.email||null},check?.id||null,'Check saved');
 }
 async function qDecide(t){
   const av=qActiveVersion();if(!av){toast('No active metric version — activate one in Configuration',true);return;}
@@ -1311,15 +1416,14 @@ async function qDecide(t){
   toast(`${QOUT_LABEL[f.official_outcome]} recorded for ${t.name}`);await qReload();
 }
 async function qImportCoverage(t){
-  const names=memberNames(t).map(n=>n.toLowerCase()).concat(t.leader_name?[t.leader_name.toLowerCase()]:[]);
-  if(!names.length){toast('Add the roster first — offers are matched by member name',true);return;}
-  const {data,error}=await sb.from('coverage_log').select('*');if(error){toast(friendlyErr(error,'coverage_schema.sql'),true);return;}
-  const have=new Set(Q.cov.filter(c=>c.team_id===t.id&&c.coverage_log_id).map(c=>c.coverage_log_id));
-  const rows=(data||[]).filter(r=>!have.has(r.id)&&(r.offered_names||[]).some(n=>names.includes(String(n).toLowerCase()))).map(r=>{const mine=r.final_assignee&&names.includes(String(r.final_assignee).toLowerCase());
-    return {team_id:t.id,coverage_log_id:r.id,offered_at:new Date(`${r.log_date}T${/^\d{1,2}:\d{2}/.test(r.time_local||'')?r.time_local.padStart(5,'0'):'12:00'}:00`).toISOString(),lead_ref:r.lead_ref,territory:r.area||null,service:null,job_date:r.job_date||r.log_date,response:mine?'accepted':'pending',contact_met:mine?true:null,notes:`imported from the Coverage log ${r.log_date}${mine?' — contact obligation assumed met; verify':' — record the response'}`};});
-  if(!rows.length){toast('Nothing new to import for this team');return;}
-  const r=await sbb.from('qual_coverage_events').insert(rows);if(r.error){toast(qErr(r.error),true);return;}
-  toast(`${rows.length} offer(s) imported — eligibility evaluated against availability declared before each offer`);await qReload();
+ const names=memberNames(t).concat(t.leader_name?[t.leader_name]:[]).map(n=>n.trim().toLowerCase());
+ const loaded=await qAll(sb,'coverage_log');if(loaded.error){toast(friendlyErr(loaded.error,'coverage_schema.sql'),true);return;}
+ const P=qPeriod(qCalcVersion()),groups=new Map();
+ (loaded.data||[]).filter(r=>r.log_date>=P.start&&r.log_date<=P.end&&(r.offered_names||[]).some(n=>names.includes(String(n).trim().toLowerCase()))).sort((a,b)=>String(a.log_date+' '+(a.time_local||'')+' '+a.created_at).localeCompare(String(b.log_date+' '+(b.time_local||'')+' '+b.created_at))).forEach(r=>{const key=String(r.lead_ref||'').trim().toUpperCase()+'|'+(r.job_date||r.log_date);if(!groups.has(key))groups.set(key,r);});
+ const rows=[...groups.values()].filter(r=>!Q.cov.some(c=>c.team_id===t.id&&c.coverage_log_id&&(c.coverage_log_id===r.id||(String(c.lead_ref||'').trim().toUpperCase()===String(r.lead_ref||'').trim().toUpperCase()&&c.job_date===(r.job_date||r.log_date)))));
+ if(!rows.length){toast('No new offers to reuse. Existing offers can be updated under Coverage.');return;}
+ const pick=await qAsk({eyebrow:'Reuse Coverage log',title:'Choose the offer',sub:'Reuse one recorded offer. Later status updates for the same job/date do not create another offer.',primary:'Continue',fields:[{label:'Coverage log offer *',f:'source',kind:'select',opts:rows.map(r=>[r.id,`${r.lead_ref} · ${r.job_date||r.log_date} · ${r.area||'area not recorded'}`]),blank:'Choose offer',wide:true}],validate:v=>req(v.source,'Choose the recorded offer')});if(!pick)return;
+ return qRecordCoverage(t,rows.find(r=>r.id===pick.values.source));
 }
 async function qImportBridge(t){
   const names=memberNames(t).map(n=>n.toLowerCase()).concat(t.leader_name?[t.leader_name.toLowerCase()]:[]);
@@ -1336,6 +1440,7 @@ async function qImportBridge(t){
 /* ---------- row actions (one delegated handler on the Team tab) ---------- */
 $('#qTeam').addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,id=b.dataset.id;const t=qTeam(Q.sel);if(!t)return;
+  const linkedMode={complete:'work',costs:'costs',resched:'reschedule',canceljob:'cancel',apptout:'visit'}[act];if(linkedMode){const link=Q.links.find(x=>act==='apptout'?x.appointment_id===id:x.job_id===id);if(link)return qLinkedAction(t,link.id,linkedMode);}
   if(act==='linkassignment')return qChooseAssignment(t);
   if(act==='linkedjob')return qLinkedAction(t,id,b.dataset.mode);
   const modes={leadwon:'sale',leadcollect:'collection',leaddecl:'decline',leadcancel:'cancel',leadfail:'failure',addest:'estimate',apptout:'visit',costs:'costs',complete:'work',resched:'reschedule',canceljob:'cancel'};
@@ -1373,17 +1478,18 @@ $('#qTeam').addEventListener('click',async e=>{
       return one({eyebrow:'Jobs',title:`Costs · ${j.job_ref||''}`,sub:'One per line: category, amount or unknown, estimated|actual. Unknown never becomes zero.',primary:'Save costs',note:mm?`${m.actual?'Actual':'Projected'} margin ${pct(mm.margin_pct)}${m.floor_pct!=null?` · floor ${m.floor_pct}% ${m.below_floor?'✕':'✓'}`:''}${m.target_pct?` · target ${m.target_pct}%`:''}`:(m.issues.join('; ')||'no costs yet'),noteKind:m.below_floor===true?'warn':'',
         fields:[{label:'Costs',f:'costs_text',kind:'area',value:costsText(j)||'materials, , estimated\nlabor, , estimated',wide:true},...(j.service==='mixed'?[{label:'Service split (service, revenue $, cost $)',f:'mix_text',kind:'area',value:(j.service_mix||[]).map(c=>`${c.service}, ${c.revenue_cents!=null?c.revenue_cents/100:''}, ${c.cost_cents!=null?c.cost_cents/100:''}`).join('\n'),wide:true}]:[]),{label:'Margin exception ref (Sardor)',f:'margin_exception_ref',value:j.margin_exception_ref||'',ph:'optional — keeps the job visible as below-floor',wide:true}]},
         x=>{const p={costs:parseCosts(x.costs_text),margin_exception_ref:x.margin_exception_ref||null};if(x.mix_text!=null)p.service_mix=parseMix(x.mix_text);return qWrite('qual_jobs','update',p,id,'Costs saved');});}
-    case 'addqe':{const j=Q.jobs.find(x=>x.id===id);return one({eyebrow:'Quality',title:'Record customer-quality event',sub:j.job_ref||'',primary:'Record event',fields:[{label:'Type',f:'type',kind:'select',opts:[['complaint','Complaint'],['callback','Callback'],['refund','Refund'],['damage','Damage'],['corrective_work','Corrective work'],['other','Other']]},{label:'Severity',f:'severity',kind:'seg',segs:[['low','Low'],['medium','Medium'],['severe','Severe']],value:'low'},{label:'Cost',f:'cost_cents',t:'cents',ph:'$ 0'},{label:'Responsible party',f:'responsible_party'},{label:'Evidence / description',f:'evidence',kind:'area',wide:true}]},x=>qWrite('qual_quality_events','insert',{...x,team_id:t.id,job_id:id},null,'Quality event recorded'));}
-    case 'qeedit':{const e=Q.qe.find(x=>x.id===id);return one({eyebrow:'Quality',title:'Update event',sub:`${e.type} · ${(Q.jobs.find(j=>j.id===e.job_id)||{}).job_ref||''}`,primary:'Save',fields:[...(isMgr()?[{label:'Substantiation (manager)',f:'substantiation',kind:'seg',segs:[['pending','Pending'],['substantiated','Substantiated'],['unsubstantiated','Unsubstantiated']],value:e.substantiation,wide:true}]:[]),{label:'Status',f:'status',kind:'seg',segs:[['open','Open'],['closed','Closed']],value:e.status},{label:'Cost',f:'cost_cents',t:'cents',value:e.cost_cents!=null?String(e.cost_cents/100):''},{label:'Resolution',f:'resolution',kind:'area',value:e.resolution||'',wide:true},{label:'Evidence',f:'evidence',value:e.evidence||'',wide:true}]},x=>qWrite('qual_quality_events','update',x,id,'Quality event saved'));}
+    case 'addqe':{const j=Q.jobs.find(x=>x.id===id);return one({eyebrow:'Quality',title:'Record customer-quality event',sub:j.job_ref||'',primary:'Record event',fields:[{label:'Type',f:'type',kind:'select',opts:[['complaint','Complaint'],['callback','Callback'],['refund','Refund'],['damage','Damage'],['corrective_work','Corrective work'],['other','Other']]},{label:'Severity',f:'severity',kind:'seg',segs:[['low','Low'],['medium','Medium'],['severe','Severe']],value:'low'},{label:'Cost (optional)',f:'cost_cents',t:'cents',ph:'$ 0'},{label:'Responsible party (if known)',f:'responsible_party'},{label:'Evidence / description',f:'evidence',kind:'area',wide:true}]},x=>qWrite('qual_quality_events','insert',{...x,team_id:t.id,job_id:id},null,'Quality event recorded'));}
+    case 'qeedit':{const e=Q.qe.find(x=>x.id===id);return one({eyebrow:'Quality',title:'Update event',sub:`${e.type} · ${(Q.jobs.find(j=>j.id===e.job_id)||{}).job_ref||''}`,primary:'Save',fields:[...(isMgr()?[{label:'Substantiation (manager)',f:'substantiation',kind:'seg',segs:[['pending','Pending'],['substantiated','Substantiated'],['unsubstantiated','Unsubstantiated']],value:e.substantiation,wide:true}]:[]),{label:'Status',f:'status',kind:'seg',segs:[['open','Open'],['closed','Closed']],value:e.status},{label:'Cost (optional)',f:'cost_cents',t:'cents',value:e.cost_cents!=null?String(e.cost_cents/100):''},{label:'Resolution',f:'resolution',kind:'area',value:e.resolution||'',wide:true},{label:'Evidence',f:'evidence',value:e.evidence||'',wide:true}],validate:x=>x.status==='closed'?req(x.resolution,'Describe the resolution before closing the issue'):null},x=>qWrite('qual_quality_events','update',x,id,'Quality event saved'));}
     case 'addcc':return qAddCheck(t,id);
-    case 'signsup':{const s=Q.sup.find(x=>x.id===id);return one({eyebrow:'Supervised trial',title:'Sign off supervised job',sub:`Observed ${fmtDy(s.observed_at)} by ${s.observer}`,primary:'Sign off',width:'440px',fields:[{label:'Result',f:'result',kind:'seg',segs:[['satisfactory','Satisfactory'],['needs_correction','Needs correction'],['unsatisfactory','Unsatisfactory']],value:s.result||'satisfactory',wide:true}]},x=>qWrite('qual_supervised_jobs','update',{result:x.result,reviewed_at:new Date().toISOString()},id,'Signed off'));}
+    case 'signsup':{const s=Q.sup.find(x=>x.id===id);return one({eyebrow:'Supervised trial',title:'Sign off supervised job',sub:`Observed ${fmtDy(s.observed_at)} by ${s.observer}`,primary:'Sign off',width:'440px',fields:[{label:'Observed job *',f:'job_id',kind:'select',opts:jobOpts(t),value:s.job_id||'',blank:'Choose job',wide:true},{label:'Result',f:'result',kind:'seg',segs:[['satisfactory','Satisfactory'],['needs_correction','Needs correction'],['unsatisfactory','Unsatisfactory']],value:s.result||'satisfactory',wide:true}],validate:x=>req(x.job_id,'Choose the real observed job')},x=>qWrite('qual_supervised_jobs','update',{job_id:x.job_id,result:x.result,reviewed_at:new Date().toISOString()},id,'Signed off'));}
     case 'increview':return qWrite('qual_incidents','update',{status:'under_review'},id,'Under review');
     case 'incconfirm':return one(note('Confirm critical event','Review note confirming the event','Incidents','Confirm','danger'),x=>qWrite('qual_incidents','update',{status:'confirmed',review_note:x.v},id,'Confirmed — disqualification is still your separate decision'));
     case 'incdismiss':return one(note('Dismiss incident','Review note dismissing the event','Incidents','Dismiss'),x=>qWrite('qual_incidents','update',{status:'dismissed',review_note:x.v},id,'Dismissed'));
     case 'liftres':return one(note('Lift restriction','Reason for lifting','Restrictions','Lift'),x=>qWrite('qual_restrictions','update',{lifted_at:new Date().toISOString(),lift_reason:x.v},id,'Restriction lifted'));
     case 'closeact':return one(note('Close corrective action','Completion evidence','Actions','Close action'),x=>qWrite('qual_actions','update',{status:'done',completion_evidence:x.v},id,'Action closed'));
     case 'clickup':return one({eyebrow:'Actions',title:'Link ClickUp task',sub:'Kept so the task is never duplicated; closing it there changes nothing here.',primary:'Link',width:'420px',fields:[{label:'ClickUp task id',f:'clickup_task_id',ph:'86eywr4h0',wide:true}],validate:x=>req(x.clickup_task_id,'Enter the task id')},x=>qWrite('qual_actions','update',{clickup_task_id:x.clickup_task_id},id,'Linked'));
-    case 'covresp':{const c=Q.cov.find(x=>x.id===id);return one({eyebrow:'Coverage',title:'Record response',sub:`${c.lead_ref||'Offer'} · ${fmtDy(c.job_date)} · ${c.eligible?'eligible':'not eligible'}`,primary:'Save',fields:[{label:'Response',f:'response',kind:'seg',segs:[['accepted','Accepted'],['declined','Declined'],['no_response','No response'],['reassigned','Reassigned']],value:c.response==='pending'?'accepted':c.response,wide:true},{label:'Contact / arrival obligation met?',f:'contact_met',t:'nullbool',kind:'seg',segs:[['true','Yes'],['false','No'],['','Unknown']],value:c.contact_met==null?'':String(c.contact_met),wide:true},{label:'Reason (decline / no response / reassignment)',f:'failure_reason',kind:'area',value:c.failure_reason||'',wide:true}],validate:x=>(x.response!=='accepted'&&!x.failure_reason)?'A reason is required':null},x=>qWrite('qual_coverage_events','update',x,id,'Offer updated'));}
+    case 'covresp':return qCoverageResponse(t,id);
+    case 'editcheck':return qAddCheck(t,null,id);
     case 'viewsnap':{const s=Q.snaps.find(x=>x.id===id);$('#qSnapView').innerHTML=s?`<div class="card pad" style="margin-top:12px"><div class="eyebrow">Frozen snapshot · ${fmtTs(s.created_at)} · ${fmtD(s.period_start)} – ${fmtD(s.period_end)}</div><div class="sub2 num" style="max-height:360px;overflow:auto;white-space:pre-wrap;margin-top:8px">${esc(JSON.stringify(s.computed,null,1))}</div></div>`:'';return;}
   }
 });
@@ -1526,6 +1632,7 @@ function qRenderSop(){
   $('#qSop').innerHTML=`<div class="eyebrow acc">SOP ADC-QUAL-001 · v1.0 · for the ADC dispatcher</div><h1 class="pt" style="margin:2px 0 6px">How to record the day</h1>
   <div class="sub2" style="margin-bottom:16px">Effective 24 Sep 2026 · owner: the ADC manager · review Dec 2026 · source of truth: the vault note <em>SOP — Team Qualification records for the dispatcher</em></div>
   <div class="card pad" style="margin-bottom:18px"><h2>Daily reporting · automatic jobs, review exceptions</h2><ol style="padding-left:20px;font-size:15px;line-height:1.8"><li>The dispatcher records the reference and technician in <b>Job Assignment</b>. New clear team matches appear in Qualification automatically.</li><li>Return visits with the same reference reuse their opportunity and work record. Review only missing references, unclear team matches and older records needing reconciliation.</li><li>Use <b>Update</b> for the visit, estimate, sale, collection, work completion, costs or customer-approved reschedule. Each action saves related records together.</li><li>Choose <b>Cancellation</b> with who cancelled and why. Customer/company exclusions await manager approval; they are never recorded as team failures.</li></ol><p>A visit finished is not sold work completed. Keep estimate price, actual sale and collections separate. Costs are prefilled and survive completion. The detailed standalone forms below are for older, unlinked records.</p></div>
+  <div class="card pad"><h2>Other daily records</h2><p>Open the team’s <b>What needs recording</b> checklist. Declare availability before offers, reuse Coverage log entries, update attendance and checks on their existing records, and record customer issues only when they occur. Supervised observations need a real job and manager sign-off. Required fields are marked *. Open <b>Performance scores</b> to see what counts and which evidence is missing.</p></div>
   <div class="why2"><b>Why this exists.</b> Every ADC team — the ones we have and the ones we hire — is judged by one scorecard: sales, revenue, coverage, attendance, completion, customer quality and compliance. <b>The scorecard is never typed in.</b> It is calculated from the records you enter. Record the day faithfully and the numbers are fair; leave a record out and the page shows <b>N/A</b> or "missing", never a guess. Your records are what the manager decides on, so accuracy matters more than speed.</div>
 
   ${sec(1,'What you can and cannot do',card(`<p><b>You record.</b> Leads and estimate versions · appointments and their outcome · jobs, promise dates, completion and costs · coverage offers and the team's response · availability · quality events · compliance checks · supervised-job notes · suspected incidents · exclusion <em>requests</em> · weekly review notes.</p>
@@ -1653,7 +1760,7 @@ function qReportTeam(t,c){
   const sales=c?.categories.find(r=>r.key==='sales'),r=c?.categories.find(r=>r.key==='revenue');const completed=c?.evidence.progress.completed_jobs.done||0;
   const kpi=(label,value,sub)=>`<div class="simple-kpi"><span class="eyebrow">${label}</span><b class="num">${value}</b><span class="sub2">${sub}</span></div>`;
   const pending=cohort.filter(l=>l.status==='pending'&&Q.ests.some(e=>e.lead_id===l.id)).length,unquoted=cohort.filter(l=>l.status==='pending'&&!Q.ests.some(e=>e.lead_id===l.id)).length,cancelled=cohort.filter(l=>l.status==='cancelled').length;
-  const ld=qLastDec(t.id);return `<div class="card report-status"><div><span class="eyebrow">Current qualification</span><h2>${esc(status.label)}</h2><p>${esc(status.reason)}</p><p style="margin-top:8px">Last manager decision: ${ld?`${esc(QOUT_LABEL[ld.official_outcome])} · ${fmtDy(dPT(ld.decided_at))}`:'none yet'}. ${c?.weighted_score!=null?`Current score ${c.weighted_score.toFixed(1)} / 100.`:`A full score is unavailable${c?`; ${7-c.missing_categories.length} of 7 metrics have points`:''}.`}</p></div></div>
+  const ld=qLastDec(t.id);return `<div class="card report-status"><div><span class="eyebrow">Current qualification</span><h2>${esc(status.label)}</h2><p>${esc(status.reason)}</p><p style="margin-top:8px">Last manager decision: ${ld?`${esc(QOUT_LABEL[ld.official_outcome])} · ${fmtDy(dPT(ld.decided_at))}`:'none yet'}. ${c?.weighted_score!=null?`Current score ${c.weighted_score.toFixed(1)} / 100.`:`A full score is unavailable${c?`; ${7-c.categories.filter(r=>r.points==null).length} of 7 metrics have points`:''}.`}</p></div></div>
   <div class="sub2">Reporting period ${fmtD(P.start)} – ${fmtD(P.end)} · ${pending} pending estimate${pending===1?'':'s'} · ${cancelled} cancellation${cancelled===1?'':'s'} · ${unquoted} awaiting an estimate. A cancellation is shown separately; removing it from scoring requires an approved exclusion.</div>
   <div class="simple-kpis">${kpi('Sales',sales?String(sales.numerator):'—',sales?`${sales.denominator} decided lead${sales.denominator===1?'':'s'} assigned in this period · ${pct(sales.value)}`:'No data')}${kpi('Revenue per lead',r?.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents):'—',`${esc(r?.diagnostics.credit_point||'sold')} revenue · ${r?.denominator||0} assigned lead${r?.denominator===1?'':'s'}${r?.missing?' · missing amounts':''}`)}${kpi('Work completed',String(completed),'Finished sold work, not estimate visits')}${kpi('Pending estimates',String(pending),'Still awaiting a customer decision')}</div>`;
 }
@@ -1727,6 +1834,7 @@ async function qLinkedAction(t,id,mode){
   if(mode==='failure'){opts.sub='Team failure is separate from a customer decline or cancellation.';opts.fields=[{label:'Failure reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.reason,'Record how the team failed its responsibility');}
   if(mode==='cancel'){opts.sub='Record who cancelled and why. Customer/company score exclusions await manager review; cancellation never becomes Team failed.';opts.fields=[{label:'Cancelled by',f:'origin',kind:'seg',segs:[['customer','Customer'],['company','Company'],['team','Team']],value:'customer',wide:true},{label:'Reason',f:'reason',kind:'area',value:lead.cancel_reason||appt.reason||'',wide:true}];opts.validate=v=>req(v.reason,'Record the cancellation reason');}
   if(['estimate','sale'].includes(mode)&&lead.service_confirmed===false){const validate=opts.validate;opts.fields.unshift({label:'Service · confirm once',f:'service',kind:'select',opts:['cleaning','installation','mixed','other'],blank:'Choose service',wide:true});opts.validate=v=>req(v.service,'Choose the service for this job')||(validate?validate(v):null);}
+  const required={visit:['outcome',...(['attended','late'].includes(appt.outcome)&&appt.schedule_time_known===false?['scheduled_at']:[])],estimate:['price_cents'],sale:['revenue_cents',...(!job?['promised_date']:[])],collection:['collected_revenue_cents'],work:['completed_at','completion_evidence'],reschedule:['to_date','reason'],decline:['reason'],failure:['reason'],cancel:['origin','reason']}[mode]||[];opts.fields.forEach(f=>{if(required.includes(f.f)&&!f.label.endsWith(' *'))f.label+=' *';});
   const form=await qAsk(opts);if(!form)return;let values=form.values;
   if(Object.values(values).some(v=>typeof v==='number'&&v<0)){toast('Money amounts must be nonnegative',true);return;}
   if(mode==='costs')values={costs:qMergeCosts(job.costs,values.labor,values.materials,values.status)};

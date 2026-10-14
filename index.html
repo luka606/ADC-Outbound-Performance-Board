@@ -548,7 +548,7 @@ body.admin-on .admin-only{display:block}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="off"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word" id="buildStamp">build 2026-10-14b</div>
+    <div class="sb-word" id="buildStamp">build 2026-10-14c</div>
   </div>
 </aside>
 <div class="content">
@@ -737,7 +737,7 @@ body.admin-on .admin-only{display:block}
 <!-- ================= JOBS: TECHNICIANS ================= -->
 <section class="tab" id="tab-jtech">
   <h2>Technicians</h2>
-  <div class="sub">Add technicians so they appear in the assignment dropdown. <b>Deactivate</b> hides someone from the dropdown but keeps their history; <b>Delete</b> removes them from the list (past assignments keep the name). <b>Approved</b> is separate and admin-only: it marks who is on the frozen approved-technician list and counts as a coverage option on the <b>Coverage</b> tab.</div>
+  <div class="sub">Use this page for technician setup. Daily jobs are recorded in <b>Daily Entry</b>; calculated performance is on <a href="qualification.html">Team Qualification</a>. Add a name and default job type once. The admin confirms approval, service areas and contact details; the dispatcher declares dated team availability in Qualification before offers are made.</div>
   <div class="panel">
     <h3 class="pt">Add technician</h3>
     <div class="bar tight">
@@ -753,7 +753,7 @@ body.admin-on .admin-only{display:block}
 <!-- ================= JOBS: COVERAGE ================= -->
 <section class="tab" id="tab-jcover">
   <h2>Coverage log</h2>
-  <div class="sub">No ADC job is rejected until every <b>approved, active</b> technician who matches the area and job type has been offered it — and every offer is written down here. One row per offer or status change: a job can move through several statuses, and each is a new row, never an overwrite.</div>
+  <div class="sub">Record jobs that need help finding coverage. Start with the reference, job date and area; tick the technicians actually contacted, then record the outcome. Use <b>+ status</b> to continue the same job. <a href="qualification.html">Team Qualification</a> shows the team coverage score and lets you reuse this log.</div>
 
   <div class="panel">
     <div class="bar tight">
@@ -776,29 +776,31 @@ body.admin-on .admin-only{display:block}
   <div class="panel">
     <h3 class="pt" id="cvFormTitle">Log a job</h3>
     <div class="count-note" id="cvApprovedNote" style="margin-bottom:10px"></div>
-    <div class="cv-grid">
-      <div class="fld"><label>Time (PT)</label><input type="text" id="cvTime" placeholder="HH:MM" style="width:90px"></div>
-      <div class="fld"><label>Lead / job ID</label><input type="text" id="cvLead" placeholder="e.g. AB12CD" class="jobref" style="text-transform:uppercase"></div>
-      <div class="fld"><label>Area</label><input type="text" id="cvArea" placeholder="LA / OC / SD …"></div>
-      <div class="fld"><label>Job date</label><input type="date" id="cvJobDate"></div>
+    <div class="count-note" id="cvFormGuide" style="margin-bottom:12px">Fields marked * are required. Offer history stays on this job.</div>
+    <h4>1. Identify the job</h4><div class="cv-grid">
+      <div class="fld"><label for="cvTime">Offer time (Pacific) *</label><input type="text" id="cvTime" placeholder="HH:MM" style="width:90px"></div>
+      <div class="fld"><label for="cvLead">Job reference *</label><input type="text" id="cvLead" placeholder="e.g. AB12CD" class="jobref" style="text-transform:uppercase"></div>
+      <div class="fld"><label for="cvArea">Area *</label><input type="text" id="cvArea" placeholder="LA / OC / SD …"></div>
+      <div class="fld"><label for="cvJobDate">Job date *</label><input type="date" id="cvJobDate"></div>
+    </div><details style="margin:14px 0"><summary>Additional details (optional)</summary><div class="cv-grid" style="margin-top:10px">
       <div class="fld"><label>Value ($)</label><input type="number" id="cvValue" min="0" step="1" style="width:110px"></div>
       <div class="fld"><label>Original assignee</label><input type="text" id="cvOrig" list="cvTechList"></div>
       <div class="fld"><label>Issue</label><select id="cvIssue">
         <option value="">— pick —</option>
         <option>Usual technician unavailable</option><option>Declined</option><option>Over capacity</option><option>Out of area</option><option>No technician for this area</option><option>Customer reschedule</option><option>Other</option></select></div>
       <div class="fld"><label>Offer sent by</label><select id="cvMethod"><option value="">—</option><option value="call">Call</option><option value="text">Text</option><option value="crm">CRM</option></select></div>
-    </div>
+    </div></details><h4>2. Record the offers and result</h4>
     <div class="fld" style="margin-top:12px"><label>Technicians offered <span class="count-note">— approved &amp; active only; tick each one you offered it to</span></label>
       <div class="cv-chips" id="cvOffered"></div></div>
     <div class="cv-grid" style="margin-top:12px">
-      <div class="fld" style="grid-column:span 2"><label>Responses</label><input type="text" id="cvResp" placeholder="Sagi: no answer 10:40 · Jordan: declined · Jimmy: accepted 11:05"></div>
-      <div class="fld"><label>Final assignee</label><input type="text" id="cvFinal" list="cvTechList"></div>
-      <div class="fld"><label>Outcome</label><select id="cvOutcome">
+      <div class="fld" style="grid-column:span 2"><label for="cvResp">Responses / notes</label><input type="text" id="cvResp" placeholder="Sagi: no answer 10:40 · Jordan: declined · Jimmy: accepted 11:05"></div>
+      <div class="fld"><label for="cvFinal">Final assignee</label><input type="text" id="cvFinal" list="cvTechList"></div>
+      <div class="fld"><label for="cvOutcome">Outcome *</label><select id="cvOutcome">
         <option value="">— pick —</option>
         <option value="uncovered">Uncovered</option><option value="reassigned">Reassigned</option><option value="rejected">Rejected</option><option value="potentially_lost">Potentially lost</option><option value="confirmed_lost">Confirmed lost</option></select></div>
-      <div class="fld" style="grid-column:span 2"><label>Lost reason</label><input type="text" id="cvLost" placeholder="Required for Confirmed lost"></div>
-      <div class="fld" style="grid-column:span 2"><label>Next action</label><input type="text" id="cvNext"></div>
-      <div class="fld"><label>Owner</label><input type="text" id="cvRowOwner"></div>
+      <div class="fld" style="grid-column:span 2"><label for="cvLost">Lost reason</label><input type="text" id="cvLost" placeholder="Required for Confirmed lost"></div>
+      <div class="fld" style="grid-column:span 2"><label for="cvNext">Next action</label><input type="text" id="cvNext"></div>
+      <div class="fld"><label for="cvRowOwner">Owner</label><input type="text" id="cvRowOwner"></div>
     </div>
     <datalist id="cvTechList"></datalist>
     <div class="bar tight" style="margin-top:14px">
@@ -2856,7 +2858,7 @@ function renderJTechs(){
     if(opts) return `<select data-tf="${k}">${opts.map(([v,l])=>`<option value="${v}"${(val||'')===v?' selected':''}>${l}</option>`).join('')}</select>`;
     return `<input type="text" data-tf="${k}" value="${esc(val||'')}" placeholder="${ph}" style="width:${k==='areas'?110:140}px">`;
   };
-  let h=`<thead><tr><th>Technician</th><th>Approved</th><th>Areas</th><th>Job types</th><th>Contact</th><th>Availability</th><th>Default type</th><th>Status</th><th style="width:${adm?440:330}px">Actions</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Technician</th><th>Approved</th><th>Areas</th><th>Job types</th><th>Contact</th><th>Availability</th><th>Default type</th><th>Status</th><th style="width:${adm?440:330}px">Actions / performance</th></tr></thead><tbody>`;
   TECHS.forEach(t=>{
     const off=t.active===false, ap=t.approved===true;
     h+=`<tr style="${off?'opacity:.55':''}">
@@ -2869,6 +2871,7 @@ function renderJTechs(){
       <td>${t.default_type?`<span class="badge ${t.default_type==='DVC'?'crossbooking':'booking'}">${esc(t.default_type)}</span>`:'<span class="badge gray">—</span>'}</td>
       <td>${off?'<span class="badge gray">Inactive</span>':'<span class="badge yes">Active</span>'}</td>
       <td style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn ghost sm" href="qualification.html?technician=${encodeURIComponent(t.name)}">View team score</a>
         ${adm?`<button class="btn sm" data-tsave="${esc(t.name)}">Save</button><button class="btn ghost sm" data-tapprove="${esc(t.name)}">${ap?'Revoke approval':'Approve'}</button>`:''}
         <button class="btn ghost sm" data-trename="${esc(t.name)}">Rename</button>
         <button class="btn ghost sm" data-ttoggle="${esc(t.name)}">${off?'Activate':'Deactivate'}</button>
@@ -2963,7 +2966,7 @@ const cvDate=()=>$('#cvDate').value||todayStr();
 function cvNowHHMM(){const d=nowPST();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 const cvKey=r=>`${r.log_date} ${r.time_local||''} ${r.created_at||''}`;
 const cvSort=(a,b)=>cvKey(a).localeCompare(cvKey(b));
-function cvLatestByLead(rows){const m=new Map();[...rows].sort(cvSort).forEach(r=>m.set(r.lead_ref,r));return m;}
+function cvLatestByLead(rows){const m=new Map();[...rows].sort(cvSort).forEach(r=>m.set(String(r.lead_ref||'').trim().toUpperCase(),r));return m;}
 function cvPT(ts){return new Date(ts).toLocaleTimeString('en-US',{timeZone:PST_TZ,hour:'2-digit',minute:'2-digit',hour12:false});}
 function cvErr(e){
   const m=(e&&e.message)||String(e||'');
@@ -2985,8 +2988,8 @@ async function renderJCover(){
   if(rows.error){toast(friendlyErr(rows.error,'coverage_schema.sql'),true);$('#cvDayNote').textContent='Run coverage_schema.sql in Supabase to create the coverage tables, then reload.';return;}
   CV_ALL=(rows.data||[]).sort(cvSort);
   CV_ROWS=CV_ALL.filter(r=>r.log_date===d);
-  const todayLeads=new Set(CV_ROWS.map(r=>r.lead_ref));
-  CV_CARRY=[...cvLatestByLead(CV_ALL.filter(r=>r.log_date<d)).values()].filter(r=>CV_OPEN.has(r.outcome)&&!todayLeads.has(r.lead_ref));
+  const todayLeads=new Set(CV_ROWS.map(r=>String(r.lead_ref||'').trim().toUpperCase()));
+  CV_CARRY=[...cvLatestByLead(CV_ALL.filter(r=>r.log_date<d)).values()].filter(r=>CV_OPEN.has(r.outcome)&&!todayLeads.has(String(r.lead_ref||'').trim().toUpperCase()));
   CV_DAY=day.data||null;
   cvRenderDay((prev.data&&prev.data[0])||{});cvRenderKpis();cvRenderCarry();cvRenderForm();cvRenderTable();cvRenderEod();
 }
@@ -3022,8 +3025,9 @@ function cvRenderCarry(){
   $('#tblCvCarry').innerHTML=h+'</tbody>';
 }
 function cvRenderForm(){
+  cvUpdateHints();
   const ap=cvApproved();
-  $('#cvOffered').innerHTML=ap.length?ap.map(t=>`<span class="cv-chip${CV_SEL.has(t.name)?' on':''}" data-cvchip="${esc(t.name)}">${esc(t.name)}<span class="meta">${esc([t.areas,t.job_types].filter(Boolean).join(' · ')||'—')}</span></span>`).join(''):'<span class="count-note">No approved technicians yet.</span>';
+  $('#cvOffered').innerHTML=ap.length?ap.map(t=>`<button type="button" class="cv-chip${CV_SEL.has(t.name)?' on':''}" aria-pressed="${CV_SEL.has(t.name)}" data-cvchip="${esc(t.name)}">${esc(t.name)}<span class="meta">${esc([t.areas,t.job_types].filter(Boolean).join(' · ')||'—')}</span></button>`).join(''):'<span class="count-note">No approved technicians yet.</span>';
   $('#cvApprovedNote').innerHTML=ap.length?`${ap.length} approved &amp; active technician${ap.length===1?'':'s'} count as coverage options. Approval is admin-only, on the <b>Technicians</b> tab.`:'<b>No technician is approved yet.</b> An admin approves them on the <b>Technicians</b> tab. Until then a job cannot be recorded as Rejected — the database refuses it.';
   $('#cvTechList').innerHTML=TECHS.filter(t=>t.active!==false).map(t=>`<option value="${esc(t.name)}">`).join('');
   if(!$('#cvTime').value)$('#cvTime').value=cvNowHHMM();
@@ -3070,6 +3074,15 @@ function cvResetForm(){
   $('#cvFormTitle').textContent='Log a job';$('#cvSave').textContent='Add to log';$('#cvCancel').style.display='none';
   cvRenderForm();
 }
+function cvUpdateHints(){
+ const outcome=$('#cvOutcome').value,open=CV_OPEN.has(outcome);
+ $('#cvFinal').closest('.fld').style.display=outcome==='reassigned'?'':'none';
+ $('#cvLost').closest('.fld').style.display=outcome==='confirmed_lost'?'':'none';
+ $('#cvNext').closest('.fld').style.display=open?'':'none';
+ $('#cvFormGuide').textContent=!outcome?'Required: reference, offer time, area, job date and outcome. Choose an outcome to see its remaining fields.':outcome==='reassigned'?'Reassigned: choose the final assignee and record the responses.':outcome==='confirmed_lost'?'Confirmed lost: record why the job was lost.':outcome==='rejected'?'Rejected: record the approved technicians offered and their responses before rejection.':'Still open: record the owner and next action so the job can be handed over.';
+ for(const [id,required] of [['cvLead',true],['cvTime',true],['cvArea',true],['cvJobDate',true],['cvOutcome',true],['cvFinal',outcome==='reassigned'],['cvLost',outcome==='confirmed_lost'],['cvNext',open],['cvRowOwner',open]])$('#'+id).required=required;
+}
+$('#cvOutcome').addEventListener('change',cvUpdateHints);
 async function cvUpsertDay(patch){
   const d=cvDate();
   const {error}=await sb.from('coverage_days').upsert({log_date:d,...patch,updated_at:new Date().toISOString()},{onConflict:'log_date'});
@@ -3082,16 +3095,19 @@ $('#cvDate').addEventListener('change',()=>{cvResetForm();renderJCover();});
   const ok=await cvUpsertDay({owner:$('#cvOwner').value.trim()||null,backup:$('#cvBackup').value.trim()||null,review_times:$('#cvReview').value.trim()||'10:00, 14:00, 17:00'});
   if(ok){toast('Day owner saved');cvRenderDay({});}
 }));
-$('#cvOffered').addEventListener('click',e=>{const c=e.target.closest('[data-cvchip]');if(!c)return;const n=c.dataset.cvchip;if(CV_SEL.has(n))CV_SEL.delete(n);else CV_SEL.add(n);c.classList.toggle('on',CV_SEL.has(n));});
+$('#cvOffered').addEventListener('click',e=>{const c=e.target.closest('[data-cvchip]');if(!c)return;const n=c.dataset.cvchip;if(CV_SEL.has(n))CV_SEL.delete(n);else CV_SEL.add(n);c.classList.toggle('on',CV_SEL.has(n));c.setAttribute('aria-pressed',String(CV_SEL.has(n)));});
 $('#cvSave').addEventListener('click',async()=>{
   const d=cvDate(), lead=$('#cvLead').value.trim().toUpperCase(), outcome=$('#cvOutcome').value, offered=[...CV_SEL];
   const lost=$('#cvLost').value.trim(), fin=$('#cvFinal').value.trim();
   if(!lead){toast('Lead / job ID is required',true);return;}
   if(!outcome){toast('Pick an outcome',true);return;}
+  if(!$('#cvArea').value.trim()||!$('#cvJobDate').value){toast('Choose the job date and area.',true);return;}
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test($('#cvTime').value.trim())){toast('Enter the actual offer time as HH:MM in Pacific time.',true);return;}
+  if(CV_OPEN.has(outcome)&&(!$('#cvNext').value.trim()||!($('#cvRowOwner').value.trim()||$('#cvOwner').value.trim()))){toast('An open job needs an owner and next action.',true);return;}
   if(outcome==='rejected'&&!offered.length){toast('Rejected needs at least one approved technician offered — that is the rule.',true);return;}
   if(outcome==='confirmed_lost'&&!lost){toast('Confirmed lost needs a reason.',true);return;}
   if(outcome==='reassigned'&&!fin){toast('Reassigned needs the final assignee.',true);return;}
-  const v=$('#cvValue').value.trim();
+  const v=$('#cvValue').value.trim();if(v!==''&&(!Number.isFinite(Number(v))||Number(v)<0)){toast('Enter a valid nonnegative value, or leave it blank.',true);return;}
   const row={log_date:d,time_local:$('#cvTime').value.trim()||cvNowHHMM(),lead_ref:lead,area:$('#cvArea').value.trim()||null,job_date:$('#cvJobDate').value||null,
     value:v===''?null:Number(v),original_assignee:$('#cvOrig').value.trim()||null,issue:$('#cvIssue').value||null,
     offered_names:offered,offered_method:$('#cvMethod').value||null,responses:$('#cvResp').value.trim()||null,final_assignee:fin||null,
