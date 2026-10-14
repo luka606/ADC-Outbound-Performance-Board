@@ -95,13 +95,13 @@ function makeFake(db){
     constructor(t){this.t=t;this.op='select';this.f=[];this.one=false;this.payload=null;this.lim=null;this.sorts=[];}
     select(){return this;} insert(p){this.op='insert';this.payload=p;return this;} update(p){this.op='update';this.payload=p;return this;} delete(){this.op='delete';return this;}
     eq(k,v){this.f.push(r=>String(r[k])===String(v));return this;} neq(k,v){this.f.push(r=>String(r[k])!==String(v));return this;} in(k,vs){this.f.push(r=>vs.map(String).includes(String(r[k])));return this;} is(k,v){this.f.push(r=>v===null?r[k]==null:r[k]===v);return this;}
-    gte(k,v){this.f.push(r=>r[k]>=v);return this;} lte(k,v){this.f.push(r=>r[k]<=v);return this;} order(k,o){this.sorts.push([k,!(o&&o.ascending===false)]);return this;} limit(n){this.lim=n;return this;} single(){this.one=true;return this;} maybeSingle(){this.one=true;return this;}
+    gte(k,v){this.f.push(r=>r[k]>=v);return this;} lte(k,v){this.f.push(r=>r[k]<=v);return this;} order(k,o){this.sorts.push([k,!(o&&o.ascending===false)]);return this;} limit(n){this.lim=n;return this;} range(a,b){this.offset=a;this.lim=b-a+1;return this;} single(){this.one=true;return this;} maybeSingle(){this.one=true;return this;}
     _rows(){return (db[this.t]||[]).filter(r=>this.f.every(fn=>fn(r)));}
     _run(){
       if(!(this.t in db))return ERR(`Could not find the table 'public.${this.t}' in the schema cache`);
       if((this.t.startsWith('qual_')||this.t.startsWith('bridge_'))&&!email())return ERR('permission denied (anon)');
       let data=null;
-      if(this.op==='select'){data=this._rows().slice();for(const [k,asc] of this.sorts.slice().reverse())data.sort((a,b)=>{const x=a[k]??'',y=b[k]??'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});if(this.lim!=null)data=data.slice(0,this.lim);if(this.one)data=data[0]||null;}
+      if(this.op==='select'){data=this._rows().slice();for(const [k,asc] of this.sorts.slice().reverse())data.sort((a,b)=>{const x=a[k]??'',y=b[k]??'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});if(this.lim!=null)data=data.slice(this.offset||0,(this.offset||0)+this.lim);if(this.one)data=data[0]||null;}
       else if(this.op==='insert'){const arr=Array.isArray(this.payload)?this.payload:[this.payload];const out=[];for(const p of arr){const r={id:uid(),...p};const err=before(this.t,'insert',r,null);if(err)return ERR(err);db[this.t].push(r);after(this.t,'insert',r,null);out.push(r);}data=this.one?out[0]:out;}
       else if(this.op==='update'){const rows=this._rows();const staged=[];for(const r of rows){const nr={...r,...this.payload};const err=before(this.t,'update',nr,r);if(err)return ERR(err);staged.push([r,nr]);}staged.forEach(([r,nr])=>{const old={...r};Object.assign(r,nr);after(this.t,'update',r,old);});data=this.one?rows[0]||null:rows;}
       else if(this.op==='delete'){if(!['qual_team_members','qual_availability'].includes(this.t))return ERR(`permission denied for table ${this.t}`);if(!email())return ERR('permission denied (anon)');const rows=this._rows();db[this.t]=db[this.t].filter(r=>!rows.includes(r));data=rows;}

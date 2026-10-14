@@ -1,0 +1,44 @@
+const {JSDOM,VirtualConsole}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert/strict');
+const {freezeClock}=require('./qualification-clock.cjs');
+const {createFixture}=require('./qualification-transport.cjs'),{makeClient}=require('./qualification-test-client.js');
+let pass=0,fixture,dom;const check=(name,c)=>{assert(c,name);pass++;console.log('✓ '+name);};
+const wait=async predicate=>{for(let i=0;i<300;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}throw Error('UI did not reach expected state');};
+(async()=>{
+ fixture=await createFixture();const calls=[],errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Could not parse CSS/.test(e.message))errors.push(e.message);});
+ const provider=makeClient(async r=>{calls.push(r);return fixture.transport(r);},null);
+ dom=new JSDOM(fs.readFileSync('qualification.html','utf8'),{url:'http://localhost/qualification.html',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){freezeClock(w,'2026-10-13T20:00:00.000Z');w.localStorage.setItem('adc_supabase_cfg',JSON.stringify({url:'http://fixture.local',key:'fictional'}));w.supabase=provider;w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){};}});
+ const w=dom.window,d=w.document,$=s=>d.querySelector(s);await wait(()=>$('#qGateTitle').textContent==='Sign in');check('Protected report is gated without a session',$('#qBody').classList.contains('hide'));
+ provider.auth.__set({user:{email:'dispatcher@example.test',role:'dispatcher'}});await wait(()=>w.eval('Q.loaded'));
+ w.qOpen(fixture.team);await wait(()=>!!$('#qTeam [data-act="linkassignment"]'));
+ check('Team report leads with raw results and linked jobs',!!$('#qTeam .simple-kpis')&&/Linked jobs/.test($('#qTeam').textContent)&&!$('#qTeam .qual-details').open);
+ const fill=(values)=>{Object.entries(values).forEach(([key,value])=>{const field=$(`#qSheet [data-f="${key}"]`);assert(field,`Field ${key}`);field.value=value;});};
+ const submit=()=>$('#qSheetPrimary').click();
+ $('#qTeam [data-act="linkassignment"]').click();await wait(()=>!!$('#qSheet [data-f="outcome_id"]'));fill({outcome_id:fixture.outcomes[0].id});submit();await wait(()=>!!$('#qSheet [data-f="job_ref"]'));
+ check('Source job reference prefilled, no retyping', $('#qSheet [data-f="job_ref"]').value==='12345');submit();await wait(()=>w.eval('Q.links.length===1')&&!!$('#qTeam [data-act="linkedjob"]'));
+ const link=()=>w.eval('Q.links[0]');const record=key=>w.eval('Q.'+key)[0];
+ check('Completed visit remains pending estimate, not completed work',record('leads').status==='pending'&&record('jobs')===undefined&&record('appts').outcome==='visited');
+ const saveAction=async(mode,values)=>{const start=calls.length;const promise=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,mode);await wait(()=>!!$('#qSheet'));fill(values);submit();await promise;await wait(()=>!$('#qSheet'));check('One protected transactional RPC for '+mode,calls.slice(start).filter(r=>r.query.rpc==='qual_save_linked_job').length===1);};
+ await saveAction('estimate',{price_cents:'18000'});await saveAction('sale',{revenue_cents:'640',decision_at:'2026-10-12T13:00',promised_date:'2026-10-20'});
+ check('Actual sale differs from estimate and is consistent on related records',Number(record('leads').sold_revenue_cents)===64000&&Number(record('jobs').revenue_cents)===64000&&Number(record('ests').price_cents)===1800000);
+ await saveAction('costs',{labor:'200',materials:'80'});const costs=JSON.stringify(record('jobs').costs);
+ const cp=w.qLinkedAction(w.eval('Q.teams[0]'),link().id,'costs');await wait(()=>!!$('#qSheet [data-f="labor"]'));check('Saved costs are prefilled',$('#qSheet [data-f="labor"]').value==='200'&&$('#qSheet [data-f="materials"]').value==='80');$('#qSheetCancel').click();await cp;
+ await saveAction('work',{completed_at:'2026-10-12T15:00',completion_evidence:'sample photos'});check('Completion leaves stored costs intact',JSON.stringify(record('jobs').costs)===costs);
+ // Return visit is selected and links to the already existing opportunity by explicit confirmation.
+ $('#qTeam [data-act="linkassignment"]').click();await wait(()=>!!$('#qSheet [data-f="outcome_id"]'));fill({outcome_id:fixture.outcomes[1].id});submit();await wait(()=>!!$('#qSheet [data-f="existing_lead"]'));
+ check('Return visit offers exact existing opportunity',$('#qSheet [data-f="existing_lead"]').value===record('leads').id);submit();await wait(()=>w.eval('Q.links.length===2'));
+ check('Return visit adds no duplicate opportunity/work',w.eval('Q.leads.length')===1&&w.eval('Q.jobs.length')===1&&d.querySelectorAll('#qTeam .linked-row').length===1);
+ // Independent engine regressions using source fixture inputs.
+ const existing=fs.readFileSync('tests/qualification.test.cjs','utf8');const fixtureCode=existing.slice(existing.indexOf('  function fixture(o)'),existing.indexOf('  const calc='));
+ w.eval('let auditN=0;const id=p=>p+(++auditN);'+fixtureCode+';window.auditFixture=fixture;');
+ const V=JSON.parse(JSON.stringify(w.eval('Q.ver[0]'))),team={id:'T1',name:'Audit',team_type:'incumbent',status:'active',entry_review_complete_at:'2026-08-01'};
+ const calc=data=>w.qualCompute({team,version:V,period:{start:'2026-08-27',end:'2026-09-23'},now:'2026-09-23T20:00:00Z',data});
+ let data=w.auditFixture();data.ex=data.leads.slice(0,6).map(l=>({team_id:'T1',source_table:'qual_leads',source_id:l.id,status:'approved'}));let c=calc(data);check('Excluded leads cannot satisfy the minimum sample',c.evidence.progress.estimates.done===4&&c.evidence.state==='pending_evidence');
+ data=w.auditFixture();data.cc[0].result='fail';data.dec=[{team_id:'T1',official_outcome:'pass',decided_at:'2026-09-20',next_review_date:'2026-10-20'}];c=calc(data);check('Failed current gate prevents qualified-team count',!c.qualified_for_rock);
+ data=w.auditFixture();V.revenue.credit_point={value:'collected',status:'confirmed'};data.leads.forEach(l=>l.collected_revenue_cents=0);c=calc(data);check('Collected setting scores collections, not sales',c.categories.find(c=>c.key==='revenue').numerator===0);
+ data.leads[0].collected_revenue_cents=null;c=calc(data);check('Unknown collection is not assumed zero',c.categories.find(c=>c.key==='revenue').points===null);
+ V.revenue.credit_point={value:'completed',status:'confirmed'};data=w.auditFixture();data.jobs[0].lead_id=data.leads[0].id;c=calc(data);check('Completed setting credits completed work, not uncompleted sales',c.categories.find(c=>c.key==='revenue').numerator===100000);
+ const merged=w.qMergeCosts([{category:'labor',amount_cents:20000,status:'actual'},{category:'permit',amount_cents:5000,status:'actual'}],null,10000,'actual');check('Blank completion cost retains known amount and extra category',merged.some(c=>c.category==='labor'&&c.amount_cents===20000)&&merged.some(c=>c.category==='permit'&&c.amount_cents===5000));
+ data=w.auditFixture();data.appts[0].outcome='visited';data.appts[0].schedule_time_known=false;c=calc(data);check('Unclassified source visit withholds attendance points rather than penalizing the team',c.categories.find(c=>c.key==='attendance').points===null&&c.categories.find(c=>c.key==='attendance').value===null);
+ const retained=w.qMergeCosts([{category:'labor',amount_cents:20000,status:'estimated'},{category:'permit',amount_cents:5000,status:'actual'}],20000,null,'actual',true);check('Legacy completion retains unchanged estimated status',retained.find(c=>c.category==='labor').status==='estimated');
+ check('No browser script errors',errors.length===0);console.log(`${pass} linked UI/engine checks passed`);dom.window.close();await fixture.close();
+})().catch(async e=>{console.error(e);dom?.window.close();if(fixture)await fixture.close();process.exitCode=1;});
