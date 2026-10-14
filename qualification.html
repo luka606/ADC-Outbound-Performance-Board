@@ -189,12 +189,15 @@ a.sb-ws{text-decoration:none;color:var(--ink)}
 /* ============ toolbar ============ */
 header{color:var(--ink);padding:0 22px;display:flex;align-items:center;gap:20px;height:var(--topbar-h);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line)}
 .brand{font-family:var(--disp);font-weight:600;font-size:13.5px;letter-spacing:-.01em;text-transform:none;display:flex;align-items:center;gap:10px;white-space:nowrap}
-.hdr-right{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+.hdr-right{margin-left:auto;flex:none;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;display:flex;gap:10px;align-items:center}
+#qWho{max-width:160px;overflow:hidden;text-overflow:ellipsis}
 .hdr-btn{background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:11px;transition:.15s}
 .hdr-btn:hover{color:var(--ink);border-color:var(--ink-3)}
 #themeBtn{font-size:14px;line-height:1;padding:5px 11px}
 
-.tb-title{display:flex;flex-direction:column;justify-content:center;line-height:1.18;min-width:0}
+.tb-title{display:flex;flex:1;flex-direction:column;justify-content:center;line-height:1.18;min-width:0;overflow:hidden}
+.tb-title .brand{display:block;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:1000px){.hdr-right #hdrDate{display:none}}
 .tb-sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
 .glass-edge{background:var(--glass-bg);
   backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);
@@ -388,6 +391,20 @@ textarea.in{resize:vertical;min-height:70px}
 .legend{display:flex;gap:16px;font-size:12px;color:var(--ink2);margin:10px 18px 0;flex-wrap:wrap}
 @media(max-width:900px){.grid2,.grid2.h,.scorecard,.tgrid,.queues{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.counts{grid-template-columns:repeat(3,1fr)}.scmain{grid-template-columns:1fr;justify-items:center}.sc2{grid-template-columns:1fr}.hero{flex-direction:column;align-items:flex-start}.cfgcat{grid-template-columns:1fr 60px 60px 60px 60px;font-size:12px}.cfgcat .seg{grid-column:1/-1}.ver{grid-template-columns:40px 1fr}.ver .acts{grid-column:1/-1;justify-content:flex-start}}
 @media(max-width:640px){header{gap:10px;padding:0 12px}.hdr-right #qWho,.hdr-right .verpill{display:none}main{padding:14px 14px 80px}.wrap{padding:0 14px}.fields{grid-template-columns:1fr}.fields label.wide{grid-column:auto}.rec{grid-template-columns:1fr}.rec .acts{justify-content:flex-start}.cat{grid-template-columns:minmax(0,1fr) 80px 70px 16px}.cat .contrib{display:none}.steps{grid-template-columns:1fr}}
+
+.qual-details{margin:18px 0;border:1px solid var(--sep);border-radius:16px;background:var(--card);padding:16px}
+.qual-details>summary{cursor:pointer;font-size:14px;font-weight:600;list-style-position:inside}
+.simple-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.simple-kpi{padding:18px;border:1px solid var(--sep);border-radius:16px;background:var(--card)}
+.simple-kpi b{display:block;font-size:25px;letter-spacing:-.5px;margin:6px 0}
+.simple-kpi .sub2{font-size:12px;line-height:1.5}
+.report-status{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:20px;margin:12px 0}
+.report-status h2{font-size:22px;margin:4px 0 8px}.report-status p{color:var(--ink2);font-size:14px;line-height:1.5;margin:0}
+.linked-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.6fr) auto;gap:16px;padding:18px;border-bottom:1px solid var(--sep);align-items:center}
+.linked-row:last-child{border-bottom:0}.linked-row .acts{flex-wrap:wrap}.linked-row .t{display:block;font-weight:600}.linked-row .s{display:block;color:var(--ink2);font-size:13px;margin-top:5px;line-height:1.5}
+.simple-team{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:16px;align-items:center}
+@media(min-width:1200px){.simple-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.simple-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.linked-row,.simple-team{grid-template-columns:1fr}.report-status{display:block}.linked-row .acts{justify-content:flex-start}.qual-details{padding:12px}}
 </style>
 </head>
 <body>
@@ -429,7 +446,7 @@ textarea.in{resize:vertical;min-height:70px}
   </nav>
   <div class="sb-foot">
     <div class="sb-status"><span id="connDot" class="dot live"></span><span class="sb-word">Supabase</span></div>
-    <div class="sb-word">build 2026-09-29</div>
+    <div class="sb-word">build 2026-10-14a</div>
   </div>
 </aside>
 <div class="content">
@@ -458,13 +475,14 @@ textarea.in{resize:vertical;min-height:70px}
 </div></div>
 
 <div id="qBody" class="hide">
-<div class="wrap"><div class="why"><span class="k">Why one scorecard</span><span class="t">Every team — incumbent, candidate or rebuilt — is judged by the same seven weighted categories and by gates no score can override. Only a current <b>Pass</b> on enough evidence counts toward the Rock's three.</span><a href="#" id="qWhyDef">Definitions ›</a><a href="#" id="qWhySop">SOP ›</a></div></div>
+<div class="wrap"><div class="why"><span class="k">Jobs entered once</span><span class="t">Start with Job Assignment. Update each linked job once; visits, estimates, sales and completed work stay distinct. Qualification details are available when you need them.</span><a href="#" id="qWhyDef">Definitions ›</a><a href="#" id="qWhySop">SOP ›</a></div></div>
+<div class="wrap" style="padding-top:12px"><label class="fdate">Period ending <input type="date" id="qReportEnd"></label><span class="sub2" style="margin-left:12px">Rolling window from the metric version</span><button class="btn soft sm" id="qRefresh" style="margin-left:12px">Refresh</button><span class="sub2" id="qReportUpdated" style="margin-left:12px"></span></div>
 <main id="qualRoot">
   <div id="qBlockers" class="notes"></div>
   <section class="tab on" id="tab-qover"><div class="phead"><h1 class="pt">Overview</h1><span class="sub2" id="qOverMeta"></span></div><div id="qOver"></div></section>
   <section class="tab" id="tab-qteams">
-    <div class="phead" style="margin-bottom:6px"><h1 class="pt">Teams</h1><span class="sub2">Live calculation for the period ending on the chosen date · official outcome is the last recorded decision</span></div>
-    <div class="filters">
+    <div class="phead" style="margin-bottom:6px"><h1 class="pt">Teams</h1><span class="sub2">Choose a team to review linked jobs, sales and the next action</span></div>
+    <button class="btn" id="qTeamCreateShortcut" onclick="qTeamSheet(null)" style="margin:12px 0">+ New team</button><details class="qual-details"><summary>Filter teams and previous decisions</summary><div class="filters">
       <select class="fsel" id="qfTerr"><option value="">Territory · All</option></select>
       <select class="fsel" id="qfSvc"><option value="">Service · All</option><option value="installation">Installation</option><option value="cleaning">Cleaning</option></select>
       <select class="fsel" id="qfType"><option value="">Type · All</option><option value="incumbent">Incumbent</option><option value="candidate">Candidate</option><option value="rebuilt">Rebuilt</option></select>
@@ -473,8 +491,8 @@ textarea.in{resize:vertical;min-height:70px}
       <label class="fdate">Period ends<input type="date" id="qfEnd"></label>
       <button class="btn" id="qNewTeam" style="margin-left:auto">+ New team</button>
     </div>
-    <div id="qTeams"></div>
-    <div class="legend"><span><b class="c100">■</b> 100 pts</span><span><b class="c70">■</b> 70 pts</span><span><b class="c40">■</b> 40 pts</span><span><b class="c0">■</b> 0 pts</span><span><b class="cna">■</b> N/A — denominator zero, never 0 or 100</span></div>
+    </details><div id="qTeams"></div>
+    <div class="legend hide"><span><b class="c100">■</b> 100 pts</span><span><b class="c70">■</b> 70 pts</span><span><b class="c40">■</b> 40 pts</span><span><b class="c0">■</b> 0 pts</span><span><b class="cna">■</b> N/A — denominator zero, never 0 or 100</span></div>
   </section>
   <section class="tab" id="tab-qteam"><div id="qTeam"></div></section>
   <section class="tab" id="tab-qqueue"><div class="phead"><h1 class="pt">Queues</h1><span class="sub2">What is waiting on whom. Nothing here changes an outcome by itself.</span></div><div id="qQueues" class="queues"></div></section>
@@ -532,7 +550,7 @@ async function reloadTechs(){if(!sb)return;const {data,error}=await sb.from('tec
    ========================================================================= */
 let sbb=null;
 const Q={session:null,email:null,role:null,ver:[],teams:[],members:[],avail:[],leads:[],ests:[],appts:[],jobs:[],resched:[],cov:[],qe:[],cc:[],ex:[],sup:[],inc:[],res:[],snaps:[],dec:[],act:[],rev:[],audit:[],
-  sel:null,tab:'qover',loaded:false,_wired:false,end:null,filters:{},_open:{},_cfgDraft:null};
+  links:[],assignments:[],outcomes:[],linkError:null,sel:null,tab:'qover',loaded:false,_wired:false,end:null,filters:{},_open:{},_cfgDraft:null};
 const QTABLES={ver:'qual_metric_versions',teams:'qual_teams',members:'qual_team_members',avail:'qual_availability',leads:'qual_leads',ests:'qual_lead_estimates',appts:'qual_appointments',jobs:'qual_jobs',resched:'qual_job_reschedules',cov:'qual_coverage_events',qe:'qual_quality_events',cc:'qual_compliance_checks',ex:'qual_exclusions',sup:'qual_supervised_jobs',inc:'qual_incidents',res:'qual_restrictions',snaps:'qual_snapshots',dec:'qual_decisions',act:'qual_actions',rev:'qual_reviews'};
 const QUALIFIED_RULE='Every lead assigned to a team and recorded in Team Qualification is a qualified lead; a lead that should not count is removed through an approved exclusion.';
 const QCAT_LABEL={sales:'Sales effectiveness',revenue:'Revenue efficiency',coverage:'Coverage reliability',attendance:'Attendance',completion:'Completion reliability',quality:'Customer quality',compliance:'Compliance'};
@@ -541,7 +559,7 @@ const QOUT_LABEL={pass:'Pass',coaching:'Coaching',probation:'Probation',disquali
 const qErr=e=>friendlyErr(e,'qualification_schema.sql');
 const cents=n=>(n==null||isNaN(n))?'—':'$'+(Number(n)/100).toLocaleString(undefined,{maximumFractionDigits:0});
 const pct=(v,d=1)=>(v==null||isNaN(v))?'N/A':Number(v).toFixed(d)+'%';
-const toC=s=>{const t=String(s==null?'':s).replace(/[$,\s]/g,'');if(t==='')return null;const n=Number(t);return isNaN(n)?null:Math.round(n*100);};
+const toC=s=>{const t=String(s==null?'':s).replace(/[$,\s]/g,'');if(t==='')return null;const n=Number(t),c=Math.round(n*100);return Number.isFinite(n)&&Number.isSafeInteger(c)?c:null;};
 /* PT calendar date of an ISO timestamp — every period boundary is a PT date (proposed, §18.7) */
 function dPT(ts){if(!ts)return null;const s=String(ts);if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const d=new Date(s);if(isNaN(d))return null;return iso(new Date(d.toLocaleString('en-US',{timeZone:PST_TZ})));}
 function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
@@ -634,7 +652,7 @@ function qualCompute(input){
     cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}
       if(l.status==='pending'){const age=daysBetween(dPT(l.assigned_at),today);if(decAge!=null&&age>=Number(decAge)){inc_.push(l.id);}else pend.push(l.id);return;}
       inc_.push(l.id);if(l.status==='won')won++;});
-    const estN=cohort.filter(l=>ests.some(e=>e.lead_id===l.id)||l.status!=='pending').length;
+    const estN=cohort.filter(l=>!isEx('qual_leads',l.id)&&(ests.some(e=>e.lead_id===l.id)||!['pending','cancelled'].includes(l.status))).length;
     mk('sales',{numerator:won,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value:inc_.length?won*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,
       diagnostics:{pending_not_counted:pend.length,pending_ids:pend,decision_age_days:decAge??null,estimate_versions:ests.length,qualified_estimates:estN,declined:cohort.filter(l=>l.status==='declined').length,team_failed:cohort.filter(l=>l.status==='team_failed').length},
       notes:[...(decAge==null&&pend.length?['decision-age cutoff unresolved — pending leads are shown, not counted']:[]),...(pend.length?[`${pend.length} pending lead(s) not yet in the denominator`]:[])],
@@ -643,13 +661,17 @@ function qualCompute(input){
   /* 2 · Revenue efficiency — sold revenue per qualified lead vs the approved baseline (unresolved → blocked) */
   {
     const inc_=[],exc_=[];let sold=0,collected=0;const svcMix={},terrMix={};
-    cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}inc_.push(l.id);sold+=Number(l.sold_revenue_cents||0);collected+=Number(l.collected_revenue_cents||0);svcMix[l.service||'?']=(svcMix[l.service||'?']||0)+1;terrMix[l.territory||'?']=(terrMix[l.territory||'?']||0)+1;});
-    const base=cfgval(V.revenue?.baseline_cents);const rpl=inc_.length?sold/inc_.length:null;
+    cohort.forEach(l=>{if(isEx('qual_leads',l.id)){exc_.push(l.id);return;}inc_.push(l.id);if(l.status==='won')sold+=Number(l.sold_revenue_cents||0);collected+=Number(l.collected_revenue_cents||0);svcMix[l.service||'?']=(svcMix[l.service||'?']||0)+1;terrMix[l.territory||'?']=(terrMix[l.territory||'?']||0)+1;});
+    const credit=cfgval(V.revenue?.credit_point)||'sold';let credited=sold,creditMissing=0;
+    if(credit==='collected'){credited=collected;creditMissing=cohort.filter(l=>inc_.includes(l.id)&&l.status==='won'&&l.collected_revenue_cents==null).length;}
+    else if(credit==='completed'){credited=0;jobs.filter(j=>inc_.includes(j.lead_id)&&!j.cancelled&&j.completed_at&&!isEx('qual_jobs',j.id)).forEach(j=>{if(j.revenue_cents==null)creditMissing++;else credited+=Number(j.revenue_cents);});}
+    else if(credit!=='sold')creditMissing++;
+    const base=cfgval(V.revenue?.baseline_cents);const rpl=inc_.length&&!creditMissing?credited/inc_.length:null;
     const value=(rpl!=null&&base!=null&&Number(base)>0)?rpl*100/Number(base):null;
     let gpKnown=0,gpN=0;jobs.filter(j=>j.lead_id&&inc_.includes(j.lead_id)).forEach(j=>{const m=qualMargin(j,V.margin_rules);const mm=m.actual||m.projected;if(mm){gpKnown+=mm.gp_cents;gpN++;}});
-    const r=mk('revenue',{numerator:sold,denominator:inc_.length,n:inc_.length,excluded:exc_.length,value,included_ids:inc_,excluded_ids:exc_,
-      diagnostics:{revenue_per_lead_cents:rpl,baseline_cents:base??null,baseline_status:cfgstat(V.revenue?.baseline_cents),sold_revenue_cents:sold,collected_revenue_cents:collected,credit_point:cfgval(V.revenue?.credit_point)||'sold',service_mix:svcMix,territory_mix:terrMix,gross_profit_known_cents:gpKnown,gross_profit_jobs:gpN,gross_profit_per_lead_cents:(gpN&&inc_.length)?gpKnown/inc_.length:null},
-      notes:base==null?['baseline unresolved (§18.3) — revenue per lead is shown, no points until the manager approves a baseline']:[]});
+    const r=mk('revenue',{formula:`${credit} revenue ÷ assigned leads, as a percentage of the approved baseline`,numerator:credited,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing:creditMissing,complete:creditMissing===0,allow_points:creditMissing===0,value,included_ids:inc_,excluded_ids:exc_,
+      diagnostics:{revenue_per_lead_cents:rpl,baseline_cents:base??null,baseline_status:cfgstat(V.revenue?.baseline_cents),sold_revenue_cents:sold,collected_revenue_cents:collected,credit_point:credit,credit_missing:creditMissing,service_mix:svcMix,territory_mix:terrMix,gross_profit_known_cents:gpKnown,gross_profit_jobs:gpN,gross_profit_per_lead_cents:(gpN&&inc_.length)?gpKnown/inc_.length:null},
+      notes:[...(base==null?['baseline unresolved (§18.3) — revenue per lead is shown, no points until the manager approves a baseline']:[]),...(creditMissing?[`${creditMissing} ${credit} revenue record(s) missing — points withheld, never assumed zero`]:[])]});
     if(base==null&&inc_.length){r.complete=false;warnings.push('Revenue-efficiency baseline is unresolved — official scoring is blocked.');}
   }
   /* 3 · Coverage reliability — eligible offers only; eligibility frozen at offer time (§16.14) */
@@ -666,13 +688,15 @@ function qualCompute(input){
     const grace=cfgval(V.windows?.on_time_grace_minutes);
     const inP_=appts.filter(a=>inP(a.scheduled_at));const inc_=[],exc_=[];let ontime=0,late=0,noshow=0,unexpl=0,missing=0;const exReasons=[];
     inP_.forEach(a=>{if(isEx('qual_appointments',a.id)||['customer_reschedule','company_cancel','force_majeure'].includes(a.outcome)){exc_.push(a.id);if(a.reason)exReasons.push(a.reason);return;}
+      if(a.outcome==='visited'||a.outcome==='cancelled'||a.outcome==='rescheduled'){inc_.push(a.id);missing++;return;}
       if(a.outcome==='scheduled'){if(dPT(a.scheduled_at)<today){inc_.push(a.id);missing++;}return;}
       inc_.push(a.id);let o=a.outcome;
       if(o==='attended'&&grace!=null&&a.arrival_at){const lateBy=(new Date(a.arrival_at)-new Date(a.scheduled_at))/60000;if(lateBy>Number(grace))o='late';}
       if(o==='attended')ontime++;else if(o==='late')late++;else if(o==='no_show'){noshow++;if(!String(a.reason||'').trim())unexpl++;}});
-    mk('attendance',{numerator:ontime,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing,value:inc_.length?ontime*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,cap:unexpl?70:null,
-      diagnostics:{late,no_show:noshow,unexplained_no_show:unexpl,outcome_missing:missing,grace_minutes:grace??null,grace_status:cfgstat(V.windows?.on_time_grace_minutes),exclusion_reasons:exReasons},
-      notes:[...(grace==null?['on-time grace window unresolved (§18.6) — the dispatcher\'s attended/late marking is used as recorded']:[]),...(unexpl?[`${unexpl} unexplained no-show(s) — passing standard not met, band capped at 70`]:[]),...(missing?[`${missing} past appointment(s) without a recorded outcome count as not attended`]:[])]});
+    const unclassified=inc_.filter(id=>{const a=inP_.find(x=>x.id===id);return ['visited','cancelled','rescheduled'].includes(a.outcome)||(a.schedule_time_known===false&&a.outcome==='scheduled');}).length;
+    mk('attendance',{allow_points:unclassified===0,complete:unclassified===0,numerator:ontime,denominator:inc_.length,n:inc_.length,excluded:exc_.length,missing,value:inc_.length&&!unclassified?ontime*100/inc_.length:null,included_ids:inc_,excluded_ids:exc_,cap:unexpl?70:null,
+      diagnostics:{unclassified_visits:unclassified,late,no_show:noshow,unexplained_no_show:unexpl,outcome_missing:missing,grace_minutes:grace??null,grace_status:cfgstat(V.windows?.on_time_grace_minutes),exclusion_reasons:exReasons},
+      notes:[...(unclassified?[`${unclassified} visit(s) need classification or scheduled time — attendance points withheld`]:[]),...(grace==null?['on-time grace window unresolved (§18.6) — the dispatcher\'s attended/late marking is used as recorded']:[]),...(unexpl?[`${unexpl} unexplained no-show(s) — passing standard not met, band capped at 70`]:[]),...(missing?[`${missing} past appointment(s) without a recorded outcome count as not attended`]:[])]});
   }
   /* 5 · Completion reliability — by the (rescheduled) promise date with evidence; the original promise is kept */
   {
@@ -737,7 +761,7 @@ function qualCompute(input){
 
   /* evidence state (§6) */
   const E=V.evidence||{};const minEst=Number(E.min_qualified_estimates??10),minJobs=Number(E.min_completed_jobs??5),minSup=Number(E.supervised_jobs??3);
-  const completedN=jobs.filter(j=>!j.cancelled&&j.completed_at&&inP(j.completed_at)).length;
+  const completedN=jobs.filter(j=>!j.cancelled&&!isEx('qual_jobs',j.id)&&j.completed_at&&inP(j.completed_at)).length;
   const estN=cats.find(c=>c.key==='sales').diagnostics.qualified_estimates;
   const supOk=sup.filter(s=>s.reviewed_at&&s.result&&s.result!=='unsatisfactory').length;
   const needsTrial=team.team_type!=='incumbent';
@@ -780,7 +804,7 @@ function qualCompute(input){
   const prior_score=priorSnap?priorSnap.weighted_score:null;
   const official=lastDec?lastDec.official_outcome:null;
   const decisionCurrent=!!lastDec&&(!lastDec.next_review_date||lastDec.next_review_date>=today);
-  const qualified_for_rock=official==='pass'&&decisionCurrent&&evidence_state==='decision_eligible'&&activeRes.length===0&&team.status==='active'&&!confirmedInc.length;
+  const qualified_for_rock=official==='pass'&&decisionCurrent&&evidence_state==='decision_eligible'&&activeRes.length===0&&team.status==='active'&&V.status==='active'&&!confirmedInc.length&&gatesFailed.length===0&&weighted_score!=null&&weighted_score>=passMin&&zeroBand.length===0;
   if(pendingExcl)warnings.push(`${pendingExcl} exclusion request(s) awaiting the manager.`);
   const memberChange=members.some(m=>lastDec&&(String(m.created_at)>String(lastDec.decided_at)||(m.active_to&&m.active_to>dPT(lastDec.decided_at))));
   if(memberChange)warnings.push('Membership changed since the last official decision — whether this restarts qualification is unresolved (§18.10).');
@@ -825,13 +849,21 @@ function opts(list,val,blank){return (blank!=null?`<option value="">${esc(blank)
 function ring(size,r,stroke,pct,cls,inner){const C=2*Math.PI*r;const dash=`${Math.max(0,Math.min(1,pct||0))*C} ${C}`;return `<div class="ring${cls?' '+cls:''}" style="width:${size}px;height:${size}px"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--fill)" stroke-width="${stroke}"></circle><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${pct==null?'var(--ink3)':'var(--accent)'}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash}" transform="rotate(-90 ${size/2} ${size/2})" style="transition:stroke-dasharray .6s"></circle></svg><div class="c">${inner}</div></div>`;}
 
 /* ---------- data ---------- */
+async function qAll(client,table){
+  const rows=[];for(let start=0;;start+=500){const r=await client.from(table).select('*').order('id').range(start,start+499);if(r.error)return r;rows.push(...(r.data||[]));if((r.data||[]).length<500)return {data:rows,error:null};}
+}
 async function qLoad(){
   const keys=Object.keys(QTABLES);
-  const rs=await Promise.all(keys.map(k=>sbb.from(QTABLES[k]).select('*')));
+  const rs=await Promise.all(keys.map(k=>qAll(sbb,QTABLES[k])));
   for(let i=0;i<rs.length;i++){if(rs[i].error){toast(qErr(rs[i].error),true);Q.loaded=false;$('#qBlockers').innerHTML=`<div class="note red"><span class="dot"></span><span>${esc(qErr(rs[i].error))}</span></div>`;return false;}Q[keys[i]]=rs[i].data||[];}
   Q.ver.sort((a,b)=>a.version-b.version);Q.teams.sort((a,b)=>(a.seq||0)-(b.seq||0));
-  if(!Q.end)Q.end=today();$('#qfEnd').value=Q.end;
-  Q.loaded=true;qRefreshedAt=new Date();
+  if(!Q.end)Q.end=today();$('#qfEnd').value=Q.end;$('#qReportEnd').value=Q.end;
+  const linked=await qAll(sbb,'qual_assignment_links');Q.links=linked.data||[];
+  Q.linkError=linked.error?'Job linking needs the database update. Existing reports remain available.':null;
+  const source=await Promise.all([qAll(sb,'job_assignments'),qAll(sb,'job_assignment_outcomes')]);
+  Q.assignments=source[0].data||[];Q.outcomes=source[1].data||[];
+  if(source.some(r=>r.error))Q.linkError='Could not load Job Assignment. Refresh before linking or updating visits.';
+  Q.loaded=true;qRefreshedAt=new Date();$('#qReportUpdated').textContent='Updated '+fmtTs(qRefreshedAt.toISOString());
   const av=qActiveVersion();const b=$('#qVerBadge');b.textContent=av?`metric v${av.version}`:'no active version';b.className='verpill'+(av?'':' warn');
   return true;
 }
@@ -932,6 +964,8 @@ function qAsk(o){
       if(e.target===back||e.target.closest('#qSheetX,#qSheetCancel')){done(null);return;}
       const sec=e.target.closest('#qSheetSecondary'),pri=e.target.closest('#qSheetPrimary');if(!sec&&!pri)return;
       const values=readForm($('#qSheet'));
+      const badMoney=$$('[data-t="cents"]',$('#qSheet')).find(i=>i.value.trim()!==''&&(toC(i.value)==null||toC(i.value)<0));
+      if(badMoney){const n=$('#qSheetNote');n.textContent='Enter a valid nonnegative money amount.';n.className='snote bad';return;}
       if(o.validate){const err=o.validate(values);if(err){const n=$('#qSheetNote');n.textContent=err;n.className='snote bad';return;}}
       done({values,secondary:!!sec});});
     Q._sheet=o;const first=$('#qSheet .in');if(first&&first.focus)try{first.focus();}catch(e){}
@@ -955,7 +989,7 @@ function qRenderBlockers(){
 }
 
 /* ---------- Overview ---------- */
-function qRenderOver(){
+function qRenderOverDetailed(){
   const V=qCalcVersion(),P=V?qPeriod(V):null;const calcs=Q.teams.filter(t=>t.status!=='inactive').map(t=>({t,c:qCalc(t,V)}));
   $('#qOverMeta').textContent=P?`${fmtD(P.start)} – ${fmtD(P.end)} · ${V.status==='active'?'metric v'+V.version:'draft v'+V.version+' (provisional)'} · refreshed ${qRefreshedAt?qRefreshedAt.toLocaleTimeString('en-US',{timeZone:PST_TZ,hour:'numeric',minute:'2-digit'})+' PT':''}`:'no metric version';
   const root=$('#qOver');if(!V){root.innerHTML='<div class="note red"><span class="dot"></span><span>No metric version exists. Run qualification_schema.sql — it seeds draft v1.</span></div>';return;}
@@ -991,7 +1025,10 @@ function qRenderOver(){
 }
 
 /* ---------- Teams comparison ---------- */
-$('#qfEnd').addEventListener('change',()=>{Q.end=$('#qfEnd').value||today();showQualTab(Q.tab);});
+function qSetReportEnd(value){Q.end=value||today();$('#qfEnd').value=Q.end;$('#qReportEnd').value=Q.end;showQualTab(Q.tab);}
+$('#qfEnd').addEventListener('change',()=>qSetReportEnd($('#qfEnd').value));
+$('#qReportEnd').addEventListener('change',()=>qSetReportEnd($('#qReportEnd').value));
+$('#qRefresh').addEventListener('click',async()=>{const b=$('#qRefresh');b.disabled=true;try{await qReload();}finally{b.disabled=false;}});
 ['qfTerr','qfSvc','qfType','qfOut','qfEv'].forEach(id=>$('#'+id).addEventListener('change',qRenderTeams));
 $('#qNewTeam').addEventListener('click',()=>qTeamSheet(null));
 async function qTeamSheet(t){
@@ -1009,7 +1046,7 @@ async function qTeamSheet(t){
   if(isNew){const row=await qWrite('qual_teams','insert',v,null,'Team created — it starts at Entry Review');if(row&&row.id)qOpen(row.id);}
   else await qWrite('qual_teams','update',v,t.id,'Team saved');
 }
-function qRenderTeams(){
+function qRenderTeamsDetailed(){
   const V=qCalcVersion();const tsel=$('#qfTerr');const cur=tsel.value;tsel.innerHTML='<option value="">Territory · All</option>'+terrList().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('');
   const f={terr:tsel.value,svc:$('#qfSvc').value,type:$('#qfType').value,out:$('#qfOut').value,ev:$('#qfEv').value};
   const rows=Q.teams.map(t=>({t,c:V?qCalc(t,V):null})).filter(({t,c})=>(!f.terr||(t.territories||[]).includes(f.terr))&&(!f.svc||(t.services||[]).includes(f.svc))&&(!f.type||t.team_type===f.type)&&(!f.out||(c&&(c.official_outcome||'none')===f.out))&&(!f.ev||(c&&c.evidence.state===f.ev)));
@@ -1060,18 +1097,20 @@ function qSectionCount(key,t){
   return {text:''};
 }
 function qRenderTeam(){
-  const root=$('#qTeam');const t=qTeam(Q.sel);
+  const root=$('#qTeam');root.querySelectorAll('details[data-detail]').forEach(d=>Q._open[d.dataset.detail]=d.open);const t=qTeam(Q.sel);
   if(!t){root.innerHTML=`<div class="phead"><h1 class="pt">Team</h1></div><div class="card empty">Pick a team on the Teams tab.</div>`;return;}
   if(Q.section){root.innerHTML=qRenderSection(t,Q.section);return;}
   const V=qCalcVersion();const c=V?qCalc(t,V):null;const ld=qLastDec(t.id);
-  const sc=c?c.weighted_score:null;const prov=c&&sc==null&&c.provisional_score!=null;
+  const sc=c?c.weighted_score:null;const prov=false;
   const leftKeys=SECTIONS.slice(0,7),rightKeys=SECTIONS.slice(7);
   const secRow=s=>{const k=qSectionCount(s.key,t);return `<a class="row seclist" href="#" data-section="${s.key}"><span class="t">${esc(s.title)}</span><span class="cnt${k.warn?' warn':''}">${esc(k.text)}</span><span class="chev" style="font-size:16px">›</span></a>`;};
   const pend=qPendingItems(t);
   root.innerHTML=`
   <div class="thead"><div><div class="eyebrow acc">${qCode(t)} · ${TYPE_LABEL[t.team_type]||t.team_type}${t.former_technician?' · led by the former technician':''}</div><h1 class="pt" style="margin-top:2px">${esc(t.name)}</h1>
-      <div class="tmeta"><span>Leader <b>${esc(t.leader_name||'—')}</b></span><span>${esc((t.territories||[]).join(', ')||'no territories')}</span><span>${esc((t.services||[]).join(' · ')||'no services')}</span><span>Active since ${fmtDy(t.active_from)}</span><span style="text-transform:capitalize">Status ${esc(t.status)}</span></div></div>
-    <div class="acts"><button class="btn soft" data-act="editteam">Edit team</button>${isMgr()?`<button class="btn" data-act="decide">Record decision</button>`:''}</div></div>
+      <div class="tmeta"><span>Leader <b>${esc(t.leader_name||'—')}</b></span><span>${esc((t.territories||[]).join(', ')||'no territories')}</span><span>${esc((t.services||[]).join(' · ')||'no services')}</span></div></div>
+    <div class="acts"><button class="btn soft" data-act="editteam">Edit team</button><button class="btn" data-act="linkassignment">Choose assigned job</button></div></div>
+  ${qReportTeam(t,c)}${qLinkedJobs(t)}
+  <details class="qual-details" data-detail="qualification"${Q._open.qualification?' open':''}><summary>Qualification details · scores, evidence and manager decisions</summary>${isMgr()?'<button class="btn soft" data-act="decide" style="margin:14px 0">Record decision</button>':''}
   ${c?`
   <div class="scorecard">
     <div class="card scmain">${ring(128,54,11,sc!=null?sc/100:prov?c.provisional_score/100:0,'sm',`<span class="v num" style="color:var(${sc!=null?'--ink':'--ink2'})">${sc!=null?sc.toFixed(1):prov?c.provisional_score.toFixed(1):'N/A'}</span><span class="l">${sc!=null?'weighted score':prov?`provisional · ${c.available_weight}% of weight`:'not computable'}</span>`)}
@@ -1085,7 +1124,7 @@ function qRenderTeam(){
   ${c.reasons.length>1?`<div class="card pad" style="margin-bottom:16px;font-size:13.5px;color:var(--ink2)"><div class="eyebrow" style="margin-bottom:6px">Why this recommendation</div>${c.reasons.slice(1).map(r=>`<div style="padding:3px 0">· ${esc(r)}</div>`).join('')}</div>`:''}
   ${c.warnings.length?`<div class="notes">${c.warnings.map(w=>`<div class="note"><span class="dot"></span><span>${esc(w)}</span></div>`).join('')}</div>`:''}
   <div class="tgrid">
-    <div><div class="eyebrow ind">Seven categories · ${fmtD(c.period.start)} – ${fmtD(c.period.end)} · 28-day window</div>
+    <div><div class="eyebrow ind">Seven categories · ${fmtD(c.period.start)} – ${fmtD(c.period.end)} · ${qCalcVersion()?.evidence?.window_days||28}-day window</div>
       <div class="card list">${c.categories.map(r=>{const open=Q.drill===r.key;const val=r.key==='revenue'?(r.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents)+'/lead':'N/A'):pct(r.value);
         const base=r.key==='revenue'?r.diagnostics.baseline_cents:null; const baseTxt=base!=null?cents(base):null;   // the approved baseline, shown wherever the revenue row is read
         const target=r.key==='revenue'&&base!=null?esc(r.target).replace(/\s*\(baseline unresolved\)/,''):esc(r.target);
@@ -1102,13 +1141,13 @@ function qRenderTeam(){
       <div class="card list">${(()=>{const p=c.evidence.progress;const EP=(label,done,min,ok)=>{const pc=min?Math.min(100,done/min*100):(ok?100:0);const good=min?done>=min:ok;return `<div class="evp"><div class="h"><b>${label}</b><span class="num" style="color:var(${good?'--ok':pc>0?'--amber':'--ink3'})">${min?`${done} / ${min}`:(ok?'Done':'Not yet')}</span></div><div class="track"><div style="width:${pc}%;background:var(${good?'--ok':pc>0?'--amber':'--ink3'})"></div></div></div>`;};
         return EP('Entry review',p.entry_review?1:0,0,p.entry_review)+(p.supervised.required?EP('Supervised jobs',p.supervised.done,p.supervised.min):'')+EP('Qualified estimates',p.estimates.done,p.estimates.min)+EP('Completed jobs',p.completed_jobs.done,p.completed_jobs.min)+EP('Critical compliance evidence',p.critical_evidence?1:0,0,p.critical_evidence)+EP('Jobs through quality window',p.quality_mature,1);})()}</div></div>
   </div>`:'<div class="note red" style="margin-bottom:16px"><span class="dot"></span><span>No metric version — nothing to compute.</span></div>'}
-  <div class="eyebrow ind">Today · guided entry</div>
+  </details><details class="qual-details" data-detail="legacy"${Q._open.legacy?' open':''}><summary>Older records and administration</summary><div class="note">Use Choose assigned job for new reporting. These separate forms are retained for older, unlinked records.</div><div class="eyebrow ind">Older records · guided entry</div>
   <div class="card pad" style="margin-bottom:16px">
     <div class="steps">${[['lead','1','Lead','Assignment and estimate'],['appt','2','Appointment','Schedule and outcome'],['job','3','Job','Promise date and revenue'],['complete','4','Completion','Evidence and costs']].map(([k,n,l,s])=>`<button class="step" data-act="step" data-id="${k}"><span class="n">${n}</span><span><span class="t">${l}</span><span class="s">${s}</span></span></button>`).join('')}</div>
     ${pend.length?`<div class="eyebrow" style="margin:18px 0 4px">Continue where you left off</div>${pend.map(p=>`<div class="cont"><span><span class="t num">${esc(p.p)}</span><span class="s">${esc(p.s)}</span></span><button class="btn tint sm" data-act="${p.act}" data-id="${p.id}">${esc(p.cta)}</button></div>`).join('')}`:''}
   </div>
   <div class="eyebrow ind">Records</div>
-  <div class="grid2"><div class="card list">${leftKeys.map(secRow).join('')}</div><div class="card list">${rightKeys.map(secRow).join('')}</div></div>`;
+  <div class="grid2"><div class="card list">${leftKeys.map(secRow).join('')}</div><div class="card list">${rightKeys.map(secRow).join('')}</div></div></details>`;
 }
 function qPendingItems(t){
   const out=[];const id=t.id;
@@ -1127,7 +1166,7 @@ function qRows(key,t){
     case 'roster':return by(Q.members).sort((a,b)=>(a.active_to?1:0)-(b.active_to?1:0)).map(m=>R(m.person_name,`${m.role[0].toUpperCase()+m.role.slice(1)} · since ${fmtD(m.active_from)}${m.active_to?' · until '+fmtD(m.active_to):''}${m.technician_id?' · board technician':''}`,m.approval_status==='approved'?`Approved by ${(m.approved_by||'').split('@')[0]} · ${fmtD(dPT(m.approved_at))}`:'Awaiting approval',(m.credentials||[]).map(c=>c.name+(c.status&&c.status!=='valid'?' ('+c.status+')':'')).join(', '),m.active_to?'ended':m.approval_status,[...(m.approval_status!=='approved'?[A('Approve','approvemember',m.id,'tint',true)]:[]),...(!m.active_to?[A('End membership','endmember',m.id)]:[])]));
     case 'avail':return by(Q.avail).sort((a,b)=>b.avail_date.localeCompare(a.avail_date)).slice(0,80).map(a=>R(fmtDy(a.avail_date),`${a.territory||'all territories'} · ${a.service||'all services'}${a.windows?' · '+a.windows:''}`,`Declared ${fmtTs(a.submitted_at)}`,[a.locked_at?'locked — an offer references this date':'',a.retroactive?'retroactive — never makes an offer eligible':'',a.approved_by?'change approved by '+a.approved_by.split('@')[0]:''].filter(Boolean).join(' · '),a.available?'available':'unavailable',[],a.retroactive?'warn':''));
     case 'leads':return by(Q.leads).sort((a,b)=>String(b.assigned_at).localeCompare(String(a.assigned_at))).map(l=>{const es=Q.ests.filter(e=>e.lead_id===l.id).sort((a,b)=>b.version-a.version);const x=Q.ex.find(e=>e.source_table==='qual_leads'&&e.source_id===l.id);const e0=es[0];
-      return R(l.lead_ref,`${l.territory||'—'} · ${l.service} · assigned ${fmtD(dPT(l.assigned_at))}${l.source?' · '+l.source:''}`,e0?`Estimate v${e0.version} · ${cents(e0.price_cents)}${es.length>1?` (${es.length} versions)`:''}`:'No estimate yet',l.status==='won'?`won ${fmtD(dPT(l.decision_at))} · ${cents(l.sold_revenue_cents)}${l.collected_revenue_cents!=null?' · collected '+cents(l.collected_revenue_cents):''}`:l.status==='declined'?`declined ${fmtD(dPT(l.decision_at))}`:l.status==='team_failed'?`team failed — ${l.failure_reason||''}`:x?`exclusion ${x.status}`:(e0?`sent ${fmtD(dPT(e0.presented_at))}`:''),l.status,[A('+ Estimate','addest',l.id),...(l.status==='pending'?[A('Won','leadwon',l.id,'tint'),A('Declined','leaddecl',l.id),A('Failed','leadfail',l.id,'danger')]:[]),...(l.status==='won'?[A('Collected','leadcollect',l.id)]:[]),...(!x?[A('Exclude…','excl',l.id)]:[])],l.status==='team_failed'?'bad':'');});
+      return R(l.lead_ref,`${l.territory||'—'} · ${l.service} · assigned ${fmtD(dPT(l.assigned_at))}${l.source?' · '+l.source:''}`,e0?`Estimate v${e0.version} · ${cents(e0.price_cents)}${es.length>1?` (${es.length} versions)`:''}`:'No estimate yet',l.status==='won'?`won ${fmtD(dPT(l.decision_at))} · ${cents(l.sold_revenue_cents)}${l.collected_revenue_cents!=null?' · collected '+cents(l.collected_revenue_cents):''}`:l.status==='declined'?`declined ${fmtD(dPT(l.decision_at))}`:l.status==='team_failed'?`team failed — ${l.failure_reason||''}`:l.status==='cancelled'?`cancelled by ${l.cancellation_origin||'unknown'} — ${l.cancel_reason||''}`:x?`exclusion ${x.status}`:(e0?`sent ${fmtD(dPT(e0.presented_at))}`:''),l.status,[A('+ Estimate','addest',l.id),...(l.status==='pending'?[A('Won','leadwon',l.id,'tint'),A('Declined','leaddecl',l.id),A('Cancelled','leadcancel',l.id),A('Team failed','leadfail',l.id,'danger')]:[]),...(l.status==='won'?[A('Collected','leadcollect',l.id)]:[]),...(!x?[A('Exclude…','excl',l.id)]:[])],l.status==='team_failed'?'bad':'');});
     case 'appts':return by(Q.appts).sort((a,b)=>String(b.scheduled_at).localeCompare(String(a.scheduled_at))).map(a=>{const late=a.outcome==='scheduled'&&dPT(a.scheduled_at)<today();return R(fmtTs(a.scheduled_at),`${a.lead_id?'Lead '+leadRef(a.lead_id)+' · ':''}${a.territory||''} ${a.service||''}`.trim(),a.arrival_at?`Arrived ${fmtTs(a.arrival_at)}`:'',late?'past — outcome not recorded, counts as not attended':(a.reason||''),late?'missing':a.outcome,[A('Outcome…','apptout',a.id,'tint')],late?'bad':'');});
     case 'jobs':return by(Q.jobs).sort((a,b)=>b.promised_date.localeCompare(a.promised_date)).map(j=>{const m=qualMargin(j,qCalcVersion()?.margin_rules);const rs=Q.resched.filter(r=>r.job_id===j.id);const x=Q.ex.find(e=>e.source_table==='qual_jobs'&&e.source_id===j.id);const late=!j.cancelled&&!j.completed_at&&j.current_promise_date<today();const mm=m.actual||m.projected;
       const m2=[mm?`${m.actual?'actual':'projected'} margin ${pct(mm.margin_pct)}${m.floor_pct!=null?` · floor ${m.floor_pct}%`:''}${m.below_floor===true?' · below floor':''}`:(m.issues[0]||''),m.exception_ref?`exception ${m.exception_ref} — authorised, still below-floor work`:'',j.completed_at&&!j.completion_evidence?'no completion evidence — not compliant':''].filter(Boolean).join(' · ');
@@ -1188,6 +1227,7 @@ async function qStepAppt(t,leadId,step){
       {label:'Outcome',f:'outcome',kind:'seg',segs:[['scheduled','Not yet'],['attended','Attended on time'],['late','Late'],['no_show','No-show']],value:'scheduled',wide:true},{label:'Reason / note',f:'reason',kind:'area',ph:'required for a no-show, reschedule or cancellation',wide:true}],
     validate:v=>req(v.scheduled_at,'Pick the scheduled time')});
   if(!r)return;const v=r.values;v.lead_id=v.lead_id||null;
+  if(Q.links.some(l=>l.lead_id===v.lead_id)){toast('Choose the assigned visit to add another visit to this linked opportunity',true);return;}
   const ap=await qWrite('qual_appointments','insert',{...v,team_id:t.id},null,'Appointment saved');if(!ap)return;
   if(step&&!r.secondary)await qStepJob(t,v.lead_id,true);
 }
@@ -1198,18 +1238,20 @@ async function qStepJob(t,leadId,step){
       {label:'Original promise date',f:'promised_date',t:'date',type:'date',hint:'Locked after save.'},{label:'Sold revenue',f:'revenue_cents',t:'cents',ph:'$ 0',value:lead&&lead.sold_revenue_cents!=null?String(lead.sold_revenue_cents/100):''}],
     validate:v=>req(v.promised_date,'Enter the promised date')});
   if(!r)return;const v=r.values;v.lead_id=v.lead_id||null;
+  const linked=Q.links.find(l=>l.lead_id===v.lead_id&&l.team_id===t.id);if(linked)return qLinkedAction(t,linked.id,'sale');
   const job=await qWrite('qual_jobs','insert',{...v,team_id:t.id,current_promise_date:v.promised_date},null,`Job ${v.job_ref||''} created`.trim());if(!job||!job.id)return;
   if(step&&!r.secondary)await qStepComplete(t,job.id,true);
 }
 async function qStepComplete(t,jobId,step){
   const j=Q.jobs.find(x=>x.id===jobId);if(!j)return;
+  const linked=Q.links.find(l=>l.job_id===jobId&&l.team_id===t.id);if(linked)return qLinkedAction(t,linked.id,'work');
   const r=await qAsk({eyebrow:step?'Today · step 4 of 4':'Jobs',title:'Record completion',sub:`${j.job_ref||'Job'} · ${t.name}`,step:step?4:0,primary:'Save completion',
     fields:[{label:'Completed',f:'completed_at',t:'ts',type:'datetime-local',value:dtLocal()},{label:'Completion evidence',f:'completion_evidence',ph:'photo set or checklist ref',hint:'Without evidence the completion is not compliant.'},
-      {label:'Costs · labor',f:'cost_labor',t:'cents',ph:'$ 0 · blank = unknown'},{label:'Costs · materials',f:'cost_materials',t:'cents',ph:'$ 0 · blank = unknown',hint:'Unknown costs never become zero — margin stays N/A.'},
+      {label:'Costs · labor',f:'cost_labor',t:'cents',value:qSavedCost(j,'labor'),ph:'blank keeps saved cost'},{label:'Costs · materials',f:'cost_materials',t:'cents',value:qSavedCost(j,'materials'),ph:'blank keeps saved cost',hint:'Saved costs are retained; an unrecorded cost stays unknown.'},
       {label:'Cost status',f:'cost_status',kind:'seg',segs:[['actual','Actual'],['estimated','Estimated']],value:'actual',wide:true}],
     validate:v=>req(v.completed_at,'Enter when the job was completed')});
   if(!r)return;const v=r.values;
-  const costs=[{category:'labor',amount_cents:v.cost_labor,status:v.cost_labor==null?'unknown':v.cost_status},{category:'materials',amount_cents:v.cost_materials,status:v.cost_materials==null?'unknown':v.cost_status}];
+  const costs=qMergeCosts(j.costs,v.cost_labor,v.cost_materials,v.cost_status,true);
   await qWrite('qual_jobs','update',{completed_at:v.completed_at,completion_evidence:v.completion_evidence||null,costs},jobId,v.completion_evidence?'Completion recorded — the quality window starts today':'Completion recorded without evidence — it does not count as compliant');
 }
 async function qAddSheet(key,t){
@@ -1284,6 +1326,11 @@ async function qImportBridge(t){
 /* ---------- row actions (one delegated handler on the Team tab) ---------- */
 $('#qTeam').addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act,id=b.dataset.id;const t=qTeam(Q.sel);if(!t)return;
+  if(act==='linkassignment')return qChooseAssignment(t);
+  if(act==='linkedjob')return qLinkedAction(t,id,b.dataset.mode);
+  const modes={leadwon:'sale',leadcollect:'collection',leaddecl:'decline',leadcancel:'cancel',leadfail:'failure',addest:'estimate',apptout:'visit',costs:'costs',complete:'work',resched:'reschedule',canceljob:'cancel'};
+  if(modes[act]){const linked=Q.links.find(l=>l.team_id===t.id&&(act==='apptout'?l.appointment_id===id:['costs','complete','resched','canceljob'].includes(act)?l.job_id===id:l.lead_id===id));if(linked)return qLinkedAction(t,linked.id,modes[act]);}
+
   const one=async(o,write)=>{const r=await qAsk(o);if(!r)return null;return write(r.values);};
   const note=(title,label,eyebrow,primary,cls)=>({eyebrow:eyebrow||'',title,primary:primary||'Save',danger:cls==='danger',fields:[{label,f:'v',kind:'area',wide:true}],validate:v=>req(v.v,label+' is required')});
   switch(act){
@@ -1302,6 +1349,7 @@ $('#qTeam').addEventListener('click',async e=>{
     case 'addest':{const l=Q.leads.find(x=>x.id===id);const v=Q.ests.filter(x=>x.lead_id===id).length+1;return one({eyebrow:'Leads',title:`Estimate v${v}`,sub:`${l.lead_ref} · still one opportunity`,primary:'Add estimate',width:'420px',fields:[{label:'Price',f:'price_cents',t:'cents',ph:'$ 0',wide:true},{label:'Presented',f:'presented_at',t:'ts',type:'datetime-local',value:dtLocal(),wide:true}],validate:x=>req(x.price_cents,'Enter the price')},x=>qWrite('qual_lead_estimates','insert',{lead_id:id,version:v,price_cents:x.price_cents,presented_at:x.presented_at},null,`Estimate v${v} added — still one opportunity`));}
     case 'leadwon':{const l=Q.leads.find(x=>x.id===id);const est=Q.ests.filter(x=>x.lead_id===id).sort((a,b)=>b.version-a.version)[0];return one({eyebrow:'Leads',title:'Mark estimate won',sub:`${l.lead_ref}${est?` · ${cents(est.price_cents)} estimate v${est.version}`:''}`,primary:'Mark won',width:'420px',fields:[{label:'Sold amount',f:'sold_revenue_cents',t:'cents',value:est&&est.price_cents!=null?String(est.price_cents/100):'',wide:true},{label:'Decision date',f:'decision_at',t:'ts',type:'datetime-local',value:dtLocal(),wide:true}],validate:x=>req(x.sold_revenue_cents,'Enter the sold amount')},async x=>{const w=await qWrite('qual_leads','update',{status:'won',sold_revenue_cents:x.sold_revenue_cents,decision_at:x.decision_at},id,'Lead won');if(w&&est&&est.outcome==='pending'){await sbb.from('qual_lead_estimates').update({outcome:'accepted'}).eq('id',est.id);await qReload();}return w;});}
     case 'leaddecl':return one({eyebrow:'Leads',title:'Customer declined',primary:'Mark declined',width:'420px',fields:[{label:'Note (optional)',f:'notes',kind:'area',wide:true}]},x=>qWrite('qual_leads','update',{status:'declined',notes:x.notes||null},id,'Recorded as declined by the customer'));
+    case 'leadcancel':return qCancelLegacyLead(t,id);
     case 'leadfail':return one(note('Team failed its responsibility','How did the team fail? (counts against close rate)','Leads','Mark failed','danger'),x=>qWrite('qual_leads','update',{status:'team_failed',failure_reason:x.v},id,'Recorded as team failure'));
     case 'leadcollect':return one({eyebrow:'Leads',title:'Collected revenue',sub:'Reported separately from sold revenue.',primary:'Save',width:'420px',fields:[{label:'Collected',f:'collected_revenue_cents',t:'cents',wide:true}]},x=>qWrite('qual_leads','update',{collected_revenue_cents:x.collected_revenue_cents},id,'Collected revenue recorded'));
     case 'excl':{const table=Q.leads.some(x=>x.id===id)?'qual_leads':Q.jobs.some(x=>x.id===id)?'qual_jobs':Q.appts.some(x=>x.id===id)?'qual_appointments':Q.cov.some(x=>x.id===id)?'qual_coverage_events':Q.qe.some(x=>x.id===id)?'qual_quality_events':'qual_compliance_checks';
@@ -1405,8 +1453,8 @@ function qRenderCfgEditor(){
       ${vrow('Timezone','windows.timezone',inp('data-v="windows.timezone"',val('windows','timezone')??''),cfgstat(d.windows?.timezone),'§18.7')}
       ${vrow('Week start','windows.week_start',inp('data-v="windows.week_start"',val('windows','week_start')??''),cfgstat(d.windows?.week_start),'§18.7')}</div></div>
     <div><div class="eyebrow ind">Revenue efficiency</div><div class="card list">
-      ${vrow('Baseline · sold revenue per qualified lead ($)','revenue.baseline_cents',inp('data-v="revenue.baseline_cents" data-cents="1"',val('revenue','baseline_cents')!=null?val('revenue','baseline_cents')/100:'','unresolved — blocks official scoring',val('revenue','baseline_cents')==null?'bad':''),cfgstat(d.revenue?.baseline_cents),'§18.3')}
-      ${vrow('Credit point (sold | completed | collected)','revenue.credit_point',inp('data-v="revenue.credit_point"',val('revenue','credit_point')??'sold'),cfgstat(d.revenue?.credit_point),'§18.2')}
+      ${vrow('Baseline · credited revenue per qualified lead ($)','revenue.baseline_cents',inp('data-v="revenue.baseline_cents" data-cents="1"',val('revenue','baseline_cents')!=null?val('revenue','baseline_cents')/100:'','unresolved — blocks official scoring',val('revenue','baseline_cents')==null?'bad':''),cfgstat(d.revenue?.baseline_cents),'§18.3')}
+      ${vrow('Revenue used for scoring (sold | completed | collected)','revenue.credit_point',inp('data-v="revenue.credit_point"',val('revenue','credit_point')??'sold'),cfgstat(d.revenue?.credit_point),'§18.2')}
       ${vrow('Segmented by (none | service | territory | both)','revenue.segmented_by',inp('data-v="revenue.segmented_by"',val('revenue','segmented_by')??'','unresolved'),cfgstat(d.revenue?.segmented_by),'§18.3')}</div></div>
     <div><div class="eyebrow ind">Outcome rules and margin</div><div class="card list">
       <div class="row cfgv"><span style="font-weight:500">Pass ≥</span>${inp('data-o="pass_min"',cfgval(d.outcome_rules?.pass_min)??80)}<span></span></div>
@@ -1467,6 +1515,7 @@ function qRenderSop(){
   const ui=x=>`<span class="ui">${x}</span>`;
   $('#qSop').innerHTML=`<div class="eyebrow acc">SOP ADC-QUAL-001 · v1.0 · for the ADC dispatcher</div><h1 class="pt" style="margin:2px 0 6px">How to record the day</h1>
   <div class="sub2" style="margin-bottom:16px">Effective 24 Sep 2026 · owner: the ADC manager · review Dec 2026 · source of truth: the vault note <em>SOP — Team Qualification records for the dispatcher</em></div>
+  <div class="card pad" style="margin-bottom:18px"><h2>Daily reporting · enter each job once</h2><ol style="padding-left:20px;font-size:15px;line-height:1.8"><li>Open the team and choose an assigned visit from <b>Job Assignment</b>.</li><li>If the opportunity already exists, select that record. Return visits reuse it and its work record.</li><li>Use <b>Update</b> for the visit, estimate, sale, collection, work completion, costs or customer-approved reschedule. Each action saves related records together.</li><li>Choose <b>Cancellation</b> with who cancelled and why. Customer/company exclusions await manager approval; they are never recorded as team failures.</li></ol><p>A visit finished is not sold work completed. Keep estimate price, actual sale and collections separate. Costs are prefilled and survive completion. The detailed standalone forms below are for older, unlinked records.</p></div>
   <div class="why2"><b>Why this exists.</b> Every ADC team — the ones we have and the ones we hire — is judged by one scorecard: sales, revenue, coverage, attendance, completion, customer quality and compliance. <b>The scorecard is never typed in.</b> It is calculated from the records you enter. Record the day faithfully and the numbers are fair; leave a record out and the page shows <b>N/A</b> or "missing", never a guess. Your records are what the manager decides on, so accuracy matters more than speed.</div>
 
   ${sec(1,'What you can and cannot do',card(`<p><b>You record.</b> Leads and estimate versions · appointments and their outcome · jobs, promise dates, completion and costs · coverage offers and the team's response · availability · quality events · compliance checks · supervised-job notes · suspected incidents · exclusion <em>requests</em> · weekly review notes.</p>
@@ -1546,7 +1595,7 @@ function qRenderSop(){
     <tr><td><i class="msg">Setup step missing</i> / <i class="msg">permission denied</i></td><td>Not signed in, or not a member</td><td>Sign in again (§2); if it persists, tell the manager.</td></tr></table>
     <p>A refusal is the system doing its job. Do not work around it in another record.</p>`))}
 
-  ${sec(15,'Glossary',list([['Qualified lead','An opportunity that counts in the sales and revenue rates. Marked per lead with evidence until the manager confirms the definition.'],['Estimate version','Each price given for the same lead: v1, v2, v3 — one opportunity.'],['Promise date','The date we promised the customer. Original is locked; reschedules move the current one.'],['Eligible offer','A coverage offer inside the team&#39;s territory and service, on a day it declared available <em>before</em> the offer.'],['Fulfilled','Accepted <em>and</em> the contact/arrival obligation met.'],['Exclusion','A record removed from a rate with a reason, only after the manager approves. The record itself is never deleted.'],['Evidence state','Pending Entry Review → Supervised Trial → Pending Evidence → Decision Eligible. How far the team is from being judged; not an outcome.'],['Outcome','Pass · Coaching · Probation · Disqualify — the manager&#39;s official decision on a frozen snapshot of the records.'],['N/A','The rate has nothing to divide by yet. Not 0%, not 100%.']].map(([k,t])=>row(`<b>${k}</b><span class="m">${t}</span>`,'150px minmax(0,1fr)')).join('')))}
+  ${sec(15,'Glossary',list([['Qualified lead','An opportunity that counts in the sales and revenue rates. Every recorded lead counts unless an exclusion is approved.'],['Estimate version','Each price given for the same lead: v1, v2, v3 — one opportunity.'],['Promise date','The date we promised the customer. Original is locked; reschedules move the current one.'],['Eligible offer','A coverage offer inside the team&#39;s territory and service, on a day it declared available <em>before</em> the offer.'],['Fulfilled','Accepted <em>and</em> the contact/arrival obligation met.'],['Exclusion','A record removed from a rate with a reason, only after the manager approves. The record itself is never deleted.'],['Evidence state','Pending Entry Review → Supervised Trial → Pending Evidence → Decision Eligible. How far the team is from being judged; not an outcome.'],['Outcome','Pass · Coaching · Probation · Disqualify — the manager&#39;s official decision on a frozen snapshot of the records.'],['N/A','The rate has nothing to divide by yet. Not 0%, not 100%.']].map(([k,t])=>row(`<b>${k}</b><span class="m">${t}</span>`,'150px minmax(0,1fr)')).join('')))}
 
   ${sec(16,'Checklists',`<div class="card list" style="margin-bottom:12px"><div class="qh"><b>Every day, before you close</b></div>${['Every lead assigned today is recorded (step 1)','Every appointment that happened today has its outcome; no-shows have a reason','Every job sold today exists with its original promise date and revenue','Every job finished today has completion time, evidence, and the costs you know (blank if unknown)','Availability declared for the days the teams told you about','Any complaint, callback, refund or damage recorded as a quality event','Any suspected critical event recorded and the manager told','"Continue where you left off" is empty for each team'].map(t=>`<label class="ck"><input type="checkbox"><span>${t}</span></label>`).join('')}</div>
     <div class="card list" style="margin-bottom:18px"><div class="qh"><b>Every Friday</b></div>${['Coverage log imported for each team; every offer has a response','Compliance checks recorded for the week&#39;s jobs, critical ones flagged, evidence attached','Queues → "Missing or conflicting data" cleared or noted','Weekly review note recorded per team','The manager told what needs a ruling'].map(t=>`<label class="ck"><input type="checkbox"><span>${t}</span></label>`).join('')}</div>`)}
@@ -1554,6 +1603,110 @@ function qRenderSop(){
 }
 
 /* ---------- page boot ---------- */
+/* Linked daily reporting. Source visit identity comes from Job Assignment; protected
+   qualification edits go through one transactional RPC, never the public-key client. */
+function qSavedCost(job,category){const rows=(job?.costs||[]).filter(c=>c.category===category);return rows.length&&rows.every(c=>c.amount_cents!=null&&c.status!=='unknown')?String(rows.reduce((n,c)=>n+Number(c.amount_cents),0)/100):'';}
+function qMergeCosts(saved,labor,materials,status,keepUnchanged=false){
+  let rows=(saved||[]).map(c=>({...c}));for(const [category,amount] of [['labor',labor],['materials',materials]]){
+    if(amount!=null){const prior=rows.filter(c=>c.category===category);if(keepUnchanged&&prior.length&&prior.every(c=>c.amount_cents!=null)&&prior.reduce((n,c)=>n+Number(c.amount_cents),0)===amount)continue;rows=rows.filter(c=>c.category!==category);rows.push({category,amount_cents:amount,status:status||'actual'});}
+    else if(!rows.some(c=>c.category===category))rows.push({category,amount_cents:null,status:'unknown'});
+  }return rows;
+}
+function qAssignmentRows(){return Q.outcomes.map(o=>({...o,assignment:Q.assignments.find(a=>a.id===o.assignment_id)})).filter(o=>o.assignment).sort((a,b)=>b.assignment.date.localeCompare(a.assignment.date)||a.seq-b.seq);}
+function qSourceMatches(t,o){const a=o.assignment;const tech=TECHS.find(x=>x.name.trim().toLowerCase()===a.technician.trim().toLowerCase());return String(t.leader_name||'').trim().toLowerCase()===a.technician.trim().toLowerCase()||Q.members.some(m=>m.team_id===t.id&&m.active_from<=a.date&&(!m.active_to||m.active_to>=a.date)&&(String(m.person_name||'').trim().toLowerCase()===a.technician.trim().toLowerCase()||(tech&&m.technician_id===tech.id)));}
+function qTeamStatus(c){
+  if(!c)return {label:'Report unavailable',reason:'Set up the metric version to calculate this report.',cls:'pending'};
+  if(c.version.status!=='active')return {label:'Rules need approval',reason:'Raw results are available. Activate an approved metric version before recording qualification decisions.',cls:'pending'};
+  const failed=c.gates.filter(g=>!g.passed);if(failed.length)return {label:'Review required',reason:failed.map(g=>g.detail).join(' · '),cls:'probation'};
+  if(c.evidence.state!=='decision_eligible')return {label:'More evidence needed',reason:c.evidence.reasons.join(' · '),cls:'pending'};
+  if(c.weighted_score==null)return {label:'Report incomplete',reason:c.missing_categories.map(k=>QCAT_LABEL[k]).join(', ')+' still needs data or configuration.',cls:'pending'};
+  if(c.qualified_for_rock)return {label:'Qualified',reason:'Current manager Pass, enough evidence and every gate passed.',cls:'pass'};
+  if(c.official_outcome&&!c.decision_current)return {label:'Review overdue',reason:'The previous decision is past its review date.',cls:'probation'};
+  return {label:c.recommended_outcome==='pass'?'Ready for manager review':QOUT_LABEL[c.recommended_outcome]+' suggested',reason:c.reasons.join(' · '),cls:c.recommended_outcome==='pending'?'pending':c.recommended_outcome};
+}
+function qSimpleTeamRow(t,c){const st=qTeamStatus(c),sales=c?.categories.find(r=>r.key==='sales'),revenue=c?.categories.find(r=>r.key==='revenue');return `<a class="row simple-team" href="#" data-team="${esc(t.id)}"><span><span class="t">${esc(t.name)}</span><span class="s">${esc(t.leader_name||'No leader')} · ${esc((t.territories||[]).join(', '))}</span></span><span><span class="pill ${st.cls}">${esc(st.label)}</span><span class="s">${sales?`${sales.numerator} sale${sales.numerator===1?'':'s'} / ${sales.denominator} decided lead${sales.denominator===1?'':'s'} assigned in this period · ${pct(sales.value)}`:'No report yet'}${revenue?.diagnostics.revenue_per_lead_cents!=null?' · '+cents(revenue.diagnostics.revenue_per_lead_cents)+'/lead':''}</span></span><span class="chev">›</span></a>`;}
+function qRenderOver(){
+  const V=qCalcVersion();const rows=Q.teams.filter(t=>!['inactive','disqualified'].includes(t.status)).map(t=>({t,c:V?qCalc(t,V):null}));
+  const qualified=rows.filter(r=>r.c?.qualified_for_rock).length;$('#qOverMeta').textContent=V?`${fmtD(qPeriod(V).start)} – ${fmtD(qPeriod(V).end)} · ${V.evidence?.window_days||28} days`:'';
+  $('#qOver').innerHTML=`<div class="card pad"><div class="eyebrow">Team reporting</div><h2 style="font-size:24px;margin:6px 0">Choose a team, update its linked jobs</h2><p class="sub2">${qualified} of 3 teams currently qualified. A visit finished, a sale made and work completed are separate results.</p>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}</div><div class="eyebrow ind">Teams · performance and next action</div><div class="card list">${rows.map(({t,c})=>qSimpleTeamRow(t,c)).join('')||'<div class="empty">Create a team on Teams to get started.</div>'}</div>`;
+}
+function qRenderTeams(){
+  const V=qCalcVersion(),tsel=$('#qfTerr'),cur=tsel.value;tsel.innerHTML='<option value="">Territory · All</option>'+terrList().map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('');
+  const f={terr:tsel.value,svc:$('#qfSvc').value,type:$('#qfType').value,out:$('#qfOut').value,ev:$('#qfEv').value};
+  const rows=Q.teams.map(t=>({t,c:V?qCalc(t,V):null})).filter(({t,c})=>(!f.terr||(t.territories||[]).includes(f.terr))&&(!f.svc||(t.services||[]).includes(f.svc))&&(!f.type||t.team_type===f.type)&&(!f.out||(c&&(c.official_outcome||'none')===f.out))&&(!f.ev||(c&&c.evidence.state===f.ev)));
+  $('#qTeams').innerHTML=`<div class="card list">${rows.map(({t,c})=>qSimpleTeamRow(t,c)).join('')||'<div class="empty">No teams match these filters.</div>'}</div><details class="qual-details"><summary>Compare all seven qualification metrics</summary><div id="qComparisonDetails"></div></details>`;
+  const main=$('#qTeams'),old=main.innerHTML;qRenderTeamsDetailed();const detail=main.innerHTML;main.innerHTML=old;$('#qComparisonDetails').innerHTML=detail;
+}
+function qReportTeam(t,c){
+  const status=qTeamStatus(c),V=qCalcVersion(),P=V?qPeriod(V):{start:'',end:''};const cohort=Q.leads.filter(l=>l.team_id===t.id&&dPT(l.assigned_at)>=P.start&&dPT(l.assigned_at)<=P.end);
+  const sales=c?.categories.find(r=>r.key==='sales'),r=c?.categories.find(r=>r.key==='revenue');const completed=c?.evidence.progress.completed_jobs.done||0;
+  const kpi=(label,value,sub)=>`<div class="simple-kpi"><span class="eyebrow">${label}</span><b class="num">${value}</b><span class="sub2">${sub}</span></div>`;
+  const pending=cohort.filter(l=>l.status==='pending'&&Q.ests.some(e=>e.lead_id===l.id)).length,unquoted=cohort.filter(l=>l.status==='pending'&&!Q.ests.some(e=>e.lead_id===l.id)).length,cancelled=cohort.filter(l=>l.status==='cancelled').length;
+  const ld=qLastDec(t.id);return `<div class="card report-status"><div><span class="eyebrow">Current qualification</span><h2>${esc(status.label)}</h2><p>${esc(status.reason)}</p><p style="margin-top:8px">Last manager decision: ${ld?`${esc(QOUT_LABEL[ld.official_outcome])} · ${fmtDy(dPT(ld.decided_at))}`:'none yet'}. ${c?.weighted_score!=null?`Current score ${c.weighted_score.toFixed(1)} / 100.`:`A full score is unavailable${c?`; ${7-c.missing_categories.length} of 7 metrics have points`:''}.`}</p></div></div>
+  <div class="sub2">Reporting period ${fmtD(P.start)} – ${fmtD(P.end)} · ${pending} pending estimate${pending===1?'':'s'} · ${cancelled} cancellation${cancelled===1?'':'s'} · ${unquoted} awaiting an estimate. A cancellation is shown separately; removing it from scoring requires an approved exclusion.</div>
+  <div class="simple-kpis">${kpi('Sales',sales?String(sales.numerator):'—',sales?`${sales.denominator} decided lead${sales.denominator===1?'':'s'} assigned in this period · ${pct(sales.value)}`:'No data')}${kpi('Revenue per lead',r?.diagnostics.revenue_per_lead_cents!=null?cents(r.diagnostics.revenue_per_lead_cents):'—',`${esc(r?.diagnostics.credit_point||'sold')} revenue · ${r?.denominator||0} assigned lead${r?.denominator===1?'':'s'}${r?.missing?' · missing amounts':''}`)}${kpi('Work completed',String(completed),'Finished sold work, not estimate visits')}${kpi('Pending estimates',String(pending),'Still awaiting a customer decision')}</div>`;
+}
+function qLinkedJobs(t){
+  const source=qAssignmentRows(),P=qPeriod(qCalcVersion()),links=Q.links.filter(l=>l.team_id===t.id);
+  const groups=new Map();links.forEach(link=>{const lead=Q.leads.find(l=>l.id===link.lead_id),o=source.find(x=>x.id===link.outcome_id),job=Q.jobs.find(j=>j.id===link.job_id);if(!lead||!o)return;
+    const active=lead.status==='pending'||(job&&!job.cancelled&&!job.completed_at);if(!active&&(o.assignment.date<P.start||o.assignment.date>P.end))return;
+    const group=groups.get(lead.id)||{lead,job,visits:[]};group.visits.push({link,source:o,appt:Q.appts.find(a=>a.id===link.appointment_id)});groups.set(lead.id,group);
+  });
+  const btn=(link,mode,label,cls='soft')=>`<button class="btn sm ${cls}" data-act="linkedjob" data-id="${esc(link.id)}" data-mode="${mode}">${label}</button>`;
+  const rows=[...groups.values()].sort((a,b)=>String(b.lead.assigned_at).localeCompare(String(a.lead.assigned_at))||a.lead.lead_ref.localeCompare(b.lead.lead_ref)).map(g=>{g.visits.sort((a,b)=>b.source.assignment.date.localeCompare(a.source.assignment.date));const latest=g.visits[0],link=latest.link;
+    const est=Q.ests.filter(e=>e.lead_id===g.lead.id).sort((a,b)=>b.version-a.version)[0];const stage=g.lead.status==='cancelled'?'Cancelled':g.job?.completed_at?'Work completed':g.lead.status==='won'?'Sold · work '+(g.job?.cancelled?'cancelled':'scheduled'):g.lead.status==='declined'?'Estimate declined':g.lead.status==='team_failed'?'Team failure recorded':est?'Estimate pending':'Visit / estimate to record';
+    const m=g.job?qualMargin(g.job,qCalcVersion()?.margin_rules):null;const margin=m?.actual||m?.projected;
+    return `<div class="linked-row"><span><span class="t num">${esc(g.lead.lead_ref)}</span><span class="s">${esc(stage)}</span><span class="s">${g.visits.length} linked visit${g.visits.length===1?'':'s'} · ${esc(latest.source.assignment.technician)}</span></span><span><span class="s">Estimate ${est?cents(est.price_cents):'not recorded'} · Sale ${g.lead.sold_revenue_cents!=null?cents(g.lead.sold_revenue_cents):'not recorded'} · Collected ${g.lead.collected_revenue_cents!=null?cents(g.lead.collected_revenue_cents):'not recorded'}</span><span class="s">${g.job?`Work ${g.job.completed_at?'finished '+fmtDy(dPT(g.job.completed_at)):'promised '+fmtDy(g.job.current_promise_date)} · ${margin?`${m.actual?'actual':'projected'} margin ${pct(margin.margin_pct)}`:'costs incomplete; margin unavailable'}`:'No sold work to complete yet'}</span><details style="margin-top:8px"><summary class="sub2">Linked visits</summary>${g.visits.map(v=>`<div class="s">${fmtDy(v.source.assignment.date)} · ${esc(v.source.assignment.technician)} · ref ${esc(v.source.job_ref||'not recorded')}${v.link.mapping_note?' · '+esc(v.link.mapping_note):''} · ${esc(v.source.outcome==='completed'?'visit finished':v.source.outcome)} ${btn(v.link,'visit','Update visit')}</div>`).join('')}</details></span><span class="acts">${btn(link,'','Update','tint')}</span></div>`;
+  }).join('');
+  const unlinked=Q.leads.filter(l=>l.team_id===t.id&&!links.some(x=>x.lead_id===l.id)).length;
+  return `<div class="thead" style="margin-top:20px"><div><h2 style="font-size:22px">Linked jobs</h2><div class="sub2">One opportunity and one work record; return visits attach to the same job.</div></div></div>${Q.linkError?`<div class="note red">${esc(Q.linkError)}</div>`:''}<div class="card list">${rows||'<div class="empty">Choose an assigned job to start. You can link an older qualification record instead of creating it again.</div>'}</div>${unlinked?`<p class="sub2" style="margin:12px 0">${unlinked} older opportunity record(s) are not linked yet. Their data still contributes to the report; select the matching existing record when linking.</p>`:''}`;
+}
+async function qChooseAssignment(t){
+  if(Q.linkError){toast(Q.linkError,true);return;}
+  const P=qPeriod(qCalcVersion());const rows=qAssignmentRows().filter(o=>o.assignment.date>=P.start&&o.assignment.date<=P.end&&!Q.links.some(l=>l.outcome_id===o.id)&&(isMgr()||qSourceMatches(t,o)));
+  if(!rows.length){toast('No unlinked assigned visits in this period. Check the reporting date and team roster.');return;}
+  const pick=await qAsk({eyebrow:'Job Assignment',title:'Choose assigned visit',sub:`${t.name} · ${fmtD(P.start)} – ${fmtD(P.end)}. Existing source details are reused.`,primary:'Continue',fields:[{label:'Assigned visit',f:'outcome_id',kind:'select',opts:rows.map(o=>[o.id,`${o.assignment.date} · ${o.assignment.technician} · ${o.job_ref||'reference needed'} · visit ${o.seq} · ${o.outcome}${qSourceMatches(t,o)?'':' · confirm team mapping'}`]),blank:'Choose a visit',wide:true}],validate:v=>req(v.outcome_id,'Choose a visit')});
+  if(!pick)return;const src=rows.find(o=>o.id===pick.values.outcome_id),ref=String(src.job_ref||'').trim().toUpperCase();
+  const existing=Q.leads.filter(l=>l.team_id===t.id);const exact=existing.filter(l=>l.lead_ref.trim().toUpperCase()===ref);const matched=qSourceMatches(t,src);
+  const form=await qAsk({eyebrow:'Link once',title:'Link assigned visit',sub:`${src.assignment.technician} · ${fmtDy(src.assignment.date)}. A finished visit is not a sale or work completion.`,primary:'Link job',fields:[
+    {label:'Existing opportunity / return visit',f:'existing_lead',kind:'select',opts:existing.map(l=>[l.id,`${l.lead_ref} · ${l.status}`]),blank:'New opportunity (only if none exists)',value:exact.length===1?exact[0].id:'',wide:true},
+    {label:'Job reference',f:'job_ref',value:ref,hint:ref?'Reuses the reference in Job Assignment.':'Enter it once; it is saved to Job Assignment too.'},
+    {label:'Service for a new opportunity',f:'service',kind:'select',opts:['cleaning','installation','mixed','other'],blank:'Choose service',value:(t.services||[]).length===1?t.services[0]:''},
+    {label:'Territory for a new opportunity',f:'territory',kind:'select',opts:terrList(),blank:'Choose territory',value:(t.territories||[]).length===1?t.territories[0]:''},
+    {label:'Mapping / return-visit note',f:'mapping_note',kind:'area',wide:true,hint:matched?'Required if the existing opportunity has a different job reference.':'Technician differs from this team. Only a manager can confirm this mapping with a reason.'}],
+    validate:v=>req(v.job_ref,'Enter the job reference')||(!v.existing_lead?req(v.service,'Choose the service'):null)||(!matched?req(v.mapping_note,'Explain the team mapping'):null)||(v.existing_lead&&existing.find(l=>l.id===v.existing_lead)?.lead_ref.trim().toUpperCase()!==String(v.job_ref).trim().toUpperCase()?req(v.mapping_note,'Explain why these references belong to the same opportunity'):null)});
+  if(!form)return;const v=form.values;const r=await sbb.rpc('qual_link_assignment',{p_team:t.id,p_outcome:src.id,p_existing_lead:v.existing_lead||null,p_job_ref:v.job_ref,p_service:v.service||'other',p_territory:v.territory||null,p_mapping_note:v.mapping_note||null});
+  if(r.error){toast(qErr(r.error),true);return;}toast('Assigned visit linked — its existing record is reused');await qReload();
+}
+async function qLinkedAction(t,id,mode){
+  const link=Q.links.find(l=>l.id===id&&l.team_id===t.id);if(!link){toast('Refresh to load this linked job',true);return;}
+  const lead=Q.leads.find(l=>l.id===link.lead_id),job=Q.jobs.find(j=>j.id===link.job_id),appt=Q.appts.find(a=>a.id===link.appointment_id),rev=link.revision;
+  if(!mode){const r=await qAsk({eyebrow:'Linked job',title:lead.lead_ref,sub:'Choose what changed. Related records update together.',primary:'Continue',fields:[{label:'Update',f:'action',kind:'select',opts:[['visit','Visit / arrival'],['estimate','New or revised estimate'],['sale','Sale and work promise'],['collection','Collected amount'],['work','Work completion'],['reschedule','Reschedule sold work'],['costs','Work costs'],['decline','Customer declined estimate'],['failure','Team failed its responsibility'],['cancel','Cancel opportunity / work']],value:lead.status==='won'?'costs':'estimate',wide:true}]});if(!r)return;mode=r.values.action;}
+  const opts={eyebrow:'Linked job',title:lead.lead_ref,primary:'Save once',fields:[]};
+  if(mode==='visit'){opts.sub='This visit updates Job Assignment too; it does not mark sold work completed.';opts.fields=[{label:'Visit outcome',f:'outcome',kind:'select',opts:[['scheduled','Not visited yet'],['visited','Visit finished; arrival details unknown'],['cancelled','Visit cancelled; reason recorded'],['attended','Visit finished · on time'],['late','Visit finished · late'],['no_show','Technician no-show'],['customer_reschedule','Customer rescheduled'],['company_cancel','Company cancelled visit'],['force_majeure','Force majeure']],value:appt.outcome==='rescheduled'?'customer_reschedule':appt.outcome,wide:true},{label:'Scheduled time (Pacific)',f:'scheduled_at',t:'ts',type:'datetime-local',value:appt.schedule_time_known===false?'':dtLocal(appt.scheduled_at),hint:'Job Assignment has only a date. Enter the actual scheduled time to evaluate punctuality.'},{label:'Arrival (if known)',f:'arrival_at',t:'ts',type:'datetime-local',value:appt.arrival_at?dtLocal(appt.arrival_at):''},{label:'Reason / note',f:'reason',kind:'area',value:appt.reason||'',wide:true}];opts.validate=v=>(['attended','late'].includes(v.outcome)&&appt.schedule_time_known===false?req(v.scheduled_at,'Enter the actual scheduled time'):null)||(['cancelled','no_show','customer_reschedule','company_cancel','force_majeure'].includes(v.outcome)?req(v.reason,'Record the reason'):null);}
+  if(mode==='estimate'){opts.sub='A new estimate version for the same opportunity. It is separate from the sale amount.';opts.fields=[{label:'Estimate amount',f:'price_cents',t:'cents'},{label:'Presented (Pacific)',f:'presented_at',t:'ts',type:'datetime-local',value:dtLocal()}];opts.validate=v=>req(v.price_cents,'Enter the estimate amount');}
+  if(mode==='sale'){opts.sub='The sale amount is saved to the opportunity and work record together. Original estimates stay unchanged.';opts.fields=[{label:'Actual sale amount',f:'revenue_cents',t:'cents',value:lead.sold_revenue_cents!=null?String(lead.sold_revenue_cents/100):''},{label:'Sold (Pacific)',f:'decision_at',t:'ts',type:'datetime-local',value:lead.decision_at?dtLocal(lead.decision_at):dtLocal()},...(!job?[{label:'Work promise date',f:'promised_date',t:'date',type:'date'}]:[])];opts.validate=v=>req(v.revenue_cents,'Enter the sale amount')||(!job?req(v.promised_date,'Enter the work promise date'):null);}
+  if(mode==='collection'){opts.sub='Amount actually collected, separate from the sale and estimate.';opts.fields=[{label:'Collected amount',f:'collected_revenue_cents',t:'cents',value:lead.collected_revenue_cents!=null?String(lead.collected_revenue_cents/100):''}];opts.validate=v=>req(v.collected_revenue_cents,'Enter the collected amount');}
+  if(mode==='work'){if(!job||lead.status!=='won'||job.cancelled){toast('Record the sale before completing work',true);return;}opts.sub='Only finished sold work. Saved costs are retained.';opts.fields=[{label:'Work completed (Pacific)',f:'completed_at',t:'ts',type:'datetime-local',value:job.completed_at?dtLocal(job.completed_at):dtLocal()},{label:'Completion evidence',f:'completion_evidence',value:job.completion_evidence||'',wide:true}];opts.validate=v=>req(v.completed_at,'Enter the completion time')||req(v.completion_evidence,'Add the completion evidence');}
+  if(mode==='reschedule'){if(!job||job.cancelled||job.completed_at){toast('Only unfinished sold work can be rescheduled',true);return;}opts.sub=`Customer-approved change. Original promise ${fmtDy(job.promised_date)} stays in history.`;opts.fields=[{label:'New promise date',f:'to_date',t:'date',type:'date'},{label:'Customer confirmed?',f:'customer_approved',t:'bool',kind:'seg',segs:[['false','Not yet'],['true','Yes']],value:'false'},{label:'Reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.to_date,'Choose the new date')||req(v.reason,'Record the reason')||(!v.customer_approved?'Confirm customer approval before saving':null);}
+  if(mode==='costs'){if(!job||job.cancelled){toast('Record the sale before entering work costs',true);return;}opts.sub='Existing amounts are prefilled. Blank keeps a saved cost; an unrecorded cost stays unknown. Other cost categories are retained.';opts.fields=[{label:'Labor',f:'labor',t:'cents',value:qSavedCost(job,'labor')},{label:'Materials',f:'materials',t:'cents',value:qSavedCost(job,'materials')},{label:'Cost status',f:'status',kind:'seg',segs:[['actual','Actual'],['estimated','Estimated']],value:(job.costs||[]).some(c=>c.status==='estimated')?'estimated':'actual',wide:true}];}
+  if(mode==='decline'){opts.sub='Customer declined the estimate. This is separate from a cancellation or team failure.';opts.fields=[{label:'Reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.reason,'Record why the customer declined');}
+  if(mode==='failure'){opts.sub='Team failure is separate from a customer decline or cancellation.';opts.fields=[{label:'Failure reason',f:'reason',kind:'area',wide:true}];opts.validate=v=>req(v.reason,'Record how the team failed its responsibility');}
+  if(mode==='cancel'){opts.sub='Record who cancelled and why. Customer/company score exclusions await manager review; cancellation never becomes Team failed.';opts.fields=[{label:'Cancelled by',f:'origin',kind:'seg',segs:[['customer','Customer'],['company','Company'],['team','Team']],value:'customer',wide:true},{label:'Reason',f:'reason',kind:'area',value:lead.cancel_reason||appt.reason||'',wide:true}];opts.validate=v=>req(v.reason,'Record the cancellation reason');}
+  const form=await qAsk(opts);if(!form)return;let values=form.values;
+  if(Object.values(values).some(v=>typeof v==='number'&&v<0)){toast('Money amounts must be nonnegative',true);return;}
+  if(mode==='costs')values={costs:qMergeCosts(job.costs,values.labor,values.materials,values.status)};
+  const r=await sbb.rpc('qual_save_linked_job',{p_link:id,p_revision:rev,p_action:mode,p_values:values});if(r.error){toast(qErr(r.error),true);return;}
+  toast(mode==='cancel'?'Cancellation recorded; exclusions require review':'Saved once — related records updated');await qReload();
+}
+async function qCancelLegacyLead(t,id){
+  const lead=Q.leads.find(l=>l.id===id);const linked=Q.links.find(l=>l.lead_id===id);if(linked)return qLinkedAction(t,linked.id,'cancel');
+  if(Q.jobs.some(j=>j.lead_id===id)||lead.status==='won'){toast('Link the assigned visit before reviewing cancellation of sold work',true);return;}
+  const form=await qAsk({eyebrow:'Cancellation',title:lead.lead_ref,sub:'Customer/company exclusions await manager review; the historical record is retained.',primary:'Record cancellation',fields:[{label:'Cancelled by',f:'origin',kind:'select',opts:['customer','company','team'],value:'customer'},{label:'Reason',f:'reason',kind:'area',wide:true}],validate:v=>req(v.reason,'Record the reason')});if(!form)return;
+  const v=form.values,r=await qWrite('qual_leads','update',{status:'cancelled',cancel_reason:v.reason,cancellation_origin:v.origin,decision_at:new Date().toISOString()},id,'Cancellation recorded');
+  if(r&&v.origin!=='team'&&!Q.ex.some(e=>e.source_table==='qual_leads'&&e.source_id===id)){const ex=await sbb.from('qual_exclusions').insert({team_id:t.id,source_table:'qual_leads',source_id:id,category:v.origin==='company'?'company_cancel':'customer_cancel_early',reason:v.reason});if(ex.error)toast('Cancellation recorded; request the exclusion in Older records.',true);else await qReload();}
+}
+
 (function init(){
   applyTheme(localStorage.getItem(LS.theme)||'light');
   $('#themeBtn').onclick=()=>applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');

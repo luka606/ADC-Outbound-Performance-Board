@@ -425,3 +425,65 @@ Imported from the **ADC Calling List** spreadsheet (tabs *ADC Res*, *ADC Commerc
 
 Dispositions are the single source of truth; buckets are derived in the app, so editing a
 disposition immediately reclassifies the record everywhere.
+
+
+## Linked Team Qualification reporting · 2026-10-14a
+
+Job Assignment is the starting point for assigned visits. On a team's page,
+choose **Choose assigned job**, select the visit, and confirm its existing
+opportunity if it is a return visit. The job reference is reused; if it was
+missing, enter it once and it is saved back to Job Assignment. A finished visit
+never automatically becomes a sale or completed sold work. Job Assignment has
+only a date, so its records do not establish punctual arrival; attendance points
+wait for the actual scheduled time and a classified visit outcome.
+
+**Update** records one change: visit/arrival, estimate version, actual sale,
+collection, work completion, costs, customer-approved work reschedule,
+customer decline, team failure, or cancellation. Related records are saved in
+one transaction. Saved costs and additional cost categories survive completion;
+return visits reuse the opportunity and work record. Estimates stay versioned
+and separate from sales and collections. Linking to multiple pre-existing work
+records or an ambiguous team is refused rather than guessed. A manager may
+confirm historical team mapping with a reason.
+
+Customer/company cancellation requests an exclusion; it does not approve one.
+The manager still reviews exclusions and records official qualification decisions.
+Older records and frozen decisions are preserved. The main report uses raw
+results and a single qualification status. Detailed scores, evidence, decisions
+and legacy records are expandable. A full score is unavailable until every
+category has points; a normalized partial score is never the main headline.
+
+### Database update before release
+
+Run **[sql/qualification_linked_jobs.sql](sql/qualification_linked_jobs.sql)** in
+[the ADC project's SQL Editor](https://supabase.com/dashboard/project/knrbkldfnsxrsuysintp/sql/new).
+Prerequisites: the existing qualification schema and Job Assignment outcomes.
+The migration is transactional and can be reapplied. It adds a private link
+map and authenticated member RPCs, without backfilling or rewriting any
+historical outcomes, costs, metric versions or signed decisions. It does not
+grant anonymous access to qualification tables. Job Assignment's existing
+public-key access remains in place; source edits synchronize the linked visit,
+not sales, collections or work completion. Related-record revisions reject
+stale forms, and shared-opportunity actions use transaction locks.
+
+The page keeps existing reports available if linking has not been installed,
+but publishing the complete workflow requires the migration first. Existing
+misclassified cancellations require an explicit, reasoned correction; the
+migration does not infer cancellation reasons from old notes.
+
+### Local verification and preview
+
+```sh
+npm ci
+npm test
+node scripts/preview-qualification.cjs
+```
+
+Preview: `http://127.0.0.1:8787/qualification.html`. It runs the real frontend
+and migration against a fictional PostgreSQL database in memory, never the
+live Supabase database. Stop with Ctrl+C. The new UI tests walk the forms
+through the actual migration, including related-record updates and returning
+visits; PostgreSQL checks cover RLS/permissions, mapping ambiguity, idempotence,
+cancellation review, cost preservation, stale edits, and source synchronization.
+These are local integration checks, not a claim of live migration or native
+multi-connection stress verification.

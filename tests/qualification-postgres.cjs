@@ -1,0 +1,15 @@
+const fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require(process.env.PGLITE_MODULE||'@electric-sql/pglite');
+const sql=file=>fs.readFileSync(path.join(__dirname,'../',file),'utf8');
+exports.createTestDb=async function(){const db=new PGlite();
+ await db.exec(`create role anon;create role authenticated;create schema auth;grant usage on schema auth,public to anon,authenticated;
+ create function auth.email() returns text language sql stable as $$select coalesce(current_setting('test.member',true),'')||'@example.test'$$;
+ create function public.bridge_role() returns text language sql stable as $$select nullif(current_setting('test.member',true),'')$$;
+ create function public.is_bridge_member() returns boolean language sql stable as $$select coalesce(public.bridge_role() in ('manager','dispatcher'),false)$$;
+ create function public.bridge_stamp() returns trigger language plpgsql as $$begin new:=jsonb_populate_record(new,jsonb_build_object('created_at',coalesce(to_jsonb(new)->'created_at',to_jsonb(now())),'updated_at',now(),'created_by',auth.email(),'updated_by',auth.email()));return new;end$$;
+ create table public.bridge_opportunities(id uuid primary key);create table public.coverage_log(id uuid primary key);
+ `);
+ await db.exec(sql('jobs_schema.sql'));await db.exec(sql('job_assignment_outcomes.sql'));await db.exec(sql('qualification_schema.sql'));
+ await db.exec(sql('sql/qualification_linked_jobs.sql'));
+ await db.exec('grant select on public.technicians,public.job_assignments to anon;');
+ return db;};

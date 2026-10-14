@@ -3,12 +3,14 @@
   "private": true,
   "description": "Tests for the ADC Outbound Performance Board. The app itself has no build step.",
   "scripts": {
-    "test": "node tests/board.test.cjs index.html && node tests/bridge.test.cjs bridge.html && node tests/qualification.test.cjs qualification.html",
+    "test": "node tests/board.test.cjs index.html && node tests/bridge.test.cjs bridge.html && node tests/qualification.test.cjs qualification.html && node tests/qualification-linked.test.cjs && node tests/qualification-linked-sql.test.cjs",
     "test:bridge": "node tests/bridge.test.cjs bridge.html",
     "test:qualification": "node tests/qualification.test.cjs qualification.html",
-    "test:board": "node tests/board.test.cjs index.html"
+    "test:board": "node tests/board.test.cjs index.html",
+    "test:qualification:linked": "node tests/qualification-linked.test.cjs && node tests/qualification-linked-sql.test.cjs"
   },
   "devDependencies": {
-    "jsdom": "^24.1.3"
+    "jsdom": "^24.1.3",
+    "@electric-sql/pglite": "0.5.8"
   }
 }

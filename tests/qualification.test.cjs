@@ -1,4 +1,5 @@
 /* M4 Team Qualification — acceptance tests (brief §16, numbered T1…T25) + database rules + page flows. Run: npm test */
+const {freezeClock}=require('./qualification-clock.cjs');freezeClock(globalThis);
 const {JSDOM,VirtualConsole}=require('jsdom'); const fs=require('fs');
 const {makeFake}=require('./fake-qual.js'); const {makeDb}=require('./seed-qual.js');
 const html=fs.readFileSync(process.argv[2],'utf8');
@@ -7,6 +8,7 @@ vc.on('jsdomError',e=>(/Could not parse CSS/.test(e.message)?cssWarn:errors).pus
 vc.on('error',(...a)=>errors.push('console.error: '+a.join(' '))); ['warn','log','info','debug'].forEach(k=>vc.on(k,()=>{}));
 let db=makeDb(),fake=makeFake(db);
 const dom=new JSDOM(html,{url:'http://localhost/qualification.html',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){
+  freezeClock(w);
   w.localStorage.setItem('adc_supabase_cfg',JSON.stringify({url:'http://fake.local',key:'fake'}));
   w.supabase={createClient:()=>fake}; w.confirm=()=>true; w.prompt=(m,d)=>w.__prompt?w.__prompt(m,d):(d||'test'); w.alert=()=>{}; w.scrollTo=()=>{};
   w.HTMLElement.prototype.scrollIntoView=function(){};
@@ -179,8 +181,8 @@ const em=r=>r.error&&r.error.message||'';
   signIn('someone@homealliance.com'); await tick(100); T('non-member told so',shown('#qNotMember')&&!shown('#qBody')&&/Not a member/.test($('#qGateTitle').textContent));
   signIn('luka.m@homealliance.com'); await tick(200);
   T('manager signed in → body shown, identity + role, version badge warns no active version',shown('#qBody')&&/luka\.m · manager/.test($('#qWho').textContent)&&/no active version/.test($('#qVerBadge').textContent)&&$('#qVerBadge').classList.contains('warn'));
-  T('why-strip and blockers rendered (§15.12): no active version + baseline unresolved',/Why one scorecard/.test($('.why').textContent)&&/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/i.test($('#qBlockers').textContent));
-  T('overview: hero ring says 0 of 3 qualified; outcome and evidence breakdowns present',!!$('#qOver .ring')&&/0/.test($('#qOver .ring .v').textContent)&&/of 3 qualified/.test($('#qOver').textContent)&&/By official outcome/.test($('#qOver').textContent)&&/By evidence state/.test($('#qOver').textContent));
+  T('why-strip and blockers rendered (§15.12): no active version + baseline unresolved',/Jobs entered once/.test($('.why').textContent)&&/No active metric version/.test($('#qBlockers').textContent)&&/baseline unresolved/i.test($('#qBlockers').textContent));
+  T('overview: plain qualification count and team-first reporting, no partial-score ring',/0 of 3 teams currently qualified/.test($('#qOver').textContent)&&/Choose a team/.test($('#qOver').textContent)&&!$('#qOver .ring'));
   // new team via sheet
   w.showQualTab('qteams'); await tick(40); $('#qNewTeam').click(); await tick(60);
   T('“+ New team” opens a sheet, not a form',sheetOpen()&&/New team/.test($('#qSheet h2').textContent));
@@ -257,9 +259,9 @@ const em=r=>r.error&&r.error.message||'';
   await act('#qTeam .backlink'); await act('#qTeam [data-drill="sales"]'); T('T16: a category row drills down to formula, sample and source ids',!!$('#qTeam .drill')&&/Formula/.test($('#qTeam .drill').textContent)&&/included/.test($('#qTeam .drill').textContent));
   // queues + comparison + overview
   w.showQualTab('qqueue'); await tick(60); T('queues render seven cards; the coaching action due appears',$$('#qQueues > .card').length===7&&/ride-along/.test($('#qQueues').textContent));
-  w.showQualTab('qteams'); await tick(60); T('comparison: one row, Coaching official, evidence dot, N/A cells',$$('#qTeams a.row').length===1&&/Coaching/.test($('#qTeams').textContent)&&/N\/A/.test($('#qTeams').textContent));
-  setv('#qfOut','pass'); await tick(40); T('filter by outcome hides the row without changing the stored decision',$$('#qTeams a.row').length===0&&/No teams match/.test($('#qTeams').textContent)&&db.qual_decisions[0].official_outcome==='coaching'); setv('#qfOut',''); await tick(40);
-  w.showQualTab('qover'); await tick(60); T('overview: 0 of 3 qualified (coaching does not count), Coaching counted once',/0/.test($('#qOver .ring .v').textContent)&&/Coaching/.test($('#qOver .counts').textContent));
+  w.showQualTab('qteams'); await tick(60); T('comparison: one row, Coaching official, evidence dot, N/A cells',$$('#qTeams a.simple-team').length===1&&/Coaching/.test($('#qTeams').textContent)&&/N\/A/.test($('#qTeams').textContent));
+  setv('#qfOut','pass'); await tick(40); T('filter by outcome hides the row without changing the stored decision',$$('#qTeams a.simple-team').length===0&&/No teams match/.test($('#qTeams').textContent)&&db.qual_decisions[0].official_outcome==='coaching'); setv('#qfOut',''); await tick(40);
+  w.showQualTab('qover'); await tick(60); T('overview: 0 of 3 qualified (coaching does not count), Coaching counted once',/0 of 3 teams currently qualified/.test($('#qOver').textContent)&&/Donat team/.test($('#qOver').textContent));
   // dispatcher view
   signIn('tom@5starair.pro'); await tick(250); w.qOpen(tm.id); await tick(120);
   T('dispatcher: no “Record decision”, records and guided entry available',!$('#qTeam [data-act="decide"]')&&$$('#qTeam .step').length===4&&/tom · dispatcher/.test($('#qWho').textContent));
