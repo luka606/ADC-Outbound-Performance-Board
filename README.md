@@ -1,5 +1,30 @@
 # ADC Outbound — Performance Board
 
+## Jobs and technician pay
+
+Apply `sql/qualification_job_cost_breakdown.sql` after the existing migrations.
+Jobs now use searchable glass cards and one **Update job** detail view. The
+breakdown saves materials and assistant expenses as typed amounts; reviewed
+blank expenses save as zero. Technician pay defaults to 50% of the sale after
+those expenses, with an editable percentage for exceptions. Job profit is sale
+minus all recorded costs, including technician pay.
+
+Managed pay rows carry `adc_technician_share_v1` metadata. The database trigger
+recalculates technician pay when sale or expenses change, rounds to whole cents
+and uses a zero pay basis if expenses exceed sale. Historical rows without the
+marker are unchanged. Unknown historical expenses remain unknown until reviewed.
+Older labor/helper entries need an explicit classification when edited to avoid
+double-counting pay. A changed total invalidates an older mixed-service allocation.
+
+Cost and allocation edits use one atomic update with the existing row timestamp
+as a concurrency check; the existing triggers invalidate older linked forms.
+Completion preserves costs. Customer issues are optional when no issue occurred;
+required checks and manager-approved score removal are explained inside the job.
+These changes do not alter metric thresholds or official decisions.
+
+`npm run test:qualification:jobs` verifies the real database and frontend flows.
+`node scripts/preview-qualification.cjs --jobs` opens fictional sample jobs.
+
 ## Coverage recording
 
 In Team Qualification, **Manage coverage** opens one workspace for the team's
